@@ -1,0 +1,41 @@
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Expo
+.expo/
+web-build/
+
+# Env — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Test + tooling
+coverage/
+playwright-report/
+test-results/
+.dependency-cruiser-known-violations.json
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Agent scratch — tickets are committed, working notes are not
+.scratch/**/tmp/
+.claude/settings.local.json
+
+# Generated
+_skills-manifest.csv
