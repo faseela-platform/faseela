@@ -75,6 +75,10 @@ module.exports = {
           // yet, and it will stop being an orphan the moment a page does. Regenerating it
           // is not optional, so warning about it trains us to ignore this rule.
           "^apps/web/cms/payload-types\\.ts$",
+          // The browser-side auth client. Orphaned only because no sign-in UI exists yet;
+          // the server half is wired and verified end to end by scripts/verify-auth-flow.mjs.
+          // Remove this exemption once a Client Component imports it.
+          "^apps/web/lib/auth-client\\.ts$",
         ],
       },
       to: {},

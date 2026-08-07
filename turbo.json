@@ -3,7 +3,13 @@
   "ui": "tui",
   "globalDependencies": [".nvmrc", "tsconfig.base.json"],
   "globalEnv": ["NODE_ENV"],
-  "globalPassThroughEnv": ["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL"],
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "DATABASE_URL_UNPOOLED",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "PAYLOAD_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

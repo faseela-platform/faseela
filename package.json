@@ -16,6 +16,9 @@
     "test": "turbo run test",
     "verify:db": "node scripts/verify-db.mjs",
     "verify:isolation": "node scripts/verify-isolation.mjs",
+    "verify:routes": "node scripts/verify-routes.mjs",
+    "verify:auth": "node scripts/verify-auth-flow.mjs",
+    "clean:probes": "node scripts/clean-probe-rows.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm lint:boundaries && pnpm test && pnpm build",
     "format": "prettier --write .",
     "prepare": "husky"

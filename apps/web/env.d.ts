@@ -15,5 +15,13 @@ declare namespace NodeJS {
     DATABASE_URL_UNPOOLED: string;
     /** Signs Payload's admin session cookies. Rotating it logs every Editor out. */
     PAYLOAD_SECRET: string;
+    /** Signs Member session cookies and magic-link tokens. Distinct from PAYLOAD_SECRET. */
+    BETTER_AUTH_SECRET: string;
+    /**
+     * Where the app is reachable. Magic-link URLs are built from it, so in
+     * production this must be the public origin — a stale value produces links
+     * that fail verification, which reads as a token bug rather than config.
+     */
+    BETTER_AUTH_URL: string;
   }
 }
