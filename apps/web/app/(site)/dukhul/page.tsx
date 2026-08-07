@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
+import { emailIsDeliverable } from "@/lib/email";
 import { Nav } from "../components/nav";
 import { SignInForm } from "./sign-in-form";
 
@@ -56,11 +58,46 @@ export default async function SignInPage({
 
             <div className="hairline rule-draw mt-10 mb-10" />
 
-            <SignInForm callbackURL={safeCallback(callbackURL)} />
+            {emailIsDeliverable ? (
+              <SignInForm callbackURL={safeCallback(callbackURL)} />
+            ) : (
+              <NotYetOpen />
+            )}
           </div>
         </section>
       </main>
     </>
+  );
+}
+
+/**
+ * Shown in place of the form when no email provider is configured.
+ *
+ * The alternative was to render the form anyway and let it fail. That would be
+ * dishonest in a specific and damaging way: the error surfaces after the visitor
+ * has typed their address and pressed the button, at which point it reads as a
+ * rejection of *them*. Saying so before they type costs nothing and keeps the
+ * promise of the page truthful.
+ *
+ * It deliberately does not explain the cause. "No SPF record on the domain" is our
+ * problem, not a member's, and infrastructure detail on a public page reads as an
+ * apology for the product rather than a statement about a date.
+ */
+function NotYetOpen() {
+  return (
+    <div className="rounded-md border border-[var(--border)] p-6">
+      <p className="text-body-lg font-medium text-[var(--ink)]">التسجيل لم يُفتح بعد.</p>
+      <p className="text-body-sm mt-3 leading-[1.7] text-[var(--ink-muted)]">
+        نُعِدّ الآن ما يلزم لإرسال روابط الدخول إلى بريدك. إلى أن يكتمل ذلك، يمكنك تصفّح المسارات
+        والمهامّ ولوحة النقاط دون تسجيل.
+      </p>
+      <Link
+        href="/masarat"
+        className="text-body-sm mt-6 inline-block font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+      >
+        تصفّح المسارات
+      </Link>
+    </div>
   );
 }
 

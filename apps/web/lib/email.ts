@@ -67,3 +67,21 @@ const transport: EmailTransport =
   process.env.NODE_ENV === 'production' ? productionGuard : consoleTransport;
 
 export const sendEmail: EmailTransport = (email) => transport(email);
+
+/**
+ * Whether a message sent right now would actually reach a member's inbox.
+ *
+ * The guard above makes an unconfigured production deploy fail loudly, which is
+ * correct for the server but useless to a visitor: they would fill in the form,
+ * press the button, and receive an error that reads as though *their* address were
+ * the problem. Deployed with no transport, that is the entire sign-in experience.
+ *
+ * So the sign-in page reads this and says plainly that entry is not open yet.
+ * Announcing the limitation costs Faseela far less than appearing broken, and a
+ * visitor told "not yet" comes back, whereas a visitor shown an unexplained error
+ * concludes the platform does not work.
+ *
+ * It is derived from the transport rather than declared separately, so it cannot
+ * drift: the day a real provider is configured, this becomes true in the same edit.
+ */
+export const emailIsDeliverable: boolean = transport !== productionGuard;
