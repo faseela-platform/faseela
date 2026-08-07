@@ -14,6 +14,12 @@ import type { NextConfig } from 'next';
  * This runs before the Payload config is evaluated, which is what makes
  * `PAYLOAD_SECRET` present; without it the admin panel throws
  * "missing secret key" on first render.
+ *
+ * On a deployment platform the file does not exist and the variables come from the
+ * environment instead. `dotenv` treats a missing file as a no-op rather than an
+ * error, so this is safe there, and it never overwrites a variable that is already
+ * set — meaning a stray local file could not shadow production configuration even if
+ * one were committed by accident.
  */
 loadEnv({ path: fileURLToPath(new URL('../../.env.local', import.meta.url)) });
 
