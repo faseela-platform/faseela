@@ -43,3 +43,8 @@ _skills-manifest.csv
 # Local verification artefacts
 .scratch/
 *.log
+
+# Transient tool output
+chk.txt
+*.log
+.scratch/

@@ -15,6 +15,14 @@ export { awardPoints, type AwardResult } from "./lib/awards";
 export { seasonLeaderboard, type LeaderboardRow } from "./lib/leaderboard";
 export { currentSeason } from "./lib/seasons";
 /**
+ * The only sanctioned way to read Tracks for the public site. Exported as
+ * functions rather than leaving pages to query `schema.track` themselves,
+ * because every one of these carries the `state = 'published'` filter — and a
+ * page that assembles its own query is one forgotten `where` away from showing
+ * an Editor's unfinished draft to the public.
+ */
+export { publishedTracks, trackBySlug, type TrackSummary, type TrackDetail } from "./lib/tracks";
+/**
  * Exported because it is the *only* sanctioned way to remove a Member: the
  * RESTRICT on `point_award.user_id` makes a plain delete raise, and a caller who
  * cannot find this function will reach for raw SQL to get around that. Making it

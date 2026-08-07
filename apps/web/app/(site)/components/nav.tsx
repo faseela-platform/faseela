@@ -1,8 +1,19 @@
-import { hero } from '../content';
+import Link from "next/link";
 
+import { hero } from "../content";
+
+/**
+ * `route: true` means a real page, reached with `next/link` so the client router
+ * prefetches it and the transition costs no document load — the difference
+ * between instant and a white flash on a slow Lebanese connection. `route: false`
+ * is a fragment on the landing page, left as a plain anchor on purpose: routing
+ * to a same-page hash scrolls before the target section's scroll-timeline
+ * animations have settled.
+ */
 const links = [
-  { label: 'من نحن', href: '#about' },
-  { label: 'كيف تعمل', href: '#tracks' },
+  { label: "المسارات", href: "/masarat", route: true },
+  { label: "من نحن", href: "/#about", route: false },
+  { label: "كيف تعمل", href: "/#tracks", route: false },
 ] as const;
 
 /**
@@ -14,44 +25,81 @@ const links = [
  *
  * `sticky` rather than `fixed` so it participates in layout and cannot overlap the hero's first line
  * on a short viewport.
+ *
+ * `current` is passed in by the page rather than read from a router hook, because
+ * `usePathname` would force this into a client component and put the first
+ * JavaScript bundle on every page to render one underline.
  */
-export function Nav() {
+export function Nav({ current }: { current?: string }) {
   return (
     <header className="gutter sticky top-0 z-50 border-b border-[var(--hairline)] bg-[color-mix(in_oklch,var(--surface)_88%,transparent)] backdrop-blur-md">
-      <nav className="flex items-center justify-between py-4" aria-label="الرئيسية">
+      <nav className="flex items-center justify-between gap-4 py-4" aria-label="الرئيسية">
         {/*
          * The wordmark at nav scale. Same authored tatweel as the hero — it is part of the mark, and
          * normalising it away here would make the two disagree.
+         *
+         * `shrink-0` because without it flexbox compressed the wordmark until it
+         * touched the first nav link: at 390px the header rendered
+         * "فسيلـةالمسارات" as one run of letters, which in Arabic reads as a
+         * single word rather than two elements.
          */}
-        <a
-          href="#"
-          className="font-display text-card-title leading-[1.5] font-semibold text-[var(--brand)]"
+        <Link
+          href="/"
+          className="font-display text-card-title shrink-0 leading-[1.5] font-semibold text-[var(--brand)]"
         >
           {hero.wordmark}
-        </a>
+        </Link>
 
-        <ul className="flex items-center gap-6">
-          {links.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                className="text-body-sm font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--ink)]"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
-          <li>
-            <a
-              href="https://linktr.ee/faseela_24"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="rounded-md border border-[var(--border)] px-4 py-2 text-body-sm font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
-            >
-              انضم إلينا
-            </a>
-          </li>
+        {/*
+         * The link list is hidden below 768px and replaced by the single primary
+         * action. Three links plus a button do not fit 390px — they wrapped to two
+         * lines each and broke the header's height.
+         *
+         * No hamburger menu, deliberately: a drawer needs client JavaScript and
+         * state, and this site has three destinations. The one that matters on a
+         * phone stays visible; the rest are a tap away on the landing page, which
+         * is where the wordmark leads.
+         */}
+        <ul className="hidden items-center gap-6 md:flex">
+          {links.map((link) => {
+            /**
+             * `aria-current="page"` is the part that matters. The colour change is
+             * invisible to a screen reader, and without this attribute a
+             * non-sighted reader has no way to know which page they are on.
+             */
+            const isCurrent = link.route && current === link.href;
+            const className = `text-body-sm font-medium transition-colors duration-[130ms] ease-[var(--ease-hover)] ${
+              isCurrent ? "text-[var(--brand)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+            }`;
+
+            return (
+              <li key={link.href}>
+                {link.route ? (
+                  <Link
+                    href={link.href}
+                    className={className}
+                    aria-current={isCurrent ? "page" : undefined}
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a href={link.href} className={className}>
+                    {link.label}
+                  </a>
+                )}
+              </li>
+            );
+          })}
         </ul>
+
+        <a
+          href="https://linktr.ee/faseela_24"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-body-sm shrink-0 rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
+        >
+          انضم إلينا
+        </a>
       </nav>
     </header>
   );
