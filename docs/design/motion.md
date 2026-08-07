@@ -150,8 +150,9 @@ toasts, icon swaps and press feedback. Use them, with two adaptations every time
 
 ## Landing page motion
 
-Specified separately once the motion brief is complete — the `motion-brief` skill interviews the
-stakeholder rather than assuming. See `docs/design/landing-motion.md` (to be written) and ADR 0007.
+Specified in [landing-motion.md](./landing-motion.md), produced by the `motion-brief` interview
+process rather than assumed. See also ADR 0007 (why the marketing-page constraint is relaxed) and
+ADR 0011 (native CSS scroll timelines, and the GPU layer budget).
 
 ## Review
 

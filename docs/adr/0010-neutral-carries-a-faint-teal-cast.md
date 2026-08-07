@@ -4,7 +4,9 @@ Date: 2026-08-06
 
 ## Status
 
-Accepted, pending Abdullah's confirmation.
+Accepted. Confirmed by Abdullah in round 3 (A2 = A, keep the faint cast). Also confirmed that no brand
+guide exists (A3 = B), so the measurements in `docs/design/color.md` are now the authoritative brand
+reference for the project.
 
 ## Context
 

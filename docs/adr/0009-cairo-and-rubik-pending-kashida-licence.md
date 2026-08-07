@@ -4,7 +4,9 @@ Date: 2026-08-06
 
 ## Status
 
-Accepted, with one open question escalated to Abdullah.
+Accepted. The licensing question was escalated to Abdullah and resolved: **ship free fonts only
+(Cairo + Rubik); revisit after launch.** The deferral below stands as written — it is a post-launch
+reconsideration, not a blocker.
 
 ## Context
 

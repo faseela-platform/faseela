@@ -14,6 +14,16 @@ Arabic is the content language and RTL is the layout default. The imported craft
 
 Reach for logical CSS properties — `margin-inline-start`, `inset-inline-end`, `padding-block` — so a single stylesheet serves both directions.
 
+## Design system
+
+Colour, typography, and motion are decided and measured in [docs/design/](./docs/design/) — reference the tokens, never raw values. Three constraints bite often enough to state here: the brand teal is large-text-only (APCA Lc 51.3) and body text needs step 700 or neutral ink; Arabic display leading never drops below 1.42, so `leading-tight` is wrong; and `letter-spacing` on Arabic severs the cursive joins and is forbidden.
+
+## Motion budgets
+
+Product UI motion is feedback: under 300ms, `transform` and `opacity` only, exits faster than enters. The landing page is the one place elaborate motion belongs — see [docs/design/landing-motion.md](./docs/design/landing-motion.md) — and its patterns stay there.
+
+Scroll-linked motion is native CSS `animation-timeline` (ADR 0011). Keep promoted GPU layers under 10 on mobile, apply `will-change` via JS around an animation and remove it when it settles, and let unsupported browsers fall through to the static final state. Author the final state first and layer motion on top, so reduced-motion visitors never meet an element stranded at `opacity: 0`.
+
 ## Package boundaries
 
 Packages are deep modules: import a package through its root files only. See [packages/README.md](./packages/README.md) before adding or importing one. `pnpm lint:boundaries` enforces it.
