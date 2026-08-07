@@ -1,0 +1,180 @@
+@import 'tailwindcss';
+@import '@faseela/tokens/theme.css';
+
+/*
+ * Scroll-driven reveals.
+ *
+ * Native CSS `animation-timeline` only — ADR 0011. These run off the main thread, which is what
+ * makes a fully scroll-driven page viable on a mid-range Android.
+ *
+ * Authored static-first: the base state in the markup is the FINAL state. Motion is layered on
+ * inside the @supports guard. An unsupported browser therefore shows finished content rather than
+ * a blank page.
+ */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--travel-lg));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scroll-linked scale for the seedling mark. Scale is a compositor property, so this stays cheap. */
+@keyframes grow {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media not (prefers-reduced-motion: reduce) {
+    .reveal {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 35%;
+    }
+
+    .reveal-fade {
+      animation: reveal-fade linear both;
+      animation-timeline: view();
+      animation-range: entry 15% cover 40%;
+    }
+
+    .reveal-grow {
+      animation: grow linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 45%;
+    }
+
+    /*
+     * Per-child stagger without JS: each child's range is offset by its index, set inline as --i.
+     * Cheaper than a JS stagger and still off the main thread.
+     */
+    .reveal-stagger > * {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry calc(5% + (var(--i, 0) * 7%)) cover calc(30% + (var(--i, 0) * 7%));
+    }
+  }
+}
+
+/*
+ * Hero sequence — load-triggered, one shot. Not scroll-linked: it fires before meaningful scroll is
+ * possible. Beats overlap by ~200ms so the three devices read as one movement.
+ */
+
+@keyframes draw-ornament {
+  from {
+    stroke-dashoffset: var(--dash-length, 1200);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/*
+ * The wordmark reveal. `clip-path` is the only technique that leaves Arabic glyphs completely
+ * untouched, so every cursive join and the authored tatweel survive intact. Splitting Arabic into
+ * letters, or applying letter-spacing, would sever them.
+ *
+ * `inset()` sides are physical, so under dir="rtl" the wordmark is uncovered from the right:
+ * `inset(0 0 0 100%)` collapses toward the right edge, which appears first, matching the reading
+ * direction.
+ */
+@keyframes reveal-wordmark {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes rise-word {
+  from {
+    opacity: 0;
+    transform: translateY(var(--travel-md));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * Weight morph. NOT compositor-accelerated — the browser re-rasterises glyph outlines every frame
+ * (FontLab, Feb 2026). Confined to one short tagline, once, on load. If profiling at 4x CPU
+ * throttling shows dropped frames, remove this keyframe from the shorthand below and the sequence
+ * still works.
+ */
+@keyframes morph-weight {
+  from {
+    font-variation-settings: 'wght' 300;
+  }
+  to {
+    font-variation-settings: 'wght' 600;
+  }
+}
+
+@media not (prefers-reduced-motion: reduce) {
+  .hero-ornament [data-draw] {
+    animation: draw-ornament 900ms var(--ease-enter) both;
+  }
+
+  .hero-wordmark {
+    animation: reveal-wordmark 800ms var(--ease-enter) 700ms both;
+  }
+
+  .hero-tagline > * {
+    animation:
+      rise-word 700ms var(--ease-enter) calc(1400ms + (var(--i, 0) * 70ms)) both,
+      morph-weight 700ms linear calc(1400ms + (var(--i, 0) * 70ms)) both;
+  }
+}
+
+/*
+ * Reduced motion: final state, instantly. Not a softer animation — reduced means reduced, opacity
+ * fades included. Visually identical to the unsupported-browser path, so one fallback serves both.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .hero-ornament [data-draw] {
+    stroke-dashoffset: 0;
+  }
+
+  .hero-wordmark {
+    clip-path: none;
+  }
+}
+
+/* Arabic numerals inside RTL prose need bidi isolation or the digits reorder. */
+.num {
+  unicode-bidi: isolate;
+}
+
+::selection {
+  background: var(--color-seedling-100);
+  color: var(--color-paper-950);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}

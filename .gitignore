@@ -39,3 +39,7 @@ Thumbs.db
 
 # Generated
 _skills-manifest.csv
+
+# Local verification artefacts
+.scratch/
+*.log
