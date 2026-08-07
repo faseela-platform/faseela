@@ -53,28 +53,12 @@ _Avoid_: news, post, notice, banner
 ### The feed
 
 **Feed** (الصفحة الرئيسة):
-The platform's front page: one merged, reverse-chronological stream assembled from Cultural News, Initiative Activity, and Announcements.
+The platform's front page: one merged, reverse-chronological stream of Announcements, Products and Events that Editors published here. Everything in the Feed is authored on the platform — see ADR 0013.
 _Avoid_: home, timeline, stream, dashboard
 
-**Cultural News** (الأخبار الثقافية):
-Notable cultural happenings in the wider Lebanese resistance environment, including those the Initiative had no hand in.
-_Avoid_: external news, third-party content
-
-**Initiative Activity** (أنشطة فسيلة):
-Notable things the Initiative itself did, across all Tracks.
-_Avoid_: our news, internal posts
-
 **Channel**:
-An external platform the Initiative publishes on — Telegram, Instagram, YouTube, TikTok, Facebook. A source, never a destination: the platform reads Channels and never writes to them.
+An external platform the Initiative publishes on — Telegram, Instagram, YouTube, TikTok, Facebook. The platform **links out** to Channels and never reads from or writes to them programmatically.
 _Avoid_: social account, integration, platform, network
-
-**Ingestion**:
-The scheduled read of a Channel that turns its recent posts into Feed Items. Runs on a timer, never on request.
-_Avoid_: sync, scrape, import, crawl
-
-**Feed Item**:
-The platform's own record of one post that exists on a Channel — its text, its media reference, its timestamp, and the deep link back to the original. Content is referenced and cached for display; the Channel remains the only copy of record.
-_Avoid_: post, entry, cached post, mirror
 
 ### People and progress
 

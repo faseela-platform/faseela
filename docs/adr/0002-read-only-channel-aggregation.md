@@ -1,9 +1,17 @@
 ---
-status: accepted
+status: superseded
+superseded-by: 0013-no-channel-ingestion
 date: 2026-08-06
 ---
 
 # Channels are read-only sources; nothing migrates off them
+
+> **Superseded by [ADR 0013](0013-no-channel-ingestion.md) on 2026-08-07.** Every access path this ADR
+> depended on required the Initiative to grant credentials or administrator rights, so ingestion was a
+> dependency on a third party's cooperation beneath the platform's front page. Feed content is now
+> authored on the platform. The reasoning below is retained because the *outward* argument still holds:
+> the platform must not compete with the Initiative's own distribution.
+
 
 The Initiative has years of accumulated work on Telegram (3,000+ messages), Instagram (684 posts, 17.2K followers), YouTube, TikTok and Facebook. None of it moves. Ingestion reads each Channel on a schedule, stores a Feed Item holding the text, a cached media reference, a timestamp and a deep link, and the Channel remains the only copy of record.
 
