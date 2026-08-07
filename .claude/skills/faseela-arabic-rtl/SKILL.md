@@ -42,6 +42,14 @@ An entrance that slides "from the right" means *from the start* in Arabic and *f
 
 Skip vertical stacked type. Arabic set vertically rotates along the line rather than stacking one letter per line (W3C §3.1.1) — stacking breaks the join, so that scroll-typography device is unavailable here.
 
+This extends to `writing-mode`. Setting `vertical-rl` on Arabic renders it upside down and mirrored, and no `text-orientation` value corrects it — rotating a line of Arabic is not the same as setting it vertically. A vertical margin strip, a rotated label, a sideways caption: all unavailable. This repo tried it for the landing page's scroll rail and reverted; the rail is a short horizontal list in a narrow fixed column instead.
+
+## Use physical sides for margin furniture, logical for content
+
+Logical properties (`inset-inline-start`, `ms-*`, `text-align: start`) are correct for anything in the content flow, because they mirror for free. But they resolve *relative to the reading direction*, so under RTL `inset-inline-start` is the **right** edge — the same edge hard-aligned content occupies.
+
+A fixed page-margin element meant to sit *opposite* the content therefore needs a physical side. This repo's scroll rail used `inset-inline-start: 1.5rem` and landed on top of the RTL headline; it now uses `left`. Ask which edge the element belongs to relative to the reader's eye, not which edge is nominally "start".
+
 Use Arabic-script counter styles for ordered lists and numbering (W3C §7.5) rather than Latin numerals where the design calls for indigenous counters.
 
 ## Verify in the browser, in both directions

@@ -1,6 +1,6 @@
-import { Hero } from './components/hero';
-import { Nav } from './components/nav';
-import { About, Channels, Cta, Stations, Stats, Tracks } from './components/sections';
+import { Hero } from "./components/hero";
+import { Nav } from "./components/nav";
+import { About, Channels, Cta, Rail, Stations, Stats, Tracks } from "./components/sections";
 
 /**
  * The landing page. Fully scroll-driven (round 3, B7 = C), built entirely on native CSS scroll
@@ -19,6 +19,8 @@ export default function Page() {
   return (
     <>
       <Nav />
+      {/* Page-level, so the position indicator persists for the whole scroll rather than one section. */}
+      <Rail />
       <main>
         <Hero />
         <Stats />

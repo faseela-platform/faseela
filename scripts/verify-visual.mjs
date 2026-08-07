@@ -12,16 +12,16 @@
  * Usage: node scripts/verify-visual.mjs [url]
  */
 
-import { mkdirSync } from 'node:fs';
-import { chromium } from 'playwright';
+import { mkdirSync } from "node:fs";
+import { chromium } from "playwright";
 
-const URL = process.argv[2] ?? 'http://localhost:3210';
-const OUT = '.scratch/shots';
+const URL = process.argv[2] ?? "http://localhost:3210";
+const OUT = ".scratch/shots";
 mkdirSync(OUT, { recursive: true });
 
 const failures = [];
 
-function check(name, condition, detail = '') {
+function check(name, condition, detail = "") {
   if (condition) {
     console.log(`  PASS  ${name}`);
   } else {
@@ -37,52 +37,56 @@ const browser = await chromium.launch();
 // ---------------------------------------------------------------------------
 {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.goto(URL, { waitUntil: "networkidle" });
   await page.waitForTimeout(2600);
   await page.screenshot({ path: `${OUT}/desktop-hero.png` });
 
-  console.log('\nDesktop, motion allowed');
+  console.log("\nDesktop, motion allowed");
 
-  check('html has dir="rtl"', (await page.getAttribute('html', 'dir')) === 'rtl');
-  check('html has lang="ar"', (await page.getAttribute('html', 'lang')) === 'ar');
+  check('html has dir="rtl"', (await page.getAttribute("html", "dir")) === "rtl");
+  check('html has lang="ar"', (await page.getAttribute("html", "lang")) === "ar");
 
   // Each headline line must be fully revealed once the sequence has finished. A clip-path stuck at
   // inset(0 0 0 100%) is invisible but still occupies layout, so a screenshot alone can miss it.
   // Chromium serialises the resolved value as a four-value longhand, so compare numerically:
   // every inset must be 0, in whatever unit it was authored.
-  const clips = await page.$$eval('.hero-line > span', (nodes) =>
+  const clips = await page.$$eval(".hero-line > span", (nodes) =>
     nodes.map((el) => getComputedStyle(el).clipPath),
   );
   const allRevealed =
     clips.length > 0 &&
     clips.every(
       (clip) =>
-        clip === 'none' ||
-        (clip.startsWith('inset(') &&
+        clip === "none" ||
+        (clip.startsWith("inset(") &&
           [...clip.matchAll(/-?[\d.]+/g)].every((match) => parseFloat(match[0]) === 0)),
     );
-  check('headline clip-paths have resolved to fully visible', allRevealed, `(got ${clips.join(' | ')})`);
+  check(
+    "headline clip-paths have resolved to fully visible",
+    allRevealed,
+    `(got ${clips.join(" | ")})`,
+  );
 
   // Tatweel must survive as authored. Normalising it away would silently change the wordmark.
-  const wordmark = await page.$eval('h1', (el) => el.textContent ?? '');
-  check('wordmark retains its authored tatweel (U+0640)', wordmark.includes('\u0640'));
+  const wordmark = await page.$eval("h1", (el) => el.textContent ?? "");
+  check("wordmark retains its authored tatweel (U+0640)", wordmark.includes("\u0640"));
 
   // letter-spacing on Arabic severs the cursive joins — the highest-severity Arabic defect.
-  const spaced = await page.$$eval('*', (nodes) =>
+  const spaced = await page.$$eval("*", (nodes) =>
     nodes
       .filter((el) => {
-        const text = el.textContent ?? '';
+        const text = el.textContent ?? "";
         if (!/[\u0600-\u06FF]/.test(text)) return false;
         const ls = getComputedStyle(el).letterSpacing;
-        return ls !== 'normal' && ls !== '0px';
+        return ls !== "normal" && ls !== "0px";
       })
       .map((el) => `${el.tagName}.${el.className}`)
       .slice(0, 5),
   );
-  check('no Arabic element carries letter-spacing', spaced.length === 0, spaced.join(', '));
+  check("no Arabic element carries letter-spacing", spaced.length === 0, spaced.join(", "));
 
   // Arabic descenders and the vowel stack need ~1.42em minimum at display sizes.
-  const tight = await page.$$eval('h1, h2, h3', (nodes) =>
+  const tight = await page.$$eval("h1, h2, h3", (nodes) =>
     nodes
       .filter((el) => {
         const cs = getComputedStyle(el);
@@ -95,16 +99,18 @@ const browser = await chromium.launch();
         return `${el.tagName} ${cs.fontSize}/${cs.lineHeight}`;
       }),
   );
-  check('no heading has leading below the 1.4 Arabic floor', tight.length === 0, tight.join(', '));
+  check("no heading has leading below the 1.4 Arabic floor", tight.length === 0, tight.join(", "));
 
   // Numbers embedded in RTL prose must be isolated or the digits and signs reorder.
-  const unisolated = await page.$$eval('.num', (nodes) =>
-    nodes.filter((el) => {
-      const cs = getComputedStyle(el);
-      return cs.unicodeBidi !== 'isolate' && cs.unicodeBidi !== 'isolate-override';
-    }).length,
+  const unisolated = await page.$$eval(
+    ".num",
+    (nodes) =>
+      nodes.filter((el) => {
+        const cs = getComputedStyle(el);
+        return cs.unicodeBidi !== "isolate" && cs.unicodeBidi !== "isolate-override";
+      }).length,
   );
-  check('every .num is bidi-isolated', unisolated === 0, `(${unisolated} unisolated)`);
+  check("every .num is bidi-isolated", unisolated === 0, `(${unisolated} unisolated)`);
 
   // -------------------------------------------------------------------------
   // Rubric compliance (docs/design/reference.md). These encode the composition
@@ -112,25 +118,25 @@ const browser = await chromium.launch();
   // -------------------------------------------------------------------------
 
   // Restraint: the display must not balloon back to a shouty size, and must not be bold.
-  const h1 = await page.$eval('h1', (el) => {
+  const h1 = await page.$eval("h1", (el) => {
     const cs = getComputedStyle(el);
     return { size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight) };
   });
-  check('hero display size stays within the 80px ceiling', h1.size <= 80, `(${h1.size}px)`);
-  check('hero weight stays at or below 500', h1.weight <= 500, `(${h1.weight})`);
+  check("hero display size stays within the 80px ceiling", h1.size <= 80, `(${h1.size}px)`);
+  check("hero weight stays at or below 500", h1.weight <= 500, `(${h1.weight})`);
 
   // Hard-alignment: nothing in the page's main flow may be centred. Centred type is the single
   // most visible departure from the reference.
-  const centred = await page.$$eval('main h1, main h2, main p, main li', (nodes) =>
+  const centred = await page.$$eval("main h1, main h2, main p, main li", (nodes) =>
     nodes
-      .filter((el) => getComputedStyle(el).textAlign === 'center')
+      .filter((el) => getComputedStyle(el).textAlign === "center")
       .map((el) => `${el.tagName}.${el.className}`)
       .slice(0, 5),
   );
-  check('no centred text in the main flow', centred.length === 0, centred.join(', '));
+  check("no centred text in the main flow", centred.length === 0, centred.join(", "));
 
   // Hairlines, not cards: no rounded, filled boxes in the lattice sections.
-  const cards = await page.$$eval('.lattice > *', (nodes) =>
+  const cards = await page.$$eval(".lattice > *", (nodes) =>
     nodes
       .filter((el) => {
         const cs = getComputedStyle(el);
@@ -139,14 +145,14 @@ const browser = await chromium.launch();
       .map((el) => el.tagName)
       .slice(0, 5),
   );
-  check('lattice cells have no border radius', cards.length === 0, cards.join(', '));
+  check("lattice cells have no border radius", cards.length === 0, cards.join(", "));
 
   // Recessive ordinals: an index numeral must never be brighter than its own heading.
-  const loudOrdinal = await page.$$eval('.lattice .num', (nodes) =>
+  const loudOrdinal = await page.$$eval(".lattice .num", (nodes) =>
     nodes
       .filter((el) => {
-        const cell = el.closest('.lattice > *');
-        const heading = cell?.querySelector('h3');
+        const cell = el.closest(".lattice > *");
+        const heading = cell?.querySelector("h3");
         if (!heading) return false;
         // Compare relative luminance: the ordinal must be lighter (dimmer on a light ground).
         const parse = (c) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
@@ -156,19 +162,53 @@ const browser = await chromium.launch();
         };
         return lum(getComputedStyle(el).color) < lum(getComputedStyle(heading).color);
       })
-      .map((el) => el.textContent ?? '')
+      .map((el) => el.textContent ?? "")
       .slice(0, 5),
   );
-  check('ordinals stay dimmer than their headings', loudOrdinal.length === 0, loudOrdinal.join(', '));
+  check(
+    "ordinals stay dimmer than their headings",
+    loudOrdinal.length === 0,
+    loudOrdinal.join(", "),
+  );
 
   // The fold must not be dead space: the hero may not fill the viewport, so the next section is
   // partly visible. That partial visibility IS the scroll affordance.
   const heroFillsViewport = await page.evaluate(() => {
-    const hero = document.querySelector('main > section');
+    const hero = document.querySelector("main > section");
     if (!hero) return true;
     return hero.getBoundingClientRect().height >= window.innerHeight;
   });
-  check('hero does not fill the viewport (next section intrudes)', !heroFillsViewport);
+  check("hero does not fill the viewport (next section intrudes)", !heroFillsViewport);
+
+  // The scroll rail is fixed page furniture in the margin, and under RTL the content is hard-aligned
+  // to the right — so a rail positioned with a logical property lands on top of the headline. That
+  // regression happened once; this asserts geometrically that it cannot come back.
+  const railOverlap = await page.evaluate(() => {
+    const rail = document.querySelector(".rail");
+    if (!rail) return "no rail";
+    const r = rail.getBoundingClientRect();
+    if (r.width === 0) return null; // hidden at this breakpoint, nothing to collide
+    const hit = [...document.querySelectorAll("main h1, main h2, main p, main .num")].find((el) => {
+      const b = el.getBoundingClientRect();
+      if (b.width === 0 || b.bottom < 0 || b.top > window.innerHeight) return false;
+      return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top;
+    });
+    return hit ? `${hit.tagName}: ${(hit.textContent ?? "").slice(0, 24)}` : null;
+  });
+  check("scroll rail does not overlap content", railOverlap === null, railOverlap ?? "");
+
+  // Reserved media slots must stay quiet: a textured placeholder draws more attention than the
+  // photograph it stands in for, which defeats the purpose of reserving the space at all.
+  const loudSlot = await page.$$eval(".media-placeholder", (nodes) =>
+    nodes
+      .filter((el) => {
+        const cs = getComputedStyle(el);
+        return cs.backgroundImage !== "none" || cs.backgroundColor !== "rgba(0, 0, 0, 0)";
+      })
+      .map((el) => el.className)
+      .slice(0, 3),
+  );
+  check("media placeholders stay unfilled", loudSlot.length === 0, loudSlot.join(", "));
 
   // Full-page shot for the reviewer.
   await page.screenshot({ path: `${OUT}/desktop-full.png`, fullPage: true });
@@ -181,18 +221,18 @@ const browser = await chromium.launch();
 {
   const page = await browser.newPage({
     viewport: { width: 1440, height: 900 },
-    reducedMotion: 'reduce',
+    reducedMotion: "reduce",
   });
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.goto(URL, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/reduced-motion-hero.png` });
 
-  console.log('\nReduced motion');
+  console.log("\nReduced motion");
 
   // Nothing may be stranded invisible. This is the blank-page bug the brief warns about, and it is
   // the single most likely way a scroll-driven page fails an accessibility pass.
   const invisible = await page.$$eval(
-    '.reveal, .reveal-fade, .reveal-grow, .reveal-stagger > *, .hero-line > *, .hero-lede, .hero-actions',
+    ".reveal, .reveal-fade, .reveal-grow, .reveal-stagger > *, .hero-line > *, .hero-lede, .hero-actions",
     (nodes) =>
       nodes
         .filter((el) => parseFloat(getComputedStyle(el).opacity) < 0.99)
@@ -200,18 +240,18 @@ const browser = await chromium.launch();
         .slice(0, 8),
   );
   check(
-    'no revealable element is stranded below full opacity',
+    "no revealable element is stranded below full opacity",
     invisible.length === 0,
-    invisible.join(', '),
+    invisible.join(", "),
   );
 
-  const reducedClips = await page.$$eval('.hero-line > span', (nodes) =>
+  const reducedClips = await page.$$eval(".hero-line > span", (nodes) =>
     nodes.map((el) => getComputedStyle(el).clipPath),
   );
   check(
-    'headline is unclipped under reduced motion',
-    reducedClips.every((c) => c === 'none'),
-    `(got ${reducedClips.join(' | ')})`,
+    "headline is unclipped under reduced motion",
+    reducedClips.every((c) => c === "none"),
+    `(got ${reducedClips.join(" | ")})`,
   );
 
   await page.screenshot({ path: `${OUT}/reduced-motion-full.png`, fullPage: true });
@@ -223,7 +263,7 @@ const browser = await chromium.launch();
 // ---------------------------------------------------------------------------
 {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.goto(URL, { waitUntil: "networkidle" });
   await page.waitForTimeout(2400);
 
   const height = await page.evaluate(() => document.body.scrollHeight);
@@ -233,7 +273,7 @@ const browser = await chromium.launch();
     await page.screenshot({ path: `${OUT}/scroll-${i + 1}.png` });
   }
 
-  console.log('\nScroll states captured');
+  console.log("\nScroll states captured");
   await page.close();
 }
 
@@ -247,18 +287,18 @@ const browser = await chromium.launch();
     isMobile: true,
     hasTouch: true,
   });
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.goto(URL, { waitUntil: "networkidle" });
   await page.waitForTimeout(2600);
   await page.screenshot({ path: `${OUT}/mobile-hero.png` });
 
-  console.log('\nMobile');
+  console.log("\nMobile");
 
   // Horizontal overflow is the classic RTL layout defect: one element positioned with a physical
   // property instead of a logical one pushes the page sideways only in RTL.
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
-  check('no horizontal overflow in RTL', overflow <= 1, `(${overflow}px)`);
+  check("no horizontal overflow in RTL", overflow <= 1, `(${overflow}px)`);
 
   await page.screenshot({ path: `${OUT}/mobile-full.png`, fullPage: true });
   await page.close();
@@ -268,7 +308,7 @@ await browser.close();
 
 console.log(`\nShots written to ${OUT}/`);
 if (failures.length > 0) {
-  console.log(`\n${failures.length} check(s) failed: ${failures.join(', ')}`);
+  console.log(`\n${failures.length} check(s) failed: ${failures.join(", ")}`);
   process.exit(1);
 }
-console.log('\nAll automated checks passed.');
+console.log("\nAll automated checks passed.");

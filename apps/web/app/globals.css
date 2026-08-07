@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import '@faseela/tokens/theme.css';
+@import "tailwindcss";
+@import "@faseela/tokens/theme.css";
 
 /*
  * Scroll-driven reveals.
@@ -256,6 +256,135 @@
   .lattice-3 > *:not(:nth-child(3n + 1)) {
     border-inline-start: 1px solid var(--hairline);
     padding-inline-start: 2rem;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+ * Media slots.
+ *
+ * Faseela's own photography is not yet cleared for use (rights and consent are the media wing's to
+ * grant), so these slots currently render a graphic placeholder built from the brand's botanical
+ * motif. They are real layout slots, not stand-ins: when approved photography arrives, an <img> or
+ * next/image drops in as a child and the placeholder is simply removed. No composition changes.
+ *
+ * Aspect ratios are fixed so the page reserves the space now and cannot shift layout later — CLS is
+ * paid for at build time rather than on a Lebanese mobile connection.
+ * -------------------------------------------------------------------------- */
+
+.media {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-paper-100);
+}
+
+.media > img,
+.media > video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * The placeholder.
+ *
+ * The first attempt filled the slot with a dotted seed field, and it was a mistake: a textured grey
+ * rectangle draws MORE attention than the photograph it stands in for, which inverts the intent. A
+ * reserved slot should read as deliberate space, not as a missing asset.
+ *
+ * So this is a hairline frame and nothing else — the same 1px rule that defines every other cell on
+ * the page, with no fill and no texture. It sits in the composition as quiet structure.
+ */
+.media-placeholder {
+  background: transparent;
+  border: 1px solid var(--hairline);
+}
+
+/*
+ * A single centred seed mark, at very low contrast. Enough to signal intent to anyone looking
+ * closely; invisible at a glance. Drawn with one gradient, so no request and no decode.
+ */
+.media-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in oklch, var(--accent) 18%, transparent) 0 2.5px,
+    transparent 2.6px
+  );
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* -----------------------------------------------------------------------------
+ * The sticky rail.
+ *
+ * A scroll-position indicator: the section list stays visible while the reader moves, and the active
+ * entry brightens. The reference uses this to give a sense of place in a long page.
+ *
+ * Built with `animation-timeline: view()` on each entry rather than a scroll listener, so it stays
+ * off the main thread and adds no client JavaScript. Each entry's own visibility drives its own
+ * highlight — there is no central "which section is active" state to compute.
+ * -------------------------------------------------------------------------- */
+
+@keyframes rail-activate {
+  0% {
+    color: var(--ink-faint);
+  }
+  35%,
+  65% {
+    color: var(--ink);
+  }
+  100% {
+    color: var(--ink-faint);
+  }
+}
+
+/*
+ * Fixed to the page margin rather than sticky inside one section. A position indicator that tracks a
+ * single section is worse than none, so this lives at the page level and stays for the whole scroll.
+ *
+ * Placement is physical (`left`), not logical, and that is deliberate. `inset-inline-start` resolves
+ * to the RIGHT edge under RTL, which is where the content is hard-aligned — the first attempt put the
+ * rail directly on top of the headline. A passive indicator belongs on the side the reader's eye is
+ * NOT travelling along, which under RTL is the physical left.
+ *
+ * Kept horizontal. A vertical strip was the obvious way to save margin width, but `writing-mode:
+ * vertical-rl` rendered the Arabic labels upside down and mirrored — rotating a line of Arabic is not
+ * the same as setting it vertically, and no combination of `text-orientation` fixes it. Arabic simply
+ * does not belong in a rotated margin strip (docs/design/typography.md).
+ *
+ * So it stays a short horizontal list in a narrow fixed column, right-aligned so the ragged edge
+ * faces the content and the labels read normally.
+ */
+.rail {
+  position: fixed;
+  left: 1.5rem;
+  top: 50svh;
+  transform: translateY(-50%);
+  z-index: 30;
+  width: 7rem;
+  text-align: end;
+}
+
+.rail ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.rail-item {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+@supports (animation-timeline: view()) {
+  @media not (prefers-reduced-motion: reduce) {
+    .rail-item {
+      animation: rail-activate linear both;
+      animation-timeline: view(block);
+      animation-range: cover 0% cover 100%;
+    }
   }
 }
 

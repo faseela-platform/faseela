@@ -1,6 +1,7 @@
-import { about, channels, cta, stations, stats, tracks, wings } from '../content';
-import { Num } from './num';
-import { Ornament } from './ornament';
+import { about, channels, cta, rail, stations, stats, tracks, wings } from "../content";
+import { Media } from "./media";
+import { Num } from "./num";
+import { Ornament } from "./ornament";
 
 /**
  * Sections below the hero, composed to the rubric in docs/design/reference.md.
@@ -16,7 +17,7 @@ import { Ornament } from './ornament';
  */
 
 /** Section rhythm from the `--section-y` token, so density is one edit everywhere. */
-const sectionY = 'py-[var(--section-y-sm)] md:py-[var(--section-y)]';
+const sectionY = "py-[var(--section-y-sm)] md:py-[var(--section-y)]";
 
 /**
  * A quiet section label.
@@ -27,7 +28,7 @@ const sectionY = 'py-[var(--section-y-sm)] md:py-[var(--section-y)]';
  * The Arabic register for a label is therefore carried by size, weight and muted ink alone.
  */
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <p className="mb-4 text-caption font-semibold text-[var(--ink-muted)]">{children}</p>;
+  return <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">{children}</p>;
 }
 
 /**
@@ -36,9 +37,43 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
  */
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="max-w-3xl font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+    <h2 className="font-display max-w-3xl text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
       {children}
     </h2>
+  );
+}
+
+/**
+ * The sticky rail: a scroll-position indicator that keeps the section list visible while the reader
+ * moves through the page, brightening whichever section is on screen.
+ *
+ * Deliberately built without JavaScript. Each entry is driven by its own target section's visibility
+ * through `animation-timeline: view()`, so there is no scroll listener, no active-section state to
+ * compute, and the whole thing stays off the main thread — which is what makes it affordable on the
+ * mid-range Android that is our performance floor (ADR 0011).
+ *
+ * Hidden below `lg`: on a phone it would consume gutter width that the content needs, and a
+ * position indicator matters far less on a short viewport.
+ *
+ * Rendered once at page level, not inside a section. The first attempt scoped it to the Tracks grid,
+ * which meant the indicator vanished for the rest of the page — worse than having none at all.
+ */
+export function Rail() {
+  return (
+    <nav aria-label="أقسام الصفحة" className="rail hidden lg:block">
+      <ul>
+        {rail.map((entry) => (
+          <li key={entry.id}>
+            <a
+              href={`#${entry.id}`}
+              className="rail-item text-body-sm block transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
+            >
+              {entry.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -51,11 +86,11 @@ export function Stats() {
     <section className={`gutter ${sectionY}`}>
       <div className="reveal-stagger lattice lattice-2 md:grid-cols-4">
         {stats.map((stat, i) => (
-          <div key={stat.label} style={{ ['--i' as string]: i }} className="!min-h-[11rem]">
+          <div key={stat.label} style={{ ["--i" as string]: i }} className="!min-h-[11rem]">
             <p className="font-display text-[clamp(1.8rem,4vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
               <Num value={stat.value} suffix={stat.suffix} />
             </p>
-            <p className="mt-2 text-body-sm text-[var(--ink-muted)]">{stat.label}</p>
+            <p className="text-body-sm mt-2 text-[var(--ink-muted)]">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -76,7 +111,15 @@ export function About() {
           <Eyebrow>{about.eyebrow}</Eyebrow>
           <SectionTitle>{about.title}</SectionTitle>
         </div>
-        <p className="max-w-xl text-lede text-[var(--ink-muted)]">{about.body}</p>
+        <div>
+          <p className="text-lede max-w-xl text-[var(--ink-muted)]">{about.body}</p>
+          {/*
+           * The asymmetric visual the reference pairs with its opening prose. Currently a graphic
+           * placeholder: Faseela's photography shows identifiable people at gatherings and is not
+           * cleared for web use yet, so the slot waits rather than borrowing. See components/media.tsx.
+           */}
+          <Media ratio="16 / 10" className="mt-12" />
+        </div>
       </div>
 
       {/*
@@ -86,18 +129,18 @@ export function About() {
        */}
       <div className="reveal-stagger lattice lattice-3 mt-20">
         {wings.map((wing, i) => (
-          <article key={wing.title} style={{ ['--i' as string]: i }}>
+          <article key={wing.title} style={{ ["--i" as string]: i }}>
             <span
               className="num font-display text-body-sm font-semibold text-[var(--ink-faint)]"
               dir="ltr"
             >
-              {String(i + 1).padStart(2, '0')}
+              {String(i + 1).padStart(2, "0")}
             </span>
             <div>
-              <h3 className="mb-3 font-display text-card-title leading-[1.5] font-medium text-[var(--ink)]">
+              <h3 className="font-display text-card-title mb-3 leading-[1.5] font-medium text-[var(--ink)]">
                 {wing.title}
               </h3>
-              <p className="max-w-sm text-body-sm text-[var(--ink-muted)]">{wing.body}</p>
+              <p className="text-body-sm max-w-sm text-[var(--ink-muted)]">{wing.body}</p>
             </div>
           </article>
         ))}
@@ -119,9 +162,9 @@ export function Tracks() {
         <SectionTitle>{tracks.title}</SectionTitle>
       </div>
 
-      <ol className="reveal-stagger lattice lattice-2 lg:grid-cols-4">
+      <ol className="reveal-stagger lattice lattice-2">
         {tracks.steps.map((step, i) => (
-          <li key={step.index} style={{ ['--i' as string]: i }}>
+          <li key={step.index} style={{ ["--i" as string]: i }}>
             {/*
              * A Latin-digit ordinal inside Arabic prose, isolated like every number on the page.
              * Large but dim: in the reference the ordinal never outshouts its own content, and
@@ -134,10 +177,10 @@ export function Tracks() {
               {step.index}
             </span>
             <div>
-              <h3 className="mb-3 font-display text-card-title leading-[1.5] font-medium text-[var(--ink)]">
+              <h3 className="font-display text-card-title mb-3 leading-[1.5] font-medium text-[var(--ink)]">
                 {step.title}
               </h3>
-              <p className="max-w-xs text-body-sm text-[var(--ink-muted)]">{step.body}</p>
+              <p className="text-body-sm max-w-xs text-[var(--ink-muted)]">{step.body}</p>
             </div>
           </li>
         ))}
@@ -152,7 +195,7 @@ export function Tracks() {
  */
 export function Stations() {
   return (
-    <section className={`gutter ${sectionY}`}>
+    <section id="stations" className={`gutter ${sectionY}`}>
       <div className="hairline rule-draw" />
       <div className="reveal mt-16 grid gap-8 md:grid-cols-[1fr_1.2fr] md:gap-16">
         <div>
@@ -160,9 +203,14 @@ export function Stations() {
           <SectionTitle>{stations.title}</SectionTitle>
         </div>
         <div>
-          <p className="max-w-xl text-lede text-[var(--ink-muted)]">{stations.body}</p>
+          <p className="text-lede max-w-xl text-[var(--ink-muted)]">{stations.body}</p>
           <Ornament className="mt-12 w-full max-w-md opacity-60" />
         </div>
+      </div>
+
+      {/* A wide plate closing the section. Reserved space, so real photography causes no reflow. */}
+      <div className="reveal-fade mt-20">
+        <Media ratio="21 / 9" />
       </div>
     </section>
   );
@@ -174,10 +222,10 @@ export function Stations() {
  */
 export function Channels() {
   return (
-    <section className={`gutter pb-[var(--section-y-sm)] md:pb-[var(--section-y)]`}>
+    <section id="channels" className={`gutter pb-[var(--section-y-sm)] md:pb-[var(--section-y)]`}>
       <ul className="reveal-stagger border-t border-[var(--hairline)]">
         {channels.map((channel, i) => (
-          <li key={channel.label} style={{ ['--i' as string]: i }}>
+          <li key={channel.label} style={{ ["--i" as string]: i }}>
             <a
               href={channel.href}
               target="_blank"
@@ -204,12 +252,12 @@ export function Cta() {
     <section className={`gutter border-t border-[var(--hairline)] ${sectionY}`}>
       <div className="reveal max-w-3xl">
         <SectionTitle>{cta.title}</SectionTitle>
-        <p className="mt-6 mb-10 max-w-lg text-lede text-[var(--ink-muted)]">{cta.body}</p>
+        <p className="text-lede mt-6 mb-10 max-w-lg text-[var(--ink-muted)]">{cta.body}</p>
         <a
           href="https://linktr.ee/faseela_24"
           target="_blank"
           rel="noreferrer noopener"
-          className="inline-block rounded-md bg-[var(--brand)] px-7 py-3.5 text-body-sm font-semibold text-white transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[var(--color-seedling-600)]"
+          className="text-body-sm inline-block rounded-md bg-[var(--brand)] px-7 py-3.5 font-semibold text-white transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[var(--color-seedling-600)]"
         >
           {cta.primary}
         </a>

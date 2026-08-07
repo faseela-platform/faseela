@@ -1,28 +1,28 @@
 export type TypeRole =
-  | 'caption'
-  | 'bodySm'
-  | 'body'
-  | 'bodyLg'
-  | 'lede'
-  | 'cardTitle'
-  | 'section'
-  | 'pageTitle'
-  | 'display'
-  | 'hero'
-  | 'heroLg';
+  | "caption"
+  | "bodySm"
+  | "body"
+  | "bodyLg"
+  | "lede"
+  | "cardTitle"
+  | "section"
+  | "pageTitle"
+  | "display"
+  | "hero"
+  | "heroLg";
 
 /** Sizes in rem. 1.25 ratio on a 16px root. Role-named, because a size name does not police its own use. */
 export const fontSize: Record<TypeRole, number> = {
-  caption: 0.8,
-  bodySm: 0.9,
+  caption: 0.875,
+  bodySm: 1,
   body: 1,
   bodyLg: 1.125,
   /*
    * Editorial lede. The reference site runs a 23px body against a 68px display — a ratio under 3x,
-   * where a large hero over a 16px body gives ~8x. Arabic reads slightly larger than Latin at the
-   * same px, so 1.25rem is the Arabic counterpart of that measure rather than a copy of the number.
+   * where a large hero over a 16px body gives ~8x. 1.375rem (22px) is the closest Arabic counterpart
+   * to that measure; the first pass at 1.25rem still left the ratio above 5x.
    */
-  lede: 1.25,
+  lede: 1.375,
   cardTitle: 1.25,
   section: 1.563,
   pageTitle: 1.953,
@@ -53,7 +53,7 @@ export const lineHeight: Record<TypeRole, number> = {
   bodySm: 1.7,
   body: 1.75,
   bodyLg: 1.7,
-  lede: 1.7,
+  lede: 1.65,
   cardTitle: 1.5,
   section: 1.45,
   pageTitle: 1.45,

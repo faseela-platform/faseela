@@ -68,9 +68,9 @@
    * and are overridden below so leading-tight cannot be reached by accident.
    * ------------------------------------------------------------------------- */
 
-  --text-caption: 0.8rem;
+  --text-caption: 0.875rem;
   --text-caption--line-height: 1.6;
-  --text-body-sm: 0.9rem;
+  --text-body-sm: 1rem;
   --text-body-sm--line-height: 1.7;
   --text-body: 1rem;
   --text-body--line-height: 1.75;
@@ -95,8 +95,8 @@
    * Arabic at the same px reads slightly larger than Latin, so 1.25rem (20px) is the Arabic
    * equivalent of that 23px Latin measure rather than a like-for-like copy.
    */
-  --text-lede: 1.25rem;
-  --text-lede--line-height: 1.7;
+  --text-lede: 1.375rem;
+  --text-lede--line-height: 1.65;
 
   /* Arabic display leading floor is 1.42 — Cairo's ink span is 1.393. Anything
    * tighter clips descenders and the vowel stack. These replace Tailwind's defaults. */
@@ -173,7 +173,7 @@
  * seedling-500 lands at Lc 35.8, which fails even the large-text floor of 45.
  * Brand roles therefore invert to steps 100-200, where seedling-200 reaches Lc 72.5.
  */
-[data-theme='dark'] {
+[data-theme="dark"] {
   --surface: var(--color-paper-950);
   --surface-raised: var(--color-paper-900);
   --border: var(--color-paper-800);
