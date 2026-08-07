@@ -19,6 +19,7 @@
     "verify:routes": "node scripts/verify-routes.mjs",
     "verify:auth": "node scripts/verify-auth-flow.mjs",
     "verify:seed": "node scripts/verify-seed.mjs",
+    "verify:journey": "node scripts/verify-journey.mjs",
     "seed": "node scripts/seed.mjs",
     "seed:dry": "node scripts/seed.mjs --dry-run",
     "clean:probes": "node scripts/clean-probe-rows.mjs",

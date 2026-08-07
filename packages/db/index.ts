@@ -12,6 +12,12 @@
 export * as schema from "./lib/schema";
 export { createClient, type Database } from "./lib/client";
 export { awardPoints, type AwardResult } from "./lib/awards";
+/**
+ * The `attest` completion path. Exported alongside `awardPoints` because the two
+ * are the only ways Points come into existence, and seeing them together is what
+ * stops a third being written at a call site.
+ */
+export { attestTask, completedTaskIds, memberSeasonPoints, type AttestResult } from "./lib/attest";
 export { seasonLeaderboard, type LeaderboardRow } from "./lib/leaderboard";
 export { currentSeason } from "./lib/seasons";
 /**

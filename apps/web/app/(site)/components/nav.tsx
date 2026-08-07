@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { hero } from "../content";
+import { SignOutButton } from "./sign-out-button";
 
 /**
  * `route: true` means a real page, reached with `next/link` so the client router
@@ -12,8 +13,8 @@ import { hero } from "../content";
  */
 const links = [
   { label: "المسارات", href: "/masarat", route: true },
+  { label: "لوحة الموسم", href: "/lawha", route: true },
   { label: "من نحن", href: "/#about", route: false },
-  { label: "كيف تعمل", href: "/#tracks", route: false },
 ] as const;
 
 /**
@@ -29,8 +30,13 @@ const links = [
  * `current` is passed in by the page rather than read from a router hook, because
  * `usePathname` would force this into a client component and put the first
  * JavaScript bundle on every page to render one underline.
+ *
+ * `signedIn` is likewise passed in. The nav does not read the session itself: a
+ * component that calls `getSession` makes every page mounting it dynamic, and the
+ * landing page has no reason to become uncacheable because its header could
+ * theoretically show a sign-out link.
  */
-export function Nav({ current }: { current?: string }) {
+export function Nav({ current, signedIn = false }: { current?: string; signedIn?: boolean }) {
   return (
     <header className="gutter sticky top-0 z-50 border-b border-[var(--hairline)] bg-[color-mix(in_oklch,var(--surface)_88%,transparent)] backdrop-blur-md">
       <nav className="flex items-center justify-between gap-4 py-4" aria-label="الرئيسية">
@@ -56,7 +62,7 @@ export function Nav({ current }: { current?: string }) {
          * lines each and broke the header's height.
          *
          * No hamburger menu, deliberately: a drawer needs client JavaScript and
-         * state, and this site has three destinations. The one that matters on a
+         * state, and this site has few destinations. The one that matters on a
          * phone stays visible; the rest are a tap away on the landing page, which
          * is where the wordmark leads.
          */}
@@ -92,14 +98,38 @@ export function Nav({ current }: { current?: string }) {
           })}
         </ul>
 
-        <a
-          href="https://linktr.ee/faseela_24"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-body-sm shrink-0 rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
-        >
-          انضم إلينا
-        </a>
+        {/*
+         * The end slot changes with the session, and what it offers is different in
+         * kind rather than just in label.
+         *
+         * Signed out, the primary action stays انضم إلينا — pointing at Linktree,
+         * because someone who has never heard of Faseela should be invited to join
+         * the initiative, not handed a login form. Sign-in sits beside it as the
+         * quieter option, for the Member who already belongs.
+         *
+         * Signed in, both are pointless: they are already a Member and already
+         * authenticated. The slot becomes sign-out.
+         */}
+        {signedIn ? (
+          <SignOutButton />
+        ) : (
+          <div className="flex shrink-0 items-center gap-4">
+            <Link
+              href="/dukhul"
+              className="text-body-sm hidden font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--ink)] sm:block"
+            >
+              دخول
+            </Link>
+            <a
+              href="https://linktr.ee/faseela_24"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-body-sm shrink-0 rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
+            >
+              انضم إلينا
+            </a>
+          </div>
+        )}
       </nav>
     </header>
   );

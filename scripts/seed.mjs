@@ -108,6 +108,15 @@ const TRACKS = [
  *
  * `mode` follows the enum's own contract in content.ts: `attest` for things the
  * Member can only declare, `review` for work an Editor must accept.
+ *
+ * WHY SO MANY `attest` TASKS: the review queue is not built yet, so on the first
+ * deploy a `review` Task is visible but not completable. Seeded with only the
+ * documents' two review Tasks and one attest Task, every Member's score would
+ * cap at 20 points and the Leaderboard would be a list of people tied. The
+ * attest Tasks below are all consumption-or-attendance activities the documents
+ * describe the Initiative as actually doing (cited individually), which is why
+ * they can be attested rather than reviewed: none of them produces an artefact
+ * for an Editor to read. Confirmed with Abdullah 2026-08-07.
  */
 const TASKS = {
   "reading-groups": [
@@ -137,6 +146,19 @@ const TASKS = {
       mode: "attest",
       points: 20,
     },
+    {
+      position: 3,
+      /**
+       * SOURCE: p.12 المرحلة الأولى — "كتاب في الشهر". Reading the book is the
+       * Track's core activity and the precondition for everything else in it.
+       * Nothing is produced, so it can only be attested.
+       */
+      title: "قراءة كتاب الموسم",
+      instructions:
+        "اقرأ كتاب الموسم كاملًا، ثم أكّد أنك أتممته. لا نطلب دليلًا على ذلك؛ نثق بكلمتك.",
+      mode: "attest",
+      points: 20,
+    },
   ],
   "al-balagh-al-mubin": [
     {
@@ -150,15 +172,41 @@ const TASKS = {
       mode: "review",
       points: 50,
     },
+    {
+      position: 2,
+      /**
+       * SOURCE: p.15 — the project is "محاولةً لنشر فكر القائد بكلامه الذي أحبّ
+       * واقتدى". Reading a speech at its source is the consumption half of that:
+       * you cannot transmit كلامه هو without having read it.
+       */
+      title: "قراءة خطاب كامل من مصدره",
+      instructions:
+        "اختر خطابًا من خطابات السيد القائد، واقرأه كاملًا من مصدره لا من مختصراته، ثم أكّد قراءتك.",
+      mode: "attest",
+      points: 20,
+    },
   ],
   "hatta-yasma-kalam-allah": [
     /**
-     * GAP: the documents describe no Tasks for this Track. Seeding invented ones
-     * would put words in the Initiative's mouth about its own programme, so the
-     * Track is seeded with none. It will render as a published Track with an
-     * empty Task list, which is an honest state the Track page must handle
-     * anyway — and handling it now is better than discovering it in production.
+     * The documents name this Track (p.14) but describe no activities for it, so
+     * its Tasks cannot be sourced the way the others' can. What IS documented is
+     * the Track's own title, which quotes التوبة ٦ — "وإن أحد من المشركين
+     * استجارك فأجره حتى يسمع كلام الله" — so a Task that is literally listening
+     * to كلام الله restates the Track's stated purpose rather than inventing a
+     * programme for it.
+     *
+     * GAP remains: this is the Track's minimum viable content, seeded so the
+     * Track is not an empty page on launch. Flagged in ADR 0019 for Abdullah to
+     * replace with the Track's real activities.
      */
+    {
+      position: 1,
+      title: "الاستماع إلى جزء من القرآن بترتيل",
+      instructions:
+        "استمع إلى جزء من القرآن الكريم مرتّلًا، متابعًا للمعنى لا للصوت وحده، ثم أكّد ذلك.",
+      mode: "attest",
+      points: 20,
+    },
   ],
 };
 

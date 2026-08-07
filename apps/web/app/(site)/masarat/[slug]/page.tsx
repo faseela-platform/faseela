@@ -1,22 +1,37 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { publishedTracks, trackBySlug } from "@faseela/db";
+import { completedTaskIds, publishedTracks, trackBySlug } from "@faseela/db";
 
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
+import { AttestButton } from "../attest-button";
 
 /**
  * A single Track with its Tasks — the vertical slice's deepest page, and the
  * first in the codebase where the database's own vocabulary reaches the reader.
  *
- * Server component, no client boundary. The Tasks are read on the server and the
- * reveals are CSS scroll timelines, so this page ships no JavaScript at all.
+ * A Server Component that now mounts one Client Component. Until the attest
+ * button existed this page shipped no JavaScript at all; it now ships the button
+ * and nothing else — the reveals are still CSS scroll timelines, and the Task
+ * list, the totals and the session read all stay on the server.
  */
 
-export const revalidate = 60;
+/**
+ * Rendered per request, not every 60 seconds.
+ *
+ * It was `revalidate = 60` while this page was anonymous. It cannot stay that way
+ * now that it reads the session: a cached copy would show one Member's completed
+ * Tasks to the next visitor, and on a page whose whole purpose is recording who
+ * did what, serving somebody else's progress is the worst possible bug. Reading
+ * `headers()` opts this route into dynamic rendering anyway — this line only makes
+ * the intent explicit rather than incidental.
+ */
+export const dynamic = "force-dynamic";
 
 /**
  * Pre-renders the known Tracks at build time while leaving unknown slugs to be
@@ -75,9 +90,23 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
    */
   if (!track) notFound();
 
+  /**
+   * Who is reading, and what they have already done. Both are needed before the
+   * Task list renders, because a Task the Member finished must not present a
+   * button that the database would refuse.
+   */
+  const session = await auth.api.getSession({ headers: await headers() });
+  const done = session?.user
+    ? await completedTaskIds(
+        db,
+        session.user.id,
+        track.tasks.map((t) => t.id),
+      )
+    : new Set<string>();
+
   return (
     <>
-      <Nav current="/masarat" />
+      <Nav current="/masarat" signedIn={Boolean(session?.user)} />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           {/*
@@ -183,11 +212,46 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
                        * once at the top. A Member deciding whether to start this Task
                        * needs to know now whether it waits on an Editor.
                        */}
-                      <p className="text-caption text-[var(--ink-faint)]">
+                      <p className="text-caption mb-4 text-[var(--ink-faint)]">
                         <span className="font-semibold">{MODE_LABEL[task.mode]}</span>
                         {" — "}
                         {MODE_HINT[task.mode]}
                       </p>
+
+                      {/*
+                       * Only `attest` Tasks get a button, because only they can be
+                       * completed today. A `review` Task shows what it is waiting
+                       * for instead of a disabled control: a greyed-out button
+                       * reads as something broken, while a sentence reads as
+                       * something not yet built.
+                       */}
+                      {task.mode === "attest" ? (
+                        session?.user ? (
+                          <AttestButton
+                            taskId={task.id}
+                            trackSlug={track.slug}
+                            points={task.points}
+                            alreadyDone={done.has(task.id)}
+                          />
+                        ) : (
+                          /*
+                           * Signed out. The link carries `callbackURL` so the
+                           * magic link returns the Member to this exact Track
+                           * rather than the home page — otherwise completing one
+                           * Task costs a sign-in plus two navigations.
+                           */
+                          <Link
+                            href={`/dukhul?callbackURL=/masarat/${track.slug}`}
+                            className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                          >
+                            سجّل دخولك لتأكيد الإنجاز
+                          </Link>
+                        )
+                      ) : (
+                        <p className="text-caption text-[var(--ink-faint)]">
+                          باب الإرسال والمراجعة يُفتح قريباً.
+                        </p>
+                      )}
                     </div>
                   </li>
                 ))}

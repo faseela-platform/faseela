@@ -34,21 +34,43 @@ const fail = (m) => {
 
 /** Expected Arabic titles, compared by exact string equality. */
 const EXPECTED_TRACKS = [
-  { slug: "reading-groups", title: "مجموعات القراءة", position: 1, tasks: 2 },
-  { slug: "al-balagh-al-mubin", title: "البلاغ المبين", position: 2, tasks: 1 },
-  { slug: "hatta-yasma-kalam-allah", title: "حتى يسمع كلام الله", position: 3, tasks: 0 },
+  { slug: "reading-groups", title: "مجموعات القراءة", position: 1, tasks: 3 },
+  { slug: "al-balagh-al-mubin", title: "البلاغ المبين", position: 2, tasks: 2 },
+  { slug: "hatta-yasma-kalam-allah", title: "حتى يسمع كلام الله", position: 3, tasks: 1 },
 ];
 
 const EXPECTED_TASKS = [
   { track: "reading-groups", title: "تلخيص الفصل الأول", mode: "review", points: 50 },
   { track: "reading-groups", title: "حضور جلسة النقاش", mode: "attest", points: 20 },
+  { track: "reading-groups", title: "قراءة كتاب الموسم", mode: "attest", points: 20 },
   {
     track: "al-balagh-al-mubin",
     title: "تصميم صورة اقتباس ونشرها",
     mode: "review",
     points: 50,
   },
+  {
+    track: "al-balagh-al-mubin",
+    title: "قراءة خطاب كامل من مصدره",
+    mode: "attest",
+    points: 20,
+  },
+  {
+    track: "hatta-yasma-kalam-allah",
+    title: "الاستماع إلى جزء من القرآن بترتيل",
+    mode: "attest",
+    points: 20,
+  },
 ];
+
+/**
+ * The number of `attest` Tasks is asserted, not incidental. Until the review
+ * queue exists, an `attest` Task is the only one a Member can complete, so this
+ * count *is* the amount of the product that works. If it drops to one the
+ * Leaderboard silently becomes a list of people tied on 20 points, which looks
+ * like a working feature and is not.
+ */
+const EXPECTED_ATTEST_COUNT = 4;
 
 const client = new pg.Client({ connectionString: url });
 
@@ -148,12 +170,30 @@ async function main() {
     fail(`reading anchor is ${anchor?.points}, the documents say 50`);
   }
 
-  /** The empty Track is deliberate, not a seeding failure. Assert it stays empty. */
-  const emptyTrack = tasks.rows.filter((r) => r.track === "hatta-yasma-kalam-allah");
-  if (emptyTrack.length === 0) {
-    ok("hatta-yasma-kalam-allah has no tasks (documents specify none — ADR 0019)");
+  /**
+   * Per-Track task counts, so a Track quietly losing its Tasks fails here rather
+   * than rendering as a published but empty page.
+   */
+  for (const expected of EXPECTED_TRACKS) {
+    const n = tasks.rows.filter((r) => r.track === expected.slug).length;
+    if (n === expected.tasks) {
+      ok(`track ${expected.slug} has ${n} task(s)`);
+    } else {
+      fail(`track ${expected.slug} has ${n} task(s), expected ${expected.tasks}`);
+    }
+  }
+
+  /**
+   * How much of the product actually works today. See EXPECTED_ATTEST_COUNT.
+   */
+  const attestable = tasks.rows.filter((r) => r.mode === "attest" && r.state === "published");
+  if (attestable.length === EXPECTED_ATTEST_COUNT) {
+    const total = attestable.reduce((sum, r) => sum + r.points, 0);
+    ok(`${attestable.length} completable attest tasks, ${total} points attainable`);
   } else {
-    fail(`hatta-yasma-kalam-allah unexpectedly has ${emptyTrack.length} tasks`);
+    fail(
+      `${attestable.length} published attest tasks, expected ${EXPECTED_ATTEST_COUNT} — the Leaderboard's usable range has changed`,
+    );
   }
 
   /* ---- Season --------------------------------------------------------- */
