@@ -89,6 +89,15 @@
   --text-hero-lg: 3.815rem;
   --text-hero-lg--line-height: 1.42;
 
+  /*
+   * Editorial body size. Measured against the reference (docs/design/reference.md): the display-to
+   * body ratio there is 2.96x on a 23px body, not the ~8x a large hero over a 16px body produces.
+   * Arabic at the same px reads slightly larger than Latin, so 1.25rem (20px) is the Arabic
+   * equivalent of that 23px Latin measure rather than a like-for-like copy.
+   */
+  --text-lede: 1.25rem;
+  --text-lede--line-height: 1.7;
+
   /* Arabic display leading floor is 1.42 — Cairo's ink span is 1.393. Anything
    * tighter clips descenders and the vowel stack. These replace Tailwind's defaults. */
   --leading-tight: 1.42;
@@ -120,6 +129,15 @@
   --travel-sm: 4px;
   --travel-md: 8px;
   --travel-lg: 16px;
+
+  /* ---------------------------------------------------------------------------
+   * Editorial layout. Section rhythm is a token because density is a single design
+   * decision applied everywhere, not a per-component choice.
+   * ------------------------------------------------------------------------- */
+
+  --section-y: 10rem; /* 160px. Reference measures 200px; scaled for a lighter, less dense page. */
+  --section-y-sm: 5rem;
+  --cell-min-h: 22rem; /* Tall grid cells: index pinned top, content pinned bottom. */
 }
 
 /* -----------------------------------------------------------------------------
@@ -139,6 +157,15 @@
   --brand-fill: var(--color-seedling-400);
   --accent: var(--color-stem-500);
   --accent-fill: var(--color-stem-400);
+
+  /*
+   * Hairline. The reference defines grid cells with a 1px rule and no fill, border-radius or
+   * background. Lighter than --border, which is for enclosing boxes; this is for dividing space.
+   */
+  --hairline: var(--color-paper-100);
+  /* Dim index numerals. In the reference the ordinal is large but recessive, never the brightest
+   * element on screen. */
+  --ink-faint: var(--color-paper-300);
 }
 
 /*
@@ -156,6 +183,8 @@
   --brand-fill: var(--color-seedling-300);
   --accent: var(--color-stem-200);
   --accent-fill: var(--color-stem-300);
+  --hairline: var(--color-paper-800);
+  --ink-faint: var(--color-paper-700);
 }
 
 /* -----------------------------------------------------------------------------

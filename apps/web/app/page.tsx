@@ -1,5 +1,6 @@
 import { Hero } from './components/hero';
-import { About, Channels, Cta, Hadith, Stations, Stats, Tracks } from './components/sections';
+import { Nav } from './components/nav';
+import { About, Channels, Cta, Stations, Stats, Tracks } from './components/sections';
 
 /**
  * The landing page. Fully scroll-driven (round 3, B7 = C), built entirely on native CSS scroll
@@ -9,18 +10,24 @@ import { About, Channels, Cta, Hadith, Stations, Stats, Tracks } from './compone
  * all. The hero is a one-shot CSS animation and every reveal is a CSS scroll timeline, so nothing
  * here needs React on the client. That is the cheapest possible route to the performance floor —
  * a JS scroll library would have shipped a runtime and put the work back on the main thread.
+ *
+ * Section order follows the page's purpose: legitimacy first, then recruitment, then explanation
+ * (round 3, B4 = D). The hadith now opens the hero as its eyebrow rather than occupying a section of
+ * its own, and the real numbers follow immediately — evidence before argument.
  */
 export default function Page() {
   return (
-    <main>
-      <Hero />
-      <Hadith />
-      <Stats />
-      <About />
-      <Tracks />
-      <Stations />
-      <Channels />
-      <Cta />
-    </main>
+    <>
+      <Nav />
+      <main>
+        <Hero />
+        <Stats />
+        <About />
+        <Tracks />
+        <Stations />
+        <Channels />
+        <Cta />
+      </main>
+    </>
   );
 }

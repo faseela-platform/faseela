@@ -3,6 +3,7 @@ export type TypeRole =
   | 'bodySm'
   | 'body'
   | 'bodyLg'
+  | 'lede'
   | 'cardTitle'
   | 'section'
   | 'pageTitle'
@@ -16,6 +17,12 @@ export const fontSize: Record<TypeRole, number> = {
   bodySm: 0.9,
   body: 1,
   bodyLg: 1.125,
+  /*
+   * Editorial lede. The reference site runs a 23px body against a 68px display — a ratio under 3x,
+   * where a large hero over a 16px body gives ~8x. Arabic reads slightly larger than Latin at the
+   * same px, so 1.25rem is the Arabic counterpart of that measure rather than a copy of the number.
+   */
+  lede: 1.25,
   cardTitle: 1.25,
   section: 1.563,
   pageTitle: 1.953,
@@ -46,6 +53,7 @@ export const lineHeight: Record<TypeRole, number> = {
   bodySm: 1.7,
   body: 1.75,
   bodyLg: 1.7,
+  lede: 1.7,
   cardTitle: 1.5,
   section: 1.45,
   pageTitle: 1.45,

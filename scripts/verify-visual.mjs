@@ -46,19 +46,25 @@ const browser = await chromium.launch();
   check('html has dir="rtl"', (await page.getAttribute('html', 'dir')) === 'rtl');
   check('html has lang="ar"', (await page.getAttribute('html', 'lang')) === 'ar');
 
-  // The wordmark must be fully revealed once the sequence has finished. A clip-path stuck at
+  // Each headline line must be fully revealed once the sequence has finished. A clip-path stuck at
   // inset(0 0 0 100%) is invisible but still occupies layout, so a screenshot alone can miss it.
   // Chromium serialises the resolved value as a four-value longhand, so compare numerically:
   // every inset must be 0, in whatever unit it was authored.
-  const clip = await page.$eval('.hero-wordmark', (el) => getComputedStyle(el).clipPath);
-  const insetsAreZero =
-    clip === 'none' ||
-    (clip.startsWith('inset(') &&
-      [...clip.matchAll(/-?[\d.]+/g)].every((match) => parseFloat(match[0]) === 0));
-  check('wordmark clip-path has resolved to fully visible', insetsAreZero, `(got "${clip}")`);
+  const clips = await page.$$eval('.hero-line > span', (nodes) =>
+    nodes.map((el) => getComputedStyle(el).clipPath),
+  );
+  const allRevealed =
+    clips.length > 0 &&
+    clips.every(
+      (clip) =>
+        clip === 'none' ||
+        (clip.startsWith('inset(') &&
+          [...clip.matchAll(/-?[\d.]+/g)].every((match) => parseFloat(match[0]) === 0)),
+    );
+  check('headline clip-paths have resolved to fully visible', allRevealed, `(got ${clips.join(' | ')})`);
 
   // Tatweel must survive as authored. Normalising it away would silently change the wordmark.
-  const wordmark = await page.$eval('.hero-wordmark', (el) => el.textContent ?? '');
+  const wordmark = await page.$eval('h1', (el) => el.textContent ?? '');
   check('wordmark retains its authored tatweel (U+0640)', wordmark.includes('\u0640'));
 
   // letter-spacing on Arabic severs the cursive joins — the highest-severity Arabic defect.
@@ -100,6 +106,70 @@ const browser = await chromium.launch();
   );
   check('every .num is bidi-isolated', unisolated === 0, `(${unisolated} unisolated)`);
 
+  // -------------------------------------------------------------------------
+  // Rubric compliance (docs/design/reference.md). These encode the composition
+  // decisions so a future edit cannot quietly undo them.
+  // -------------------------------------------------------------------------
+
+  // Restraint: the display must not balloon back to a shouty size, and must not be bold.
+  const h1 = await page.$eval('h1', (el) => {
+    const cs = getComputedStyle(el);
+    return { size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight) };
+  });
+  check('hero display size stays within the 80px ceiling', h1.size <= 80, `(${h1.size}px)`);
+  check('hero weight stays at or below 500', h1.weight <= 500, `(${h1.weight})`);
+
+  // Hard-alignment: nothing in the page's main flow may be centred. Centred type is the single
+  // most visible departure from the reference.
+  const centred = await page.$$eval('main h1, main h2, main p, main li', (nodes) =>
+    nodes
+      .filter((el) => getComputedStyle(el).textAlign === 'center')
+      .map((el) => `${el.tagName}.${el.className}`)
+      .slice(0, 5),
+  );
+  check('no centred text in the main flow', centred.length === 0, centred.join(', '));
+
+  // Hairlines, not cards: no rounded, filled boxes in the lattice sections.
+  const cards = await page.$$eval('.lattice > *', (nodes) =>
+    nodes
+      .filter((el) => {
+        const cs = getComputedStyle(el);
+        return parseFloat(cs.borderTopLeftRadius) > 2;
+      })
+      .map((el) => el.tagName)
+      .slice(0, 5),
+  );
+  check('lattice cells have no border radius', cards.length === 0, cards.join(', '));
+
+  // Recessive ordinals: an index numeral must never be brighter than its own heading.
+  const loudOrdinal = await page.$$eval('.lattice .num', (nodes) =>
+    nodes
+      .filter((el) => {
+        const cell = el.closest('.lattice > *');
+        const heading = cell?.querySelector('h3');
+        if (!heading) return false;
+        // Compare relative luminance: the ordinal must be lighter (dimmer on a light ground).
+        const parse = (c) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const lum = (c) => {
+          const [r, g, b] = parse(c);
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        return lum(getComputedStyle(el).color) < lum(getComputedStyle(heading).color);
+      })
+      .map((el) => el.textContent ?? '')
+      .slice(0, 5),
+  );
+  check('ordinals stay dimmer than their headings', loudOrdinal.length === 0, loudOrdinal.join(', '));
+
+  // The fold must not be dead space: the hero may not fill the viewport, so the next section is
+  // partly visible. That partial visibility IS the scroll affordance.
+  const heroFillsViewport = await page.evaluate(() => {
+    const hero = document.querySelector('main > section');
+    if (!hero) return true;
+    return hero.getBoundingClientRect().height >= window.innerHeight;
+  });
+  check('hero does not fill the viewport (next section intrudes)', !heroFillsViewport);
+
   // Full-page shot for the reviewer.
   await page.screenshot({ path: `${OUT}/desktop-full.png`, fullPage: true });
   await page.close();
@@ -122,7 +192,7 @@ const browser = await chromium.launch();
   // Nothing may be stranded invisible. This is the blank-page bug the brief warns about, and it is
   // the single most likely way a scroll-driven page fails an accessibility pass.
   const invisible = await page.$$eval(
-    '.reveal, .reveal-fade, .reveal-grow, .reveal-stagger > *, .hero-tagline > *',
+    '.reveal, .reveal-fade, .reveal-grow, .reveal-stagger > *, .hero-line > *, .hero-lede, .hero-actions',
     (nodes) =>
       nodes
         .filter((el) => parseFloat(getComputedStyle(el).opacity) < 0.99)
@@ -135,8 +205,14 @@ const browser = await chromium.launch();
     invisible.join(', '),
   );
 
-  const clip = await page.$eval('.hero-wordmark', (el) => getComputedStyle(el).clipPath);
-  check('wordmark is unclipped under reduced motion', clip === 'none', `(got "${clip}")`);
+  const reducedClips = await page.$$eval('.hero-line > span', (nodes) =>
+    nodes.map((el) => getComputedStyle(el).clipPath),
+  );
+  check(
+    'headline is unclipped under reduced motion',
+    reducedClips.every((c) => c === 'none'),
+    `(got ${reducedClips.join(' | ')})`,
+  );
 
   await page.screenshot({ path: `${OUT}/reduced-motion-full.png`, fullPage: true });
   await page.close();
