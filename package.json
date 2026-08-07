@@ -14,6 +14,8 @@
     "lint": "turbo run lint",
     "lint:boundaries": "depcruise packages apps",
     "test": "turbo run test",
+    "verify:db": "node scripts/verify-db.mjs",
+    "verify:isolation": "node scripts/verify-isolation.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm lint:boundaries && pnpm test && pnpm build",
     "format": "prettier --write .",
     "prepare": "husky"

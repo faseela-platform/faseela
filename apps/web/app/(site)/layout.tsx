@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import type React from 'react';
 import { Cairo, Rubik } from 'next/font/google';
 
-import './globals.css';
+import '../globals.css';
 
 /**
  * Cairo for display, Rubik for UI and body — ADR 0009.
@@ -32,7 +33,18 @@ export const viewport: Viewport = {
   themeColor: '#f7fbfa',
 };
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+/**
+ * The site's root layout — root of the `(site)` route group, not of the whole app.
+ *
+ * Payload's admin panel lives in a sibling group with its own `<html>`, and that
+ * separation is the reason for the split. This document is `lang="ar" dir="rtl"`;
+ * Payload's admin ships its own chrome and sets its own direction, and a `dir="rtl"`
+ * ancestor would mirror that entire interface. One shared root would force one of the
+ * two to be wrong.
+ *
+ * Route groups do not appear in URLs, so `/` is still served from here.
+ */
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // `lang` and `dir` on <html> are what make logical CSS properties resolve correctly.
     // Every `margin-inline-start` in this codebase depends on this one attribute.

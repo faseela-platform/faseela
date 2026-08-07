@@ -70,6 +70,11 @@ module.exports = {
           // the rule's signal meaningful — an orphan warning should mean dead code, not tooling.
           "(^|/)(babel|webpack|next|postcss|vitest|tailwind|drizzle|playwright)\\.config\\.(js|cjs|mjs|ts)$",
           "(^|/)eslint\\.config\\.(js|cjs|mjs|ts)$",
+          // Payload writes `cms/payload-types.ts` from the collection configs on every
+          // schema change. It is currently unimported because nothing reads CMS content
+          // yet, and it will stop being an orphan the moment a page does. Regenerating it
+          // is not optional, so warning about it trains us to ignore this rule.
+          "^apps/web/cms/payload-types\\.ts$",
         ],
       },
       to: {},

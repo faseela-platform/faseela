@@ -2,25 +2,38 @@
   "name": "@faseela/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "payload": "dotenv -e ../../.env.local -- payload",
+    "cms:generate": "dotenv -e ../../.env.local -- payload migrate:create",
+    "cms:migrate": "dotenv -e ../../.env.local -- payload migrate",
+    "cms:types": "dotenv -e ../../.env.local -- payload generate:types"
   },
   "dependencies": {
     "@faseela/tokens": "workspace:*",
+    "@payloadcms/db-postgres": "^3.87.1",
+    "@payloadcms/next": "^3.87.1",
+    "@payloadcms/richtext-lexical": "^3.87.1",
+    "@payloadcms/translations": "^3.87.1",
+    "dotenv": "^17.4.2",
     "motion": "^12.0.1",
     "next": "16.3.0",
+    "payload": "^3.87.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
