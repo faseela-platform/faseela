@@ -1,0 +1,178 @@
+/*
+ * Faseela design tokens — Tailwind v4 theme.
+ *
+ * The single source of truth for colour, type, and motion. Values are measured, not chosen:
+ * see docs/design/color.md, typography.md, and motion.md for provenance and the reproduction
+ * scripts. Do not edit a value here without updating the corresponding doc.
+ */
+
+@theme {
+  /* ---------------------------------------------------------------------------
+   * Colour — seedling (primary), stem (accent), paper (neutral).
+   *
+   * Chroma per step is a fraction of that step's own sRGB ceiling, which is why the
+   * two hues read as equally vivid despite different absolute chroma. Never copy an
+   * absolute chroma between hues.
+   * ------------------------------------------------------------------------- */
+
+  --color-seedling-50: oklch(0.97 0.004 178.3);
+  --color-seedling-100: oklch(0.895 0.046 178.3);
+  --color-seedling-200: oklch(0.82 0.075 178.3);
+  --color-seedling-300: oklch(0.745 0.096 178.3);
+  --color-seedling-400: oklch(0.67 0.105 178.3);
+  --color-seedling-500: oklch(0.595 0.093 178.3);
+  --color-seedling-600: oklch(0.52 0.075 178.3);
+  --color-seedling-700: oklch(0.445 0.052 178.3);
+  --color-seedling-800: oklch(0.37 0.033 178.3);
+  --color-seedling-900: oklch(0.295 0.017 178.3);
+  --color-seedling-950: oklch(0.22 0.009 178.3);
+
+  --color-stem-50: oklch(0.97 0.004 89.8);
+  --color-stem-100: oklch(0.895 0.037 89.8);
+  --color-stem-200: oklch(0.82 0.084 89.8);
+  --color-stem-300: oklch(0.745 0.107 89.8);
+  --color-stem-400: oklch(0.67 0.116 89.8);
+  --color-stem-500: oklch(0.595 0.103 89.8);
+  --color-stem-600: oklch(0.52 0.083 89.8);
+  --color-stem-700: oklch(0.445 0.058 89.8);
+  --color-stem-800: oklch(0.37 0.036 89.8);
+  --color-stem-900: oklch(0.295 0.019 89.8);
+  --color-stem-950: oklch(0.22 0.01 89.8);
+
+  --color-paper-50: oklch(0.985 0.004 178.3);
+  --color-paper-100: oklch(0.902 0.004 178.3);
+  --color-paper-200: oklch(0.82 0.004 178.3);
+  --color-paper-300: oklch(0.738 0.004 178.3);
+  --color-paper-400: oklch(0.655 0.004 178.3);
+  --color-paper-500: oklch(0.573 0.004 178.3);
+  --color-paper-600: oklch(0.49 0.006 178.3);
+  --color-paper-700: oklch(0.408 0.006 178.3);
+  --color-paper-800: oklch(0.325 0.006 178.3);
+  --color-paper-900: oklch(0.243 0.006 178.3);
+  --color-paper-950: oklch(0.16 0.006 178.3);
+
+  /* ---------------------------------------------------------------------------
+   * Type families. The display font is deliberately a token: ADR 0009 keeps it
+   * swappable so a licensed face with a kashida axis can replace Cairo without a
+   * rewrite.
+   * ------------------------------------------------------------------------- */
+
+  --font-display: var(--font-cairo), system-ui, sans-serif;
+  --font-body: var(--font-rubik), system-ui, sans-serif;
+
+  /* ---------------------------------------------------------------------------
+   * Type scale — role-named, 1.25 ratio on a 16px root.
+   *
+   * Leading is paired with each size because Arabic ink spans 1.07x-1.61x the Latin
+   * extent in the same font. Tailwind's own leading-* utilities are Latin-calibrated
+   * and are overridden below so leading-tight cannot be reached by accident.
+   * ------------------------------------------------------------------------- */
+
+  --text-caption: 0.8rem;
+  --text-caption--line-height: 1.6;
+  --text-body-sm: 0.9rem;
+  --text-body-sm--line-height: 1.7;
+  --text-body: 1rem;
+  --text-body--line-height: 1.75;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.7;
+  --text-card-title: 1.25rem;
+  --text-card-title--line-height: 1.5;
+  --text-section: 1.563rem;
+  --text-section--line-height: 1.45;
+  --text-page-title: 1.953rem;
+  --text-page-title--line-height: 1.45;
+  --text-display: 2.441rem;
+  --text-display--line-height: 1.42;
+  --text-hero: 3.052rem;
+  --text-hero--line-height: 1.42;
+  --text-hero-lg: 3.815rem;
+  --text-hero-lg--line-height: 1.42;
+
+  /* Arabic display leading floor is 1.42 — Cairo's ink span is 1.393. Anything
+   * tighter clips descenders and the vowel stack. These replace Tailwind's defaults. */
+  --leading-tight: 1.42;
+  --leading-snug: 1.45;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+  --leading-loose: 1.9;
+
+  /* ---------------------------------------------------------------------------
+   * Motion. Durations are tokens so a global "feels slow" fix is one edit.
+   * ------------------------------------------------------------------------- */
+
+  --ease-enter: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-move: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-hover: cubic-bezier(0.25, 0.1, 0, 1);
+
+  --duration-hover: 130ms;
+  --duration-press: 150ms;
+  --duration-popover: 180ms;
+  --duration-modal: 240ms;
+  --duration-modal-exit: 170ms;
+  --duration-drawer: 290ms;
+  --duration-drawer-exit: 200ms;
+  --duration-page: 360ms;
+
+  /* Fixed travel distances. Never animate a percentage of an element's own size —
+   * an exit that travels its own height reads as the element falling out of the page. */
+  --travel-sm: 4px;
+  --travel-md: 8px;
+  --travel-lg: 16px;
+}
+
+/* -----------------------------------------------------------------------------
+ * Semantic roles.
+ *
+ * Components reference these, not the ramps. Swapping a role is then one edit rather
+ * than a find-and-replace across the codebase.
+ * -------------------------------------------------------------------------- */
+
+:root {
+  --surface: var(--color-paper-50);
+  --surface-raised: white;
+  --border: var(--color-paper-200);
+  --ink: var(--color-paper-950);
+  --ink-muted: var(--color-paper-500);
+  --brand: var(--color-seedling-500);
+  --brand-fill: var(--color-seedling-400);
+  --accent: var(--color-stem-500);
+  --accent-fill: var(--color-stem-400);
+}
+
+/*
+ * Dark mode does NOT mirror the light steps. Verified with APCA on paper-950:
+ * seedling-500 lands at Lc 35.8, which fails even the large-text floor of 45.
+ * Brand roles therefore invert to steps 100-200, where seedling-200 reaches Lc 72.5.
+ */
+[data-theme='dark'] {
+  --surface: var(--color-paper-950);
+  --surface-raised: var(--color-paper-900);
+  --border: var(--color-paper-800);
+  --ink: var(--color-paper-50);
+  --ink-muted: var(--color-paper-400);
+  --brand: var(--color-seedling-200);
+  --brand-fill: var(--color-seedling-300);
+  --accent: var(--color-stem-200);
+  --accent-fill: var(--color-stem-300);
+}
+
+/* -----------------------------------------------------------------------------
+ * Reduced motion.
+ *
+ * Reduced means reduced, including opacity fades. The important half is that
+ * scroll-driven content must resolve to its FINAL state, never its initial one —
+ * otherwise a reduced-motion visitor meets a blank page. See ADR 0011.
+ * -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
