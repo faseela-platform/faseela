@@ -30,6 +30,18 @@ export const user = pgTable(
     phoneNumber: text("phone_number"),
     phoneNumberVerified: boolean("phone_number_verified").notNull().default(false),
 
+    /**
+     * Set when a Member exercises erasure. Non-null means the identifying
+     * columns above have been scrubbed and the row survives only to keep the
+     * Point ledger's foreign keys valid — see ADR 0016.
+     *
+     * A nullable timestamp rather than a boolean because "when" is the question
+     * actually asked of this column later, by a retention policy or a regulator,
+     * and a boolean cannot answer it. Nullable rather than defaulted because the
+     * absence of a date is precisely the meaning of a live account.
+     */
+    anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

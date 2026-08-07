@@ -44,9 +44,20 @@ export const pointAward = pgTable(
   "point_award",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    /**
+     * `restrict`, deliberately unlike the cascade on `session` and `account`.
+     * Those hold credentials and are worthless once the person is gone; this
+     * holds the record that a Member did the work, and past Seasons'
+     * Leaderboards must not silently reorder because an account was closed.
+     *
+     * Erasure is honoured by anonymising the `user` row (see
+     * `anonymiseMember` in ./members.ts), not by deleting it. RESTRICT is what
+     * makes that the only available path: an accidental `DELETE FROM "user"`
+     * now raises rather than quietly destroying the ledger. See ADR 0016.
+     */
     userId: text("user_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "restrict" }),
     /**
      * Which Season this award counts toward, resolved once at award time from
      * the Season containing `awardedAt`. Denormalised deliberately: recomputing

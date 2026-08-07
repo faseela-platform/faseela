@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { PGlite } from "@electric-sql/pglite";
@@ -27,7 +27,21 @@ import { awardPoints, schema, seasonLeaderboard, type Database } from "@faseela/
  * constraint fails here rather than in production.
  */
 
-const migration = readFileSync(join(__dirname, "../migrations/0000_init.sql"), "utf8");
+/**
+ * Every migration, in order, rather than `0000_init.sql` alone.
+ *
+ * Reading the directory rather than listing files by hand is deliberate: the
+ * first version of this pinned one filename, so when `0001` added a column the
+ * suite tested a schema that no longer existed anywhere. `readdir` + sort means
+ * a new migration is picked up by the tests the moment it is generated, which is
+ * the only arrangement where a green suite says anything about production.
+ */
+const migrationsDir = join(__dirname, "../migrations");
+const migration = readdirSync(migrationsDir)
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(join(migrationsDir, f), "utf8"))
+  .join("\n--> statement-breakpoint\n");
 
 let db: Database;
 

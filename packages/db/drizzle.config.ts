@@ -1,4 +1,12 @@
+import { config } from "dotenv";
 import { defineConfig } from "drizzle-kit";
+
+/**
+ * drizzle-kit runs outside Next.js, so nothing has loaded the env file for it.
+ * Read from the repo root rather than this package, so there is one place a
+ * connection string lives.
+ */
+config({ path: "../../.env.local" });
 
 /**
  * Migrations are generated files committed to the repo, never `db:push`.
@@ -12,7 +20,13 @@ export default defineConfig({
   out: "./migrations",
   casing: "snake_case",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    /**
+     * Unpooled on purpose. PgBouncer in transaction mode cannot hold the
+     * session-level state that DDL and advisory locks need, so running
+     * migrations through the pooler fails in ways that look like flakes.
+     * The application uses the pooled host; schema changes use the direct one.
+     */
+    url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL!,
   },
   /**
    * Payload manages its own tables in the same database and drizzle-kit must

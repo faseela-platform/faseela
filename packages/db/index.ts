@@ -14,3 +14,10 @@ export { createClient, type Database } from "./lib/client";
 export { awardPoints, type AwardResult } from "./lib/awards";
 export { seasonLeaderboard, type LeaderboardRow } from "./lib/leaderboard";
 export { currentSeason } from "./lib/seasons";
+/**
+ * Exported because it is the *only* sanctioned way to remove a Member: the
+ * RESTRICT on `point_award.user_id` makes a plain delete raise, and a caller who
+ * cannot find this function will reach for raw SQL to get around that. Making it
+ * obvious is the cheapest defence of the ledger.
+ */
+export { anonymiseMember, ANONYMISED_NAME, type AnonymiseResult } from "./lib/members";

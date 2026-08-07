@@ -21,8 +21,10 @@
   "devDependencies": {
     "@types/node": "^24.3.0",
     "dependency-cruiser": "^17.0.0",
+    "dotenv": "^17.4.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
+    "pg": "^8.22.0",
     "playwright": "^1.62.1",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.8.1",
