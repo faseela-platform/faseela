@@ -65,7 +65,11 @@ module.exports = {
           "(^|/)\\.[^/]+\\.(js|cjs|mjs|ts|json)$",
           "\\.d\\.ts$",
           "(^|/)tsconfig\\.json$",
-          "(^|/)(babel|webpack)\\.config\\.(js|cjs|mjs|ts)$",
+          // Framework-convention config: loaded by name by Next, PostCSS and ESLint rather than
+          // imported, so they are orphans by design and always will be. Listing them explicitly keeps
+          // the rule's signal meaningful — an orphan warning should mean dead code, not tooling.
+          "(^|/)(babel|webpack|next|postcss|vitest|tailwind|drizzle|playwright)\\.config\\.(js|cjs|mjs|ts)$",
+          "(^|/)eslint\\.config\\.(js|cjs|mjs|ts)$",
         ],
       },
       to: {},
