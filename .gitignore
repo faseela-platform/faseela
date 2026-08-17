@@ -48,3 +48,5 @@ _skills-manifest.csv
 chk.txt
 *.log
 .scratch/
+.vercel
+.env*
