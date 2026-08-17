@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 /**
  * Keeps the Payload admin panel unreachable in production until it is deliberately
@@ -30,8 +30,7 @@ import { NextResponse } from 'next/server';
  * hour lost diagnosing it would not be, and on the day Abdullah opens the panel he
  * should not have to suspect his own typing.
  */
-const gated =
-  process.env.NODE_ENV === 'production' && process.env.ENABLE_ADMIN?.trim() !== 'true';
+const gated = process.env.NODE_ENV === "production" && process.env.ENABLE_ADMIN?.trim() !== "true";
 
 /**
  * Takes no request, deliberately. The gate applies to every path the matcher selects,
@@ -65,6 +64,13 @@ export const config = {
    * 404 every sign-in request in production. Written as a pattern rather than an
    * early return in the handler so the middleware is never invoked for auth traffic
    * at all, which keeps sign-in off the critical path of this file entirely.
+   *
+   * `/api/v1/*` is exempted for the same reason and by the same mechanism: it is the
+   * mobile read API, and gating it would 404 every Track list and Leaderboard fetch
+   * from the Expo app in production. The exemption opens nothing of Payload, because
+   * the `v1` namespace is sealed by its own catch-all — every path under `/api/v1/*`
+   * resolves to a `v1` route or to that route's JSON 404, and none of it can fall
+   * through to Payload's `/api/[...slug]`.
    */
-  matcher: ['/admin', '/admin/:path*', '/api/((?!auth).*)'],
+  matcher: ["/admin", "/admin/:path*", "/api/((?!auth|v1).*)"],
 };

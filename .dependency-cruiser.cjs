@@ -68,7 +68,10 @@ module.exports = {
           // Framework-convention config: loaded by name by Next, PostCSS and ESLint rather than
           // imported, so they are orphans by design and always will be. Listing them explicitly keeps
           // the rule's signal meaningful — an orphan warning should mean dead code, not tooling.
-          "(^|/)(babel|webpack|next|postcss|vitest|tailwind|drizzle|playwright)\\.config\\.(js|cjs|mjs|ts)$",
+          "(^|/)(babel|webpack|next|postcss|vitest|tailwind|drizzle|playwright|metro)\\.config\\.(js|cjs|mjs|ts)$",
+          // Expo Router's filesystem routing: files under apps/native/app/ are routes,
+          // discovered by path exactly as Next discovers apps/web/app/, so nothing imports them.
+          "^apps/native/app/",
           "(^|/)eslint\\.config\\.(js|cjs|mjs|ts)$",
           // Payload writes `cms/payload-types.ts` from the collection configs on every
           // schema change. It is currently unimported because nothing reads CMS content
@@ -83,14 +86,32 @@ module.exports = {
       },
       to: {},
     },
-    // Layering — which packages may depend on which — is a separate concern.
-    // Fill in as the package graph takes shape, e.g.:
-    // {
-    //   name: "ui-stays-presentational",
-    //   severity: "error",
-    //   from: { path: "^packages/ui/" },
-    //   to: { path: "^packages/db/" },
-    // },
+    // Layering — which packages may depend on which.
+    {
+      name: "native-stays-off-the-db",
+      comment:
+        "The Expo app consumes HTTP (/api/v1/*), never the database — packages/db is node-postgres and cannot run on a phone. An import here compiles on a laptop and dies on a device.",
+      severity: "error",
+      from: {
+        path: "^apps/native/",
+      },
+      to: {
+        path: `^${PACKAGES_ROOT}/db/`,
+      },
+    },
+    {
+      name: "api-types-depends-on-nothing",
+      comment:
+        "packages/api-types is the wire contract both web and native import; zero dependencies is what lets it bundle for a phone. Its input types are structural on purpose — do not 'fix' that by importing @faseela/db.",
+      severity: "error",
+      from: {
+        path: `^${PACKAGES_ROOT}/api-types/`,
+      },
+      to: {
+        path: `^${PACKAGES_ROOT}/`,
+        pathNot: [`^${PACKAGES_ROOT}/api-types/`],
+      },
+    },
   ],
   options: {
     doNotFollow: {
