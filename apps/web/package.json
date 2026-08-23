@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "payload": "dotenv -e ../../.env.local -- payload",
     "cms:generate": "dotenv -e ../../.env.local -- payload migrate:create",
     "cms:migrate": "dotenv -e ../../.env.local -- payload migrate",
@@ -41,6 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

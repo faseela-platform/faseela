@@ -1,10 +1,11 @@
-import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { createClient, schema } from '@faseela/db';
-import { betterAuth } from 'better-auth';
-import { nextCookies } from 'better-auth/next-js';
-import { magicLink } from 'better-auth/plugins';
+import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { createClient, schema } from "@faseela/db";
+import { betterAuth } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
+import { magicLink } from "better-auth/plugins";
 
-import { sendEmail } from './email';
+import { sendEmail } from "./email";
+import { magicLinkEmail } from "./magic-link-email";
 
 /**
  * The server-side auth instance. Import this from Server Components, Server
@@ -21,7 +22,7 @@ import { sendEmail } from './email';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error('DATABASE_URL is not set. See next.config.ts, which loads the root .env.local.');
+  throw new Error("DATABASE_URL is not set. See next.config.ts, which loads the root .env.local.");
 }
 
 const db = createClient(connectionString);
@@ -31,7 +32,7 @@ const db = createClient(connectionString);
  * against this, so a mismatch produces links that 404 or fail verification —
  * which reads like a broken token rather than a misconfigured base URL.
  */
-const baseURL = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
+const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 
 export const auth = betterAuth({
   baseURL,
@@ -44,7 +45,7 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
 
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: "pg",
     /*
      * Our tables are singular (`user`, not `users`), which is the adapter's own
      * default, so no `usePlural` and no `modelName` remapping. Passing `schema`
@@ -115,7 +116,7 @@ export const auth = betterAuth({
        * `verification` table can sign in as anybody with a pending link. Hashing
        * costs nothing here because the token is never displayed after sending.
        */
-      storeToken: 'hashed',
+      storeToken: "hashed",
 
       /*
        * `allowedAttempts` is deliberately absent. It is deprecated: tokens are
@@ -124,27 +125,14 @@ export const auth = betterAuth({
        */
 
       sendMagicLink: async ({ email, url }) => {
-        await sendEmail({
-          to: email,
-          subject: 'رابط الدخول إلى فسيلة',
-          /*
-           * The URL sits alone on its line with no surrounding punctuation.
-           * Arabic is RTL and mail clients apply the bidi algorithm to each
-           * line; a Latin URL with Arabic text on the same line can render with
-           * its trailing characters displaced, and a member copying the visible
-           * text copies a broken link. An isolated line cannot be reordered.
-           */
-          text: [
-            'أهلًا بك في فسيلة،',
-            '',
-            'اضغط على الرابط التالي لتسجيل الدخول:',
-            '',
-            url,
-            '',
-            'ينتهي هذا الرابط بعد عشر دقائق، ويُستخدم مرة واحدة فقط.',
-            'إن لم تكن أنت من طلب هذا الرابط، تجاهل هذه الرسالة.',
-          ].join('\n'),
-        });
+        /*
+         * Subject, plain-text and HTML bodies all come from one pure builder
+         * (magic-link-email.ts). The console transport uses `text`; Resend sends
+         * both. The URL's bidi-safe isolation and the client-safe (no-oklch)
+         * HTML live there and are tested there.
+         */
+        const { subject, text, html } = magicLinkEmail({ url });
+        await sendEmail({ to: email, subject, text, html });
       },
     }),
 

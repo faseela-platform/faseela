@@ -92,23 +92,41 @@ export function SignInForm({ callbackURL }: { callbackURL: string }) {
         type="email"
         required
         autoComplete="email"
+        autoFocus
+        inputMode="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         dir="ltr"
         placeholder="name@example.com"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         disabled={state === "sending"}
-        className="text-body-lg w-full rounded-md border border-[var(--border)] bg-transparent px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-faint)] focus:border-[var(--brand)] focus:outline-none disabled:opacity-50"
+        aria-invalid={state === "error"}
+        aria-describedby={state === "error" ? "email-error" : undefined}
+        className="text-body-lg min-h-[44px] w-full rounded-md border border-[var(--border)] bg-transparent px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-faint)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
       />
 
       <button
         type="submit"
         disabled={state === "sending" || email.length === 0}
-        className="text-body-lg mt-6 w-full rounded-md bg-[var(--brand)] px-6 py-3 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        aria-busy={state === "sending"}
+        className="text-body-lg mt-6 min-h-[44px] w-full rounded-md bg-[var(--brand)] px-6 py-3 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       >
         {state === "sending" ? "جارٍ الإرسال…" : "أرسل رابط الدخول"}
       </button>
 
-      <p aria-live="polite" className="text-body-sm mt-4 min-h-[1.5em] text-[var(--ink-muted)]">
+      {/*
+       * `role="alert"` (implicitly assertive) so the failure is announced the
+       * moment it appears; associated with the input via `aria-describedby` so a
+       * screen-reader user hears why the field is invalid. Reserves its line so
+       * the layout does not jump when the message arrives.
+       */}
+      <p
+        id="email-error"
+        role="alert"
+        className="text-body-sm mt-4 min-h-[1.5em] text-[var(--ink-muted)]"
+      >
         {error}
       </p>
     </form>

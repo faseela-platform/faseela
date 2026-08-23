@@ -9,7 +9,10 @@
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
     "PAYLOAD_SECRET",
-    "EXPO_PUBLIC_API_URL"
+    "EXPO_PUBLIC_API_URL",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "EMAIL_REPLY_TO"
   ],
   "tasks": {
     "build": {

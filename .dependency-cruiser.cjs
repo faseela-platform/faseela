@@ -78,9 +78,11 @@ module.exports = {
           // yet, and it will stop being an orphan the moment a page does. Regenerating it
           // is not optional, so warning about it trains us to ignore this rule.
           "^apps/web/cms/payload-types\\.ts$",
-          // The browser-side auth client. Orphaned only because no sign-in UI exists yet;
-          // the server half is wired and verified end to end by scripts/verify-auth-flow.mjs.
-          // Remove this exemption once a Client Component imports it.
+          // The browser-side auth client. It IS imported (by dukhul/sign-in-form.tsx),
+          // but via the `@/lib/auth-client` alias, and dependency-cruiser resolves
+          // against the root tsconfig which does not declare the `@/*` paths (they
+          // live in apps/web/tsconfig.json). So the edge is invisible to the tool and
+          // the file reads as an orphan. Exempted for that reason, not for lack of use.
           "^apps/web/lib/auth-client\\.ts$",
         ],
       },
