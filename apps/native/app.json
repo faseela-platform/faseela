@@ -9,7 +9,11 @@
     "userInterfaceStyle": "light",
     "extra": {
       "supportsRTL": true,
-      "forcesRTL": true
+      "forcesRTL": true,
+      "router": {},
+      "eas": {
+        "projectId": "2f4ad9d1-2044-45b6-bd40-f78ffe73d954"
+      }
     },
     "ios": {
       "icon": "./assets/expo.icon"
@@ -41,6 +45,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "owner": "abdullahalkheshenengineers-team",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2f4ad9d1-2044-45b6-bd40-f78ffe73d954"
     }
   }
 }

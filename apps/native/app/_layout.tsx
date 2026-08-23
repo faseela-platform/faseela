@@ -9,25 +9,33 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
+import { shouldHideSplash } from "../lib/startup";
 import { colors } from "../lib/theme";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_700Bold,
     IBMPlexSansArabic_400Regular,
     IBMPlexSansArabic_600SemiBold,
   });
 
+  /**
+   * Hide on error too — a failed font download opens the app with system
+   * Arabic fonts. Holding the splash on error turned one lost request into
+   * an app that never started (see lib/startup.ts).
+   */
+  const ready = shouldHideSplash(fontsLoaded, fontError);
+
   useEffect(() => {
-    if (fontsLoaded) {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [ready]);
 
-  if (!fontsLoaded) {
+  if (!ready) {
     return null;
   }
 
