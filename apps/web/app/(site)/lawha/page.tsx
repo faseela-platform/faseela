@@ -91,7 +91,7 @@ export default async function LeaderboardPage() {
 
   return (
     <>
-      <Nav current="/lawha" signedIn={Boolean(session?.user)} />
+      <Nav current="/lawha" signedIn={Boolean(session?.user)} memberName={session?.user?.name} />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           <div className="reveal max-w-3xl">
@@ -189,7 +189,9 @@ export default async function LeaderboardPage() {
                       </span>
 
                       <span className="text-body-lg font-medium text-[var(--ink)]">
-                        {row.name}
+                        {/* Fallback so a Member who earned Points before completing
+                            their §5 profile never renders as a blank row. */}
+                        {row.name.trim() || "عضو"}
                         {isMe ? (
                           <span className="text-caption ms-2 font-semibold text-[var(--brand)]">
                             أنت

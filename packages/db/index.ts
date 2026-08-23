@@ -35,3 +35,15 @@ export { publishedTracks, trackBySlug, type TrackSummary, type TrackDetail } fro
  * obvious is the cheapest defence of the ledger.
  */
 export { anonymiseMember, ANONYMISED_NAME, type AnonymiseResult } from "./lib/members";
+/**
+ * Member identity (spec §5). `setMemberProfile` records the name + phone a
+ * Member supplies on the "complete your account" step; `memberProfile` +
+ * `isProfileComplete` are how the web layer decides whether to route them there.
+ */
+export {
+  setMemberProfile,
+  memberProfile,
+  isProfileComplete,
+  type MemberProfile,
+  type SetMemberProfileResult,
+} from "./lib/members";

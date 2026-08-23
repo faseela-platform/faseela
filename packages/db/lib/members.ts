@@ -9,6 +9,65 @@ export type AnonymiseResult =
   | { status: "no-such-member" };
 
 /**
+ * The identity a Member supplies at account creation (spec §5): a full name and
+ * a phone number. Phone is the Initiative's primary way of reaching a Member, so
+ * it is required — but it is stored unverified in v1 (§5 defers verification, and
+ * `phone_number_verified` already exists so it bolts on later without a rebuild).
+ */
+export type MemberProfile = { name: string; phoneNumber: string | null };
+
+/**
+ * Whether a Member has supplied the §5 account data. False for the state a
+ * magic-link sign-in leaves them in — an empty name and no phone — which is what
+ * routes them to "complete your account" before they can earn Points.
+ *
+ * Pure so both the data layer's callers and the web layer's gate share one
+ * definition of "complete" and cannot disagree about it.
+ */
+export function isProfileComplete(profile: MemberProfile | null): boolean {
+  if (!profile) return false;
+  return (
+    profile.name.trim() !== "" && profile.phoneNumber !== null && profile.phoneNumber.trim() !== ""
+  );
+}
+
+/** Read a Member's name and phone — the two fields the completeness gate needs. */
+export async function memberProfile(db: Database, userId: string): Promise<MemberProfile | null> {
+  const rows = await db
+    .select({ name: user.name, phoneNumber: user.phoneNumber })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export type SetMemberProfileResult = { status: "updated" } | { status: "no-such-member" };
+
+/**
+ * Record the §5 account data a Member entered on the "complete your account"
+ * step. Values are trimmed — a name that is only spaces would pass a NOT NULL
+ * column while failing `isProfileComplete`, leaving the Member in a loop.
+ *
+ * `phone_number_verified` is deliberately left untouched (false): the number is
+ * stored, not verified, per §5. The caller is responsible for having validated
+ * that the fields are non-empty; this writes what it is given, trimmed.
+ */
+export async function setMemberProfile(
+  db: Database,
+  userId: string,
+  input: { name: string; phoneNumber: string },
+  at: Date = new Date(),
+): Promise<SetMemberProfileResult> {
+  const updated = await db
+    .update(user)
+    .set({ name: input.name.trim(), phoneNumber: input.phoneNumber.trim(), updatedAt: at })
+    .where(eq(user.id, userId))
+    .returning({ id: user.id });
+  if (updated.length === 0) return { status: "no-such-member" };
+  return { status: "updated" };
+}
+
+/**
  * The display name an erased Member appears under, including on Leaderboards
  * where their Points still count. Arabic, because every string a Member reads is
  * Arabic, and neutral rather than accusatory — the person left, which is their

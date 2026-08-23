@@ -106,7 +106,7 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
 
   return (
     <>
-      <Nav current="/masarat" signedIn={Boolean(session?.user)} />
+      <Nav current="/masarat" signedIn={Boolean(session?.user)} memberName={session?.user?.name} />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           {/*

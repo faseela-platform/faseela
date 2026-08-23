@@ -35,8 +35,21 @@ const links = [
  * component that calls `getSession` makes every page mounting it dynamic, and the
  * landing page has no reason to become uncacheable because its header could
  * theoretically show a sign-out link.
+ *
+ * `memberName` is the signed-in Member's name, also passed from the page's
+ * session read. Present → shown as the Member's identity; empty (a magic-link
+ * account that hasn't completed §5 yet) → replaced by an "أكمل حسابك" prompt, so
+ * a nameless Member always has a visible route to finish their account.
  */
-export function Nav({ current, signedIn = false }: { current?: string; signedIn?: boolean }) {
+export function Nav({
+  current,
+  signedIn = false,
+  memberName = null,
+}: {
+  current?: string;
+  signedIn?: boolean;
+  memberName?: string | null;
+}) {
   return (
     <header className="gutter sticky top-0 z-50 border-b border-[var(--hairline)] bg-[color-mix(in_oklch,var(--surface)_88%,transparent)] backdrop-blur-md">
       <nav className="flex items-center justify-between gap-4 py-4" aria-label="الرئيسية">
@@ -111,7 +124,27 @@ export function Nav({ current, signedIn = false }: { current?: string; signedIn?
          * authenticated. The slot becomes sign-out.
          */}
         {signedIn ? (
-          <SignOutButton />
+          <div className="flex shrink-0 items-center gap-4">
+            {/*
+             * Identity, not a profile link. Spec §30 keeps profiles minimal in
+             * v1, so the name is shown as plain text — enough for a Member to
+             * know they are signed in and as whom. A nameless account instead
+             * gets the prompt that leads to the §5 completion step.
+             */}
+            {memberName && memberName.trim() ? (
+              <span className="text-body-sm max-w-[10rem] truncate font-medium text-[var(--ink)]">
+                {memberName}
+              </span>
+            ) : (
+              <Link
+                href="/akmil-hisabak"
+                className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+              >
+                أكمل حسابك
+              </Link>
+            )}
+            <SignOutButton />
+          </div>
         ) : (
           <div className="flex shrink-0 items-center gap-4">
             <Link

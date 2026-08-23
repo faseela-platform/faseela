@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { attestTask } from "@faseela/db";
+import { attestTask, isProfileComplete, memberProfile } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -42,6 +43,19 @@ export async function attest(taskId: string, trackSlug: string): Promise<AttestA
       status: "unauthenticated",
       message: "سجّل دخولك أولاً لتُحتسب نقاطك.",
     };
+  }
+
+  /**
+   * Account creation completes here, not at sign-in. Spec §5: creation is
+   * triggered by the first save-requiring interaction — completing a Task is
+   * exactly that — and requires a name and a phone (the primary contact).
+   * Magic-link only captured the email, so a first-time Member reaches this
+   * point nameless; send them to complete their account, then back to this Task.
+   * The redirect throws, so nothing below runs and no Points are minted early.
+   */
+  const profile = await memberProfile(db, session.user.id);
+  if (!isProfileComplete(profile)) {
+    redirect(`/akmil-hisabak?next=${encodeURIComponent(`/masarat/${trackSlug}`)}`);
   }
 
   const result = await attestTask(db, taskId, session.user.id);
