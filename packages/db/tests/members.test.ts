@@ -8,10 +8,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   ANONYMISED_NAME,
+  acceptSubmission,
   anonymiseMember,
-  awardPoints,
   schema,
   seasonLeaderboard,
+  submitWork,
   type Database,
 } from "@faseela/db";
 
@@ -71,16 +72,27 @@ async function seedEarnedPoints(userId: string, points: number) {
       instructions: "اقرأ",
       mode: "review",
       points,
+      state: "published",
+      publishedAt: new Date("2026-01-01T00:00:00Z"),
     })
     .returning();
 
-  const [submission] = await db
-    .insert(schema.submission)
-    .values({ taskId: task!.id, userId, body: "ملخص", state: "accepted" })
-    .returning();
+  /** Points are minted only by an Editor accepting real work (§25), so seed one. */
+  await db
+    .insert(schema.user)
+    .values({ id: "editor-seed", name: "محرّر", email: "editor-seed@example.test", role: "editor" })
+    .onConflictDoNothing();
 
-  const result = await awardPoints(db, submission!.id, inSeason);
-  expect(result.status).toBe("awarded");
+  const submitted = await submitWork(db, task!.id, userId, { body: "ملخص" }, inSeason);
+  if (submitted.status !== "submitted") throw new Error("seed submit failed");
+  const result = await acceptSubmission(
+    db,
+    submitted.submissionId,
+    "editor-seed",
+    points,
+    inSeason,
+  );
+  expect(result.status).toBe("accepted");
 }
 
 beforeEach(async () => {
@@ -192,9 +204,7 @@ describe("anonymiseMember", () => {
     const after = await seasonLeaderboard(db, SEASON);
 
     /** Same ranks, same totals — only the name changes. */
-    expect(after.map((r) => [r.rank, r.points])).toEqual(
-      before.map((r) => [r.rank, r.points]),
-    );
+    expect(after.map((r) => [r.rank, r.points])).toEqual(before.map((r) => [r.rank, r.points]));
     expect(after[0]).toMatchObject({ rank: 1, points: 10, name: ANONYMISED_NAME });
     expect(after[1]).toMatchObject({ rank: 2, points: 3, name: "ليلى" });
   });

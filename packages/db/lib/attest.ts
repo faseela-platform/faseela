@@ -16,17 +16,17 @@ export type AttestResult =
  * Complete an `attest` Task on the Member's own declaration, minting Points at
  * once.
  *
- * `awardPoints` mints from an already-accepted Submission, which is the `review`
- * path: an Editor decides, then Points follow. This is the other path, and it
- * differs in exactly one way — the Member's declaration *is* the acceptance, so
- * the Submission is created accepted and the award happens in the same
- * transaction. Everything else is deliberately identical, including which
+ * `acceptSubmission` (in review.ts) mints from work an Editor has accepted, which
+ * is the `review` path: a human decides, then Points follow. This is the other
+ * path, and it differs in exactly one way — the Member's declaration *is* the
+ * acceptance, so the Submission is created accepted and the award happens in the
+ * same transaction. Everything else is deliberately identical, including which
  * constraints do the enforcing.
  *
- * It is a separate function rather than a flag on `awardPoints` because the two
- * have different preconditions: `awardPoints` must refuse anything not accepted,
- * while this must refuse anything not `attest`. Collapsing them into one function
- * with a boolean would mean a single wrong argument could mint Points for
+ * It is a separate function rather than a flag on `acceptSubmission` because the
+ * two have different preconditions: acceptance must refuse anything not pending
+ * review, while this must refuse anything not `attest`. Collapsing them into one
+ * function with a boolean would mean a single wrong argument could mint Points for
  * unreviewed creative work, which is the one thing the review queue exists to
  * prevent.
  *
@@ -170,12 +170,17 @@ export async function attestTask(
 }
 
 /**
- * Which of these Tasks the Member has already completed.
+ * Which of these Tasks the Member has already *completed* — accepted, not merely
+ * attempted.
  *
  * Exists so the Track page can render a completed Task as done rather than
- * offering a button that will be refused. Returns a Set of task ids: the page
- * needs membership, not the Submission rows, and returning the rows would invite
- * a caller to read `state` from them and reimplement the completion rule.
+ * offering a button that will be refused. Scoped to `state = 'accepted'`: a
+ * `review` Task that is drafted, pending or returned is work in progress, not a
+ * completion, and showing it as done would tell the Member they had finished
+ * something an Editor has not yet accepted. An `attest` completion is stored
+ * accepted too, so the one filter is right for both modes. Returns a Set of task
+ * ids: the page needs membership, not the Submission rows, and returning the rows
+ * would invite a caller to read `state` from them and reimplement this rule.
  */
 export async function completedTaskIds(
   db: Database,
@@ -187,7 +192,13 @@ export async function completedTaskIds(
   const rows = await db
     .select({ taskId: submission.taskId })
     .from(submission)
-    .where(and(eq(submission.userId, userId), inArray(submission.taskId, taskIds)));
+    .where(
+      and(
+        eq(submission.userId, userId),
+        eq(submission.state, "accepted"),
+        inArray(submission.taskId, taskIds),
+      ),
+    );
 
   return new Set(rows.map((r) => r.taskId));
 }

@@ -16,7 +16,7 @@ import {
 } from "@faseela/db";
 
 /**
- * Against PGlite — real Postgres in WASM — for the same reason as awards.test.ts:
+ * Against PGlite — real Postgres in WASM — for the same reason as review.test.ts:
  * every guarantee here is enforced by a constraint, and a mock would only prove
  * our code calls the methods we told it to.
  */

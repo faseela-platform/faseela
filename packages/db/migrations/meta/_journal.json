@@ -15,6 +15,13 @@
       "when": 1786099911437,
       "tag": "0001_anonymise_not_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787563355449,
+      "tag": "0002_own_auth_and_review",
+      "breakpoints": true
     }
   ]
 }

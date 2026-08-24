@@ -73,11 +73,6 @@ module.exports = {
           // discovered by path exactly as Next discovers apps/web/app/, so nothing imports them.
           "^apps/native/app/",
           "(^|/)eslint\\.config\\.(js|cjs|mjs|ts)$",
-          // Payload writes `cms/payload-types.ts` from the collection configs on every
-          // schema change. It is currently unimported because nothing reads CMS content
-          // yet, and it will stop being an orphan the moment a page does. Regenerating it
-          // is not optional, so warning about it trains us to ignore this rule.
-          "^apps/web/cms/payload-types\\.ts$",
           // The browser-side auth client. It IS imported (by dukhul/sign-in-form.tsx),
           // but via the `@/lib/auth-client` alias, and dependency-cruiser resolves
           // against the root tsconfig which does not declare the `@/*` paths (they

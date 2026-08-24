@@ -1,35 +1,38 @@
 # @faseela/db
 
-The data layer: schema, migrations, and the two operations that carry real
+The data layer: schema, migrations, and the operations that carry real
 invariants.
 
 ## What lives here
 
-| Module               | Owns                                                                    |
-| -------------------- | ----------------------------------------------------------------------- |
-| `lib/identity.ts`    | `user`, `session`, `account`, `verification` — **Better Auth's tables** |
-| `lib/content.ts`     | `track`, `task` — what an Editor authors                                |
-| `lib/progress.ts`    | `submission`, `season`, `point_award` — what a Member does              |
-| `lib/awards.ts`      | `awardPoints` — the only way Points are minted                          |
-| `lib/leaderboard.ts` | `seasonLeaderboard` — Season-scoped ranking                             |
-| `lib/seasons.ts`     | `currentSeason` — resolves the Season containing an instant             |
+| Module               | Owns                                                                      |
+| -------------------- | ------------------------------------------------------------------------- |
+| `lib/identity.ts`    | `user`, `session`, `account`, `verification` — **Better Auth's tables**   |
+| `lib/content.ts`     | `track`, `task`, `submission`, `submission_attempt` — the review objects  |
+| `lib/progress.ts`    | `season`, `point_award` — the Point ledger                                |
+| `lib/attest.ts`      | `attestTask` — the attest mint (a Member's declaration)                   |
+| `lib/review.ts`      | the review lifecycle: `submitWork` → `acceptSubmission` (the review mint) |
+| `lib/leaderboard.ts` | `seasonLeaderboard` — Season-scoped ranking                               |
+| `lib/seasons.ts`     | `currentSeason` — resolves the Season containing an instant               |
 
 Consumers import from `@faseela/db` and never from `lib/`. This is enforced, not
 requested — see `packages/README.md`.
 
 ## Rules that are not negotiable
 
-**Never run `db:push`.** Not even locally. Payload shares this database and
-`push` diffs-and-applies silently; the habit is the risk. Schema changes go
-through `pnpm db:generate` and the migration is committed. ADR 0014.
+**Never run `db:push`.** Not even locally. `push` diffs-and-applies silently; the
+habit is the risk, and a silent schema change is unreviewable. Schema changes go
+through `pnpm db:generate` and the migration is committed as the record. ADR 0014.
 
-**Never write to `point_award` directly.** `awardPoints` is the only writer. It
-holds the idempotency guarantee, freezes the point value, and resolves the
-Season — all three are lost the moment a call site inserts its own row. ADR 0015.
+**Never write to `point_award` directly.** `attestTask` and `acceptSubmission` are
+the only writers. Each holds the idempotency guarantee, freezes the point value,
+and resolves the Season — all three are lost the moment a call site inserts its
+own row. ADR 0015.
 
-**Never add a Payload collection slugged** `user`, `users`, `session`, `account`,
-`verification`, `track`, `task`, `submission`, `season`, or `point_award`. They
-map onto existing tables and the loser's columns disappear. ADR 0014.
+**The `user` table's name is load-bearing.** Better Auth resolves `user`,
+`session`, `account` and `verification` by exported property name; renaming one
+breaks authentication with no type error. A Member (and an Editor) is a `user`
+row — see ADR 0023.
 
 ## Better Auth's tables
 
@@ -46,11 +49,11 @@ entity.
 
 ## Tests
 
-`tests/awards.test.ts` runs against **PGlite** — real Postgres compiled to WASM —
-and applies `migrations/0000_init.sql` as generated. This is deliberate: every
-invariant under test is enforced by Postgres (two unique indexes, six check
-constraints, a window function's ordering), so a mock would assert that our code
-calls the right methods, which is not the thing that matters.
+`tests/review.test.ts` (and its siblings) run against **PGlite** — real Postgres
+compiled to WASM — replaying every committed migration as generated. This is
+deliberate: every invariant under test is enforced by Postgres (unique indexes,
+check constraints, a window function's ordering), so a mock would assert that our
+code calls the right methods, which is not the thing that matters.
 
 A schema change that drops a constraint therefore fails here rather than in
 production.

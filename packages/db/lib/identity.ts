@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 /**
  * Better Auth owns these four tables and their column names. Better Auth's
@@ -7,9 +7,26 @@ import { boolean, index, pgTable, text, timestamp, uniqueIndex } from "drizzle-o
  * `session`, `account` and `verification` must stay singular and must not be
  * renamed. Regenerating with `npx auth@latest generate` will overwrite drift.
  *
- * Payload must never declare a collection that maps onto these table names —
- * see ADR 0014. `Member` is our own table and joins to `user` one-to-one.
+ * A Member is a `user` row with progress; an Editor is a `user` row with a staff
+ * `role`. Since Payload was removed, this table is the single source of identity
+ * for everyone — members and staff alike — which is what lets a review name its
+ * reviewer with a real foreign key rather than an opaque id (ADR 0023).
  */
+
+/**
+ * Who a `user` is to the Initiative.
+ *
+ * `member` — the public: signs in, follows Tracks, earns Points. The default,
+ *            because magic-link sign-up creates members and nothing else.
+ * `editor` — staff who review Submissions and (later) author content.
+ * `admin`  — staff who may also grant roles and manage the Initiative itself.
+ *
+ * A single column rather than a separate staff table: staff *are* users, the set
+ * is tiny (~10), and a role read is on the path of every editor request, where a
+ * join would be pure cost. Elevation is a deliberate act performed against this
+ * column, never something sign-up can set.
+ */
+export const userRole = pgEnum("user_role", ["member", "editor", "admin"]);
 
 export const user = pgTable(
   "user",
@@ -19,6 +36,13 @@ export const user = pgTable(
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
+
+    /**
+     * Defaults to `member` in the database, so Better Auth's sign-up insert —
+     * which never mentions this column — always produces a member, and staff is
+     * something only a later, deliberate update can confer.
+     */
+    role: userRole("role").notNull().default("member"),
 
     /**
      * Present from the first migration although sign-in is email magic link

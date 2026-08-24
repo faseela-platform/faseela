@@ -3,6 +3,28 @@ import { eq } from "drizzle-orm";
 import type { Database } from "./client";
 import { account, session, user } from "./identity";
 
+export type UserRole = "member" | "editor" | "admin";
+
+/**
+ * Whether a role is staff — allowed to review Submissions and reach the admin
+ * surfaces. One definition, so "who counts as staff" is decided in a single place
+ * rather than re-spelled at every gate (the review-mint guard, the route gate).
+ */
+export function isStaffRole(role: UserRole | null): boolean {
+  return role === "editor" || role === "admin";
+}
+
+/**
+ * A user's role, or null if there is no such user. The web layer's editor gate
+ * reads this to decide whether a signed-in person may reach the review queue —
+ * kept here rather than trusting a `role` claim off the session, so that revoking
+ * someone's staff status takes effect on their next request, not their next login.
+ */
+export async function roleOfUser(db: Database, userId: string): Promise<UserRole | null> {
+  const rows = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
+  return rows[0]?.role ?? null;
+}
+
 export type AnonymiseResult =
   | { status: "anonymised"; at: Date }
   | { status: "already-anonymised"; at: Date }

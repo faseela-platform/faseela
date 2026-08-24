@@ -5,6 +5,8 @@ date: 2026-08-06
 
 # One Postgres: Neon + Drizzle, with Better Auth and Payload sharing it
 
+> **Partly superseded (2026-08-24, [ADR 0023](./0023-editors-are-our-own-users-payload-removed.md)):** Payload has been removed from the stack. Neon, Drizzle and Better Auth stand exactly as decided here; only the Payload half — the shared-database CMS — is gone. Editors are now `user` rows with a staff role.
+
 Neon Postgres accessed through Drizzle is the single datastore. Better Auth handles authentication for both Next.js and Expo against that same database, and Payload 3 runs inside the Next.js app as the Editor-facing admin, also on that same database. One connection string, one migration history, one source of truth.
 
 ## Considered options

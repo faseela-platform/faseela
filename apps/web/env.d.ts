@@ -13,9 +13,7 @@ declare namespace NodeJS {
     DATABASE_URL: string;
     /** Unpooled Neon host. Required for DDL: migrations need session state. */
     DATABASE_URL_UNPOOLED: string;
-    /** Signs Payload's admin session cookies. Rotating it logs every Editor out. */
-    PAYLOAD_SECRET: string;
-    /** Signs Member session cookies and magic-link tokens. Distinct from PAYLOAD_SECRET. */
+    /** Signs Member (and Editor) session cookies and magic-link tokens. */
     BETTER_AUTH_SECRET: string;
     /**
      * Where the app is reachable. Magic-link URLs are built from it, so in
@@ -23,5 +21,15 @@ declare namespace NodeJS {
      * that fail verification, which reads as a token bug rather than config.
      */
     BETTER_AUTH_URL: string;
+
+    /**
+     * Cloudflare R2, for the files Members submit (see `lib/r2.ts`). Optional:
+     * when unset, `r2IsConfigured` is false and submissions degrade to text only,
+     * so a local checkout needs none of these. All four are required together.
+     */
+    R2_ACCOUNT_ID?: string;
+    R2_ACCESS_KEY_ID?: string;
+    R2_SECRET_ACCESS_KEY?: string;
+    R2_BUCKET?: string;
   }
 }

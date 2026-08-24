@@ -6,9 +6,10 @@ import * as schema from "./schema";
 export type Database = ReturnType<typeof createClient>;
 
 /**
- * A client or a transaction. Helpers that must be callable *inside*
- * `awardPoints`'s transaction take this rather than `Database`: a transaction
- * exposes the same query surface but is not assignable to the client type,
+ * A client or a transaction. Helpers that must be callable *inside* a mint
+ * transaction (`attestTask`, `acceptSubmission`) take this rather than `Database`:
+ * a transaction exposes the same query surface but is not assignable to the
+ * client type,
  * because the client also carries `$client` (the underlying pool) which a
  * transaction has no business exposing. Widening here is what lets
  * `currentSeason` be reused inside the transaction instead of being duplicated
@@ -18,9 +19,8 @@ export type Queryable = Database | Parameters<Parameters<Database["transaction"]
 
 /**
  * `node-postgres` over a pooled Neon connection string rather than Neon's HTTP
- * driver, for one reason: `awardPoints` needs a real transaction, and the HTTP
- * driver cannot hold one open across statements. Payload's Postgres adapter
- * uses node-postgres too, so this keeps one driver in the process.
+ * driver, for one reason: the mint paths (`attestTask`, `acceptSubmission`) need a
+ * real transaction, and the HTTP driver cannot hold one open across statements.
  *
  * Pass Neon's `-pooler` host. Neon's pooler is PgBouncer in transaction mode,
  * which does not support session-level features — so no prepared statements and

@@ -29,10 +29,9 @@ export default defineConfig({
     url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL!,
   },
   /**
-   * Payload manages its own tables in the same database and drizzle-kit must
-   * not offer to drop them. Ours are the ones listed in lib/schema.ts; Payload's
-   * carry no prefix by default, so this filter is set once Payload's tables
-   * exist and their names are known.
+   * `@faseela/db` owns the whole database now that Payload has been removed. The
+   * schema in lib/schema.ts is the single source of truth, and drizzle-kit may
+   * manage every table it finds — there is no longer a foreign schema to protect.
    */
   verbose: true,
   strict: true,

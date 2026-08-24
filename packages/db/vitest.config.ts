@@ -10,7 +10,7 @@ export default defineConfig({
      * alone and failed in `pnpm check`.
      *
      * Raised rather than worked around: a real database is the point of these
-     * tests (see tests/awards.test.ts), and its startup cost is real.
+     * tests (see tests/review.test.ts), and its startup cost is real.
      */
     hookTimeout: 60_000,
     testTimeout: 30_000,

@@ -9,8 +9,9 @@ import { season } from "./progress";
  * Null is a real state, not an edge case: between Seasons the Initiative has no
  * competition running, and CONTEXT.md is explicit that Points belong to exactly
  * one Season. Callers must decide what to do rather than being handed a
- * fabricated Season — `awardPoints` refuses to mint, which is the honest
- * behaviour: effort outside a Season cannot be ranked.
+ * fabricated Season — the mint paths (`attestTask`, `acceptSubmission`) refuse
+ * rather than invent one, which is the honest behaviour: effort outside a Season
+ * cannot be ranked.
  *
  * `endsAt` is exclusive so two adjacent Seasons sharing a boundary instant
  * cannot both match.

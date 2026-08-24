@@ -33,12 +33,33 @@ export const publishState = pgEnum("publish_state", ["draft", "published", "arch
  */
 export const completionMode = pgEnum("completion_mode", ["attest", "review"]);
 
+/**
+ * The lifecycle state of a Member's Submission for one Task (§22). `draft` and
+ * `cancelled` are appended (not reordered) so the migration is a plain
+ * `ALTER TYPE … ADD VALUE` rather than an enum rebuild.
+ *
+ * `draft`     — started, auto-saving, not yet submitted (§21).
+ * `pending`   — submitted, waiting in the review queue (§22 under-review).
+ * `accepted`  — an Editor accepted it; Points minted.
+ * `rejected`  — an Editor finally rejected it (terminal, §25).
+ * `returned`  — sent back for revision; the Member may submit again (§24).
+ * `cancelled` — the Member closed the draft; NOT a rejection (§21).
+ */
 export const submissionState = pgEnum("submission_state", [
   "pending",
   "accepted",
   "rejected",
   "returned",
+  "draft",
+  "cancelled",
 ]);
+
+/**
+ * An Editor's verdict on one attempt, recorded immutably in the attempt log
+ * (§25/§26). Distinct from `submission_state`: the state is the Submission's
+ * current position; a decision is what happened to a specific attempt.
+ */
+export const reviewDecision = pgEnum("review_decision", ["accepted", "returned", "rejected"]);
 
 export const track = pgTable(
   "track",
@@ -125,9 +146,15 @@ export const submission = pgTable(
     state: submissionState("state").notNull().default("pending"),
     /** An Editor's note back to the Member on reject or return. */
     reviewNote: text("review_note"),
-    reviewedBy: text("reviewed_by").references(() => user.id, {
-      onDelete: "set null",
-    }),
+    /**
+     * The Editor (a `user` with a staff role) who last reviewed this Submission.
+     * A real foreign key now that Payload is gone and editors are our own users
+     * (ADR 0023): reviewer and Member live in the same schema, so the database
+     * itself guarantees a reviewer id names a real person. No `onDelete` — a
+     * reviewer who has judged work cannot be dropped out from under the review;
+     * staff are anonymised, never hard-deleted, the same as Members (ADR 0016).
+     */
+    reviewedBy: text("reviewed_by").references(() => user.id),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -150,6 +177,66 @@ export const submission = pgTable(
   ],
 );
 
+/**
+ * The immutable log of a Submission's attempts (§26: attempts are never
+ * overwritten; §24: an Editor sees previous attempts and previous notes).
+ *
+ * The `submission` row holds the *current* state; each row here is one try,
+ * frozen at submit time — its `body`/`media_key` are a snapshot, so a later
+ * resubmission after a return does not erase what was reviewed before. An
+ * Editor's verdict is stamped back onto the attempt it judged.
+ */
+export const submissionAttempt = pgTable(
+  "submission_attempt",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => submission.id, { onDelete: "cascade" }),
+    /** 1-based sequence within a Submission, for display order (§24). */
+    attemptNo: integer("attempt_no").notNull(),
+    /** Snapshot of the answer at this attempt — immutable once written. */
+    body: text("body"),
+    /** Snapshot R2 key for this attempt's file; null if none. */
+    mediaKey: text("media_key"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
+    /** The Editor's verdict; null until this attempt is reviewed. */
+    decision: reviewDecision("decision"),
+    /** The note to the Member on a return or reject (§24). */
+    reviewNote: text("review_note"),
+    /** The graded value on accept (§25), ≤ the Task's points; null otherwise. */
+    earnedPoints: integer("earned_points"),
+    /** The reviewing Editor (a `user`); a real FK, as on `submission.reviewed_by`. */
+    reviewedBy: text("reviewed_by").references(() => user.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /** One row per attempt number within a Submission. */
+    uniqueIndex("submission_attempt_no_unique").on(t.submissionId, t.attemptNo),
+    /** The history read: all attempts of one Submission. */
+    index("submission_attempt_submission_idx").on(t.submissionId),
+    /**
+     * A reviewed attempt carries decision, reviewer and time together — the same
+     * all-or-nothing rule the Submission row uses, so a half-recorded review
+     * cannot exist.
+     */
+    check(
+      "attempt_reviewed_together",
+      sql`(${t.decision} is null) = (${t.reviewedAt} is null) and (${t.decision} is null) = (${t.reviewedBy} is null)`,
+    ),
+    /**
+     * Points are earned only on acceptance, and only as a positive value. The
+     * upper bound (≤ the Task's points) needs the Task row, so it is enforced in
+     * `acceptSubmission`, not here.
+     */
+    check(
+      "attempt_earned_only_on_accept",
+      sql`${t.earnedPoints} is null or (${t.decision} = 'accepted' and ${t.earnedPoints} > 0)`,
+    ),
+  ],
+);
+
 export const trackRelations = relations(track, ({ many }) => ({
   tasks: many(task, { relationName: "task_trackId" }),
 }));
@@ -163,7 +250,7 @@ export const taskRelations = relations(task, ({ one, many }) => ({
   submissions: many(submission, { relationName: "submission_taskId" }),
 }));
 
-export const submissionRelations = relations(submission, ({ one }) => ({
+export const submissionRelations = relations(submission, ({ one, many }) => ({
   task: one(task, {
     fields: [submission.taskId],
     references: [task.id],
@@ -174,9 +261,19 @@ export const submissionRelations = relations(submission, ({ one }) => ({
     references: [user.id],
     relationName: "submission_userId",
   }),
-  reviewer: one(user, {
-    fields: [submission.reviewedBy],
-    references: [user.id],
-    relationName: "submission_reviewedBy",
+  /**
+   * `reviewed_by` is a real FK into `user` now, but no `reviewer` relation is
+   * declared: the review reads join to it explicitly (and pull only the reviewer's
+   * name), which keeps `user` from needing a back-relation for every FK that
+   * points at it. The join lives in `review.ts`, not here.
+   */
+  attempts: many(submissionAttempt, { relationName: "attempt_submissionId" }),
+}));
+
+export const submissionAttemptRelations = relations(submissionAttempt, ({ one }) => ({
+  submission: one(submission, {
+    fields: [submissionAttempt.submissionId],
+    references: [submission.id],
+    relationName: "attempt_submissionId",
   }),
 }));

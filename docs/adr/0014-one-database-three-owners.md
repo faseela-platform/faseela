@@ -1,5 +1,7 @@
 # 14. One database, three owners, explicit boundaries
 
+> **Partly superseded (2026-08-24, [ADR 0023](./0023-editors-are-our-own-users-payload-removed.md)):** Payload is removed, so there are no longer three owners — Better Auth and `@faseela/db` migrate one `public` schema. The core finding here stands and is extended: a Member is the `user` row, and an Editor is now that same row with a staff role. The no-cross-schema-FK rule that forced `submission.reviewed_by` to be opaque text is lifted; reviewers are same-schema users and the column is now a real foreign key.
+
 Date: 2026-08-07
 
 ## Status

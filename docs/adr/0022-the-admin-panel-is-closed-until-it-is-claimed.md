@@ -1,5 +1,7 @@
 # 0022 — The admin panel is closed until it is claimed
 
+> **Superseded (2026-08-24, [ADR 0023](./0023-editors-are-our-own-users-payload-removed.md)):** Payload is removed, so its `/admin` panel and create-first-user screen no longer exist. The `ENABLE_ADMIN` gate and `scripts/verify-admin-gate.mjs` are deleted; the race this ADR closed cannot recur. Staff roles are now conferred on existing `user` rows, not claimed at a public screen.
+
 Date: 2026-08-07
 Status: Accepted
 

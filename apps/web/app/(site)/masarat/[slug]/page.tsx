@@ -3,13 +3,15 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { completedTaskIds, publishedTracks, trackBySlug } from "@faseela/db";
+import { completedTaskIds, memberSubmissions, publishedTracks, trackBySlug } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { r2IsConfigured } from "@/lib/r2";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
 import { AttestButton } from "../attest-button";
+import { ReviewPanel } from "../review-panel";
 
 /**
  * A single Track with its Tasks — the vertical slice's deepest page, and the
@@ -96,13 +98,18 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
    * button that the database would refuse.
    */
   const session = await auth.api.getSession({ headers: await headers() });
+  const taskIds = track.tasks.map((t) => t.id);
   const done = session?.user
-    ? await completedTaskIds(
-        db,
-        session.user.id,
-        track.tasks.map((t) => t.id),
-      )
+    ? await completedTaskIds(db, session.user.id, taskIds)
     : new Set<string>();
+
+  /**
+   * The Member's own Submissions for this Track's `review` Tasks, so each one
+   * renders in its true state — a draft to resume, work under review, a return to
+   * revise, or an accepted Task — rather than a bare form. Keyed by Task id.
+   */
+  const mySubmissions = session?.user ? await memberSubmissions(db, session.user.id, taskIds) : [];
+  const submissionByTask = new Map(mySubmissions.map((s) => [s.taskId, s]));
 
   return (
     <>
@@ -219,11 +226,11 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
                       </p>
 
                       {/*
-                       * Only `attest` Tasks get a button, because only they can be
-                       * completed today. A `review` Task shows what it is waiting
-                       * for instead of a disabled control: a greyed-out button
-                       * reads as something broken, while a sentence reads as
-                       * something not yet built.
+                       * `attest` Tasks get a button; `review` Tasks get the
+                       * submission panel — the two completion paths, each rendered
+                       * in the Member's own state. Signed-out readers get a sign-in
+                       * link either way, its `callbackURL` returning them to this
+                       * exact Track so completing a Task never costs two navigations.
                        */}
                       {task.mode === "attest" ? (
                         session?.user ? (
@@ -234,12 +241,6 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
                             alreadyDone={done.has(task.id)}
                           />
                         ) : (
-                          /*
-                           * Signed out. The link carries `callbackURL` so the
-                           * magic link returns the Member to this exact Track
-                           * rather than the home page — otherwise completing one
-                           * Task costs a sign-in plus two navigations.
-                           */
                           <Link
                             href={`/dukhul?callbackURL=/masarat/${track.slug}`}
                             className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
@@ -247,10 +248,23 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
                             سجّل دخولك لتأكيد الإنجاز
                           </Link>
                         )
+                      ) : session?.user ? (
+                        <ReviewPanel
+                          taskId={task.id}
+                          trackSlug={track.slug}
+                          state={submissionByTask.get(task.id)?.state ?? null}
+                          initialBody={submissionByTask.get(task.id)?.body ?? ""}
+                          initialMediaKey={submissionByTask.get(task.id)?.mediaKey ?? null}
+                          reviewNote={submissionByTask.get(task.id)?.reviewNote ?? null}
+                          r2Enabled={r2IsConfigured}
+                        />
                       ) : (
-                        <p className="text-caption text-[var(--ink-faint)]">
-                          باب الإرسال والمراجعة يُفتح قريباً.
-                        </p>
+                        <Link
+                          href={`/dukhul?callbackURL=/masarat/${track.slug}`}
+                          className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                        >
+                          سجّل دخولك لإرسال عملك
+                        </Link>
                       )}
                     </div>
                   </li>

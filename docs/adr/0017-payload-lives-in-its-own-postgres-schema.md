@@ -1,5 +1,7 @@
 # ADR 0017 — Payload lives in its own Postgres schema
 
+> **Superseded (2026-08-24, [ADR 0023](./0023-editors-are-our-own-users-payload-removed.md)):** Payload is removed entirely. The `payload` schema and its thirteen tables are dropped from Neon, and `verify-isolation.mjs` no longer has two schemas to hold apart. The whole apparatus this ADR describes is retired.
+
 - **Status:** Accepted
 - **Date:** 2026-08-07
 - **Supersedes nothing. Implements the boundary declared in** [ADR 0014](./0014-payload-owns-editorial-content-only.md)
@@ -8,7 +10,7 @@
 
 ADR 0014 established that Payload owns editorial content and `@faseela/db` owns the
 member domain — Members, Tracks, Tasks, Submissions, Seasons and the Point ledger.
-That ADR settled *who owns what*. It left open *how the boundary is enforced*, because
+That ADR settled _who owns what_. It left open _how the boundary is enforced_, because
 both halves share a single Neon database on the free plan and a second database is not
 available to us.
 
@@ -101,7 +103,7 @@ The frontend therefore moved into an `app/(site)/` route group with its own root
 alongside `app/(payload)/` with Payload's. Route groups do not appear in URLs, so `/` is
 unchanged. Payload's admin renders `dir="RTL" lang="ar"` from its own layout because
 `i18n.fallbackLanguage` is `ar` — Payload derives direction from the active locale,
-which is what makes the *field inputs* RTL. An Editor typing an Arabic Task title into
+which is what makes the _field inputs_ RTL. An Editor typing an Arabic Task title into
 an LTR input sees punctuation jump to the wrong end of the line and "fixes" it with
 characters that then ship to Members.
 

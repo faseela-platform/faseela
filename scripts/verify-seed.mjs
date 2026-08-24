@@ -224,16 +224,16 @@ async function main() {
   }
 
   /**
-   * The Season must contain now, or `currentSeason` returns null and
-   * `awardPoints` refuses to mint — which would make the whole Track page
-   * unable to award anything despite looking healthy.
+   * The Season must contain now, or `currentSeason` returns null and the mint
+   * paths refuse — which would make the whole Track page unable to award anything
+   * despite looking healthy.
    */
   const now = new Date();
   const active = seasons.rows.find((s) => s.starts_at <= now && s.ends_at > now);
   if (active) {
-    ok(`a season is active now (${active.slug}) so awardPoints can mint`);
+    ok(`a season is active now (${active.slug}) so Points can be minted`);
   } else {
-    fail("no season contains the current instant — awardPoints will refuse to mint");
+    fail("no season contains the current instant — minting will refuse");
   }
 
   /* ---- Referential sanity --------------------------------------------- */

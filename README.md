@@ -19,15 +19,15 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-machine.ps1
 
 ## Layout
 
-| Path | What lives there |
-|---|---|
-| `apps/web` | Next.js — public Feed, Tracks, landing page, Payload admin |
-| `apps/native` | Expo — iOS and Android |
-| `packages/` | Shared deep modules. See [packages/README.md](./packages/README.md) |
-| `docs/adr/` | Architectural decisions, numbered |
-| `docs/design/` | Design system and motion specification |
-| `.claude/skills/` | 64 installed agent skills |
-| `.scratch/` | Tickets, one file each |
+| Path              | What lives there                                                    |
+| ----------------- | ------------------------------------------------------------------- |
+| `apps/web`        | Next.js — public Feed, Tracks, landing page, Editor review surface  |
+| `apps/native`     | Expo — iOS and Android                                              |
+| `packages/`       | Shared deep modules. See [packages/README.md](./packages/README.md) |
+| `docs/adr/`       | Architectural decisions, numbered                                   |
+| `docs/design/`    | Design system and motion specification                              |
+| `.claude/skills/` | 64 installed agent skills                                           |
+| `.scratch/`       | Tickets, one file each                                              |
 
 ## Checks
 
