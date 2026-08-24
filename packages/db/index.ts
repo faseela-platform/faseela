@@ -48,6 +48,21 @@ export {
 export { seasonLeaderboard, type LeaderboardRow } from "./lib/leaderboard";
 export { currentSeason } from "./lib/seasons";
 /**
+ * The permission ladder (spec §45–49). Tiers are derived on read from **lifetime**
+ * Points against the Admin-editable thresholds in `member_tier` — standing that
+ * accumulates, distinct from the season-scoped Leaderboard (ranking). See ADR.
+ */
+export {
+  tierForPoints,
+  tierThresholds,
+  memberLifetimePoints,
+  memberTrackPoints,
+  memberProgress,
+  type Tier,
+  type TrackPoints,
+  type MemberProgress,
+} from "./lib/tiers";
+/**
  * The only sanctioned way to read Tracks for the public site. Exported as
  * functions rather than leaving pages to query `schema.track` themselves,
  * because every one of these carries the `state = 'published'` filter — and a

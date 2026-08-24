@@ -3,7 +3,13 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { completedTaskIds, memberSubmissions, publishedTracks, trackBySlug } from "@faseela/db";
+import {
+  completedTaskIds,
+  memberProgress,
+  memberSubmissions,
+  publishedTracks,
+  trackBySlug,
+} from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -111,9 +117,17 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
   const mySubmissions = session?.user ? await memberSubmissions(db, session.user.id, taskIds) : [];
   const submissionByTask = new Map(mySubmissions.map((s) => [s.taskId, s]));
 
+  /** The Member's tier (lifetime), for the nav badge. */
+  const tier = session?.user ? (await memberProgress(db, session.user.id)).tier.name : null;
+
   return (
     <>
-      <Nav current="/masarat" signedIn={Boolean(session?.user)} memberName={session?.user?.name} />
+      <Nav
+        current="/masarat"
+        signedIn={Boolean(session?.user)}
+        memberName={session?.user?.name}
+        tier={tier}
+      />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           {/*

@@ -5,15 +5,16 @@ invariants.
 
 ## What lives here
 
-| Module               | Owns                                                                      |
-| -------------------- | ------------------------------------------------------------------------- |
-| `lib/identity.ts`    | `user`, `session`, `account`, `verification` — **Better Auth's tables**   |
-| `lib/content.ts`     | `track`, `task`, `submission`, `submission_attempt` — the review objects  |
-| `lib/progress.ts`    | `season`, `point_award` — the Point ledger                                |
-| `lib/attest.ts`      | `attestTask` — the attest mint (a Member's declaration)                   |
-| `lib/review.ts`      | the review lifecycle: `submitWork` → `acceptSubmission` (the review mint) |
-| `lib/leaderboard.ts` | `seasonLeaderboard` — Season-scoped ranking                               |
-| `lib/seasons.ts`     | `currentSeason` — resolves the Season containing an instant               |
+| Module               | Owns                                                                       |
+| -------------------- | -------------------------------------------------------------------------- |
+| `lib/identity.ts`    | `user`, `session`, `account`, `verification` — **Better Auth's tables**    |
+| `lib/content.ts`     | `track`, `task`, `submission`, `submission_attempt` — the review objects   |
+| `lib/progress.ts`    | `season`, `point_award`, `member_tier` — the ledger + the tier ladder      |
+| `lib/attest.ts`      | `attestTask` — the attest mint (a Member's declaration)                    |
+| `lib/review.ts`      | the review lifecycle: `submitWork` → `acceptSubmission` (the review mint)  |
+| `lib/leaderboard.ts` | `seasonLeaderboard` — Season-scoped ranking                                |
+| `lib/seasons.ts`     | `currentSeason` — resolves the Season containing an instant                |
+| `lib/tiers.ts`       | the permission ladder: `memberProgress`, `tierForPoints` (derived on read) |
 
 Consumers import from `@faseela/db` and never from `lib/`. This is enforced, not
 requested — see `packages/README.md`.

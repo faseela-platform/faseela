@@ -18,7 +18,7 @@ _Avoid_: department, division, team
 
 **Circle** (دائرة استهداف):
 One of the seven concentric audience bands the Initiative targets, from its own core outward to the general public. Determines who content is aimed at, not who may read it.
-_Avoid_: segment, tier, audience group
+_Avoid_: segment, audience group — and do not confuse with a **Tier** (a Member's earned permission level; a Circle is targeting, not standing).
 
 ### Content and journeys
 
@@ -81,6 +81,14 @@ _Avoid_: competition, event, cycle, sprint, contest
 **Leaderboard** (لوحة الصدارة):
 The ranking of Members by Points earned within one Season. Always scoped to a Season; a lifetime ranking is a different thing and does not exist.
 _Avoid_: ranking, standings, top list
+
+**Tier** (رتبة):
+A Member's standing on the permission ladder — زائر → عام → خاص → متقدم → فسيلي — reached by accumulating Points and unlocking capabilities as it rises (spec §45–49). Derived on read from **lifetime** Points (all Seasons), so unlike the season-scoped Leaderboard a Tier only ever climbs; it is never demoted by a Season ending. See ADR 0024. Distinct from a **Role** (authority: member/editor/admin, granted) and from a **Circle** (who content is aimed at). The thresholds are Admin-editable (§46).
+_Avoid_: role, level, rank, Circle
+
+**Progress** (التقدم):
+A Member's current Tier, lifetime Points, and how far the next Tier is — what the profile page (`/hisabi`) shows (spec §48 Phase 1). The read is `memberProgress`.
+_Avoid_: standings, score, ranking
 
 **Service Request** (طلب خدمة):
 An inbound approach from outside the Initiative — a volunteering offer, a suggestion, or a request for scholarly, technical, or media support.

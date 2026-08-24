@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { submissionForReview } from "@faseela/db";
+import { memberProgress, submissionForReview } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { presignGetUrl, r2IsConfigured } from "@/lib/r2";
@@ -57,6 +57,9 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
   const detail = await submissionForReview(db, id);
   if (!detail) notFound();
 
+  /** An Editor is a Member too, so their own tier shows in the nav as everywhere. */
+  const tier = (await memberProgress(db, editor.id)).tier.name;
+
   /**
    * Presigned read URLs for any attached files, minted now and short-lived, so an
    * Editor can open a Member's file without the bucket being public. Built on the
@@ -71,7 +74,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <Nav current="/muraja3a" signedIn memberName={editor.name} />
+      <Nav current="/muraja3a" signedIn memberName={editor.name} tier={tier} />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           <Link

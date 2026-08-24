@@ -40,15 +40,22 @@ const links = [
  * session read. Present → shown as the Member's identity; empty (a magic-link
  * account that hasn't completed §5 yet) → replaced by an "أكمل حسابك" prompt, so
  * a nameless Member always has a visible route to finish their account.
+ *
+ * `tier` is the Member's current tier name (Slice 3), also passed in — the nav
+ * never computes it, for the same reason it never reads the session. Present → a
+ * small badge beside the name; absent → just the name, so a page that does not
+ * compute the tier (most of them) simply omits the badge.
  */
 export function Nav({
   current,
   signedIn = false,
   memberName = null,
+  tier = null,
 }: {
   current?: string;
   signedIn?: boolean;
   memberName?: string | null;
+  tier?: string | null;
 }) {
   return (
     <header className="gutter sticky top-0 z-50 border-b border-[var(--hairline)] bg-[color-mix(in_oklch,var(--surface)_88%,transparent)] backdrop-blur-md">
@@ -126,15 +133,26 @@ export function Nav({
         {signedIn ? (
           <div className="flex shrink-0 items-center gap-4">
             {/*
-             * Identity, not a profile link. Spec §30 keeps profiles minimal in
-             * v1, so the name is shown as plain text — enough for a Member to
-             * know they are signed in and as whom. A nameless account instead
-             * gets the prompt that leads to the §5 completion step.
+             * The Member's name, now a link to their profile (`/hisabi`) — Slice 3
+             * gives the "minimal profile" §30 allowed a home to live at, so the name
+             * finally has somewhere to lead. A tier badge sits beside it when the
+             * page passed one. A nameless account instead gets the prompt that leads
+             * to the §5 completion step.
              */}
             {memberName && memberName.trim() ? (
-              <span className="text-body-sm max-w-[10rem] truncate font-medium text-[var(--ink)]">
-                {memberName}
-              </span>
+              <Link
+                href="/hisabi"
+                className="flex items-center gap-2 transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+              >
+                <span className="text-body-sm max-w-[9rem] truncate font-medium text-[var(--ink)]">
+                  {memberName}
+                </span>
+                {tier ? (
+                  <span className="text-caption rounded-full bg-[color-mix(in_oklch,var(--brand)_12%,transparent)] px-2 py-0.5 font-semibold text-[var(--brand)]">
+                    {tier}
+                  </span>
+                ) : null}
+              </Link>
             ) : (
               <Link
                 href="/akmil-hisabak"

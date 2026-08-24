@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 
-import { currentSeason, memberSeasonPoints, seasonLeaderboard } from "@faseela/db";
+import { currentSeason, memberProgress, memberSeasonPoints, seasonLeaderboard } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -88,10 +88,18 @@ export default async function LeaderboardPage() {
    */
   const myPoints = session?.user ? await memberSeasonPoints(db, session.user.id, season.id) : null;
   const myRow = session?.user ? rows.find((r) => r.userId === session.user.id) : undefined;
+  /** The reader's tier (lifetime), for the nav badge — distinct from their
+   * season Points above. */
+  const tier = session?.user ? (await memberProgress(db, session.user.id)).tier.name : null;
 
   return (
     <>
-      <Nav current="/lawha" signedIn={Boolean(session?.user)} memberName={session?.user?.name} />
+      <Nav
+        current="/lawha"
+        signedIn={Boolean(session?.user)}
+        memberName={session?.user?.name}
+        tier={tier}
+      />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           <div className="reveal max-w-3xl">

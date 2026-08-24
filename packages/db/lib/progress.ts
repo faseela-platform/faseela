@@ -99,7 +99,46 @@ export const pointAward = pgTable(
     /** Covers the Leaderboard aggregate: sum(points) per user within a season. */
     index("point_award_season_user_idx").on(t.seasonId, t.userId),
     index("point_award_user_awarded_idx").on(t.userId, t.awardedAt),
+    /**
+     * Covers the per-track lifetime aggregate (the permission ladder's profile):
+     * sum(points) for one Member, joined to Task by `task_id` and grouped by Track.
+     * Added with Slice 3 — the season/user index above does not serve a task join.
+     */
+    index("point_award_user_task_idx").on(t.userId, t.taskId),
     check("point_award_points_positive", sql`${t.points} > 0`),
+  ],
+);
+
+/**
+ * The permission ladder (spec §45–49): accumulated Points become *standing*.
+ *
+ * A Member's tier is **not stored** — it is computed on read from their lifetime
+ * Points against these thresholds (ADR 0015: a derived value kept as a column
+ * drifts). What lives here is the *ladder itself* — the tiers and the Points each
+ * one requires — because §46 makes those thresholds an Admin-editable setting, not
+ * a constant. Editing a `min_points` re-tiers every Member on their next read, with
+ * no migration. Distinct from `user.role` (authority): a role is granted, a tier is
+ * earned. The tier functions live in `./tiers.ts`.
+ */
+export const memberTier = pgTable(
+  "member_tier",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /**
+     * Stable machine key (`visitor`/`general`/…). Code refers to a tier by this,
+     * never by its Arabic name — so an Admin renaming a tier cannot break a gate.
+     */
+    key: text("key").notNull().unique(),
+    /** Arabic display name; Admin-editable (§46). */
+    name: text("name").notNull(),
+    /** Lifetime-Points needed to reach this tier; Admin-editable (§46). */
+    minPoints: integer("min_points").notNull(),
+    /** Rank low→high. The tier for a Points total is the highest one it meets. */
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    uniqueIndex("member_tier_position_unique").on(t.position),
+    check("member_tier_min_points_nonneg", sql`${t.minPoints} >= 0`),
   ],
 );
 
