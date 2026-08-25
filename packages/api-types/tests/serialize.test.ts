@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { toApiLeaderboardRow, toApiSeason, toApiTrackDetail, toApiTrackSummary } from "../index.js";
+import {
+  toApiContentItem,
+  toApiLeaderboardRow,
+  toApiMemberProfile,
+  toApiProgress,
+  toApiSeason,
+  toApiTrackDetail,
+  toApiTrackSummary,
+} from "../index.js";
 
 /**
  * The serializers exist for one reason: the wire cannot carry a `Date`. Every
@@ -147,5 +155,96 @@ describe("toApiTrackDetail", () => {
         },
       ],
     });
+  });
+});
+
+describe("toApiProgress", () => {
+  it("flattens the tier to its name and passes the next-tier gap through", () => {
+    expect(
+      toApiProgress({
+        tier: { name: "عام" },
+        points: 120,
+        nextTier: { name: "خاص" },
+        pointsToNext: 80,
+      }),
+    ).toEqual({ tier: "عام", points: 120, nextTier: "خاص", pointsToNext: 80 });
+  });
+
+  it("carries a null next tier (top of the ladder) through as null", () => {
+    const p = toApiProgress({
+      tier: { name: "فسيلي" },
+      points: 1000,
+      nextTier: null,
+      pointsToNext: null,
+    });
+    expect(p.nextTier).toBeNull();
+    expect(p.pointsToNext).toBeNull();
+  });
+});
+
+describe("toApiMemberProfile", () => {
+  it("passes name/phone through and carries the completeness flag the caller decided", () => {
+    expect(toApiMemberProfile({ name: "سارة", phoneNumber: "70123456" }, true)).toEqual({
+      name: "سارة",
+      phoneNumber: "70123456",
+      complete: true,
+    });
+    expect(toApiMemberProfile({ name: "", phoneNumber: null }, false).complete).toBe(false);
+  });
+});
+
+describe("toApiContentItem", () => {
+  it("converts the dates to ISO, takes the image URL as a param, and drops the mediaKey", () => {
+    const dbRow = {
+      id: "c-1",
+      type: "event",
+      title: "لقاء القراءة",
+      body: "نصّ",
+      classification: "أدب",
+      mediaKey: "content/c-1/x.png",
+      taskId: null,
+      trackId: "t-1",
+      linkUrl: null,
+      eventAt: new Date(Date.UTC(2026, 2, 10, 17, 0, 0)),
+      eventPlace: "بيروت",
+      publishedAt: new Date(Date.UTC(2026, 2, 1, 8, 0, 0)),
+      trackSlug: "reading-groups",
+      trackTitle: "حلقات القراءة",
+    };
+    expect(toApiContentItem(dbRow, "https://signed.example/x.png")).toEqual({
+      id: "c-1",
+      type: "event",
+      title: "لقاء القراءة",
+      body: "نصّ",
+      classification: "أدب",
+      imageUrl: "https://signed.example/x.png",
+      linkUrl: null,
+      eventAt: "2026-03-10T17:00:00.000Z",
+      eventPlace: "بيروت",
+      publishedAt: "2026-03-01T08:00:00.000Z",
+      trackSlug: "reading-groups",
+      trackTitle: "حلقات القراءة",
+    });
+  });
+
+  it("carries a null image through as null", () => {
+    expect(
+      toApiContentItem(
+        {
+          id: "c-2",
+          type: "news",
+          title: "خبر",
+          body: "ن",
+          classification: null,
+          linkUrl: "https://faseela.example",
+          eventAt: null,
+          eventPlace: null,
+          publishedAt: new Date(Date.UTC(2026, 0, 1)),
+          trackSlug: null,
+          trackTitle: null,
+        },
+        null,
+      ).imageUrl,
+    ).toBeNull();
   });
 });

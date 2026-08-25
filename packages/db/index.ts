@@ -17,7 +17,13 @@ export { createClient, type Database } from "./lib/client";
  * Points come into existence, and seeing them together is what stops a third
  * being written at a call site.
  */
-export { attestTask, completedTaskIds, memberSeasonPoints, type AttestResult } from "./lib/attest";
+export {
+  attestTask,
+  completedTaskIds,
+  memberCompletedTaskIds,
+  memberSeasonPoints,
+  type AttestResult,
+} from "./lib/attest";
 /**
  * The `review` completion path (spec §16–§26): a Member submits, an Editor decides,
  * and acceptance mints graded Points. `acceptSubmission` is the review-mode mint,

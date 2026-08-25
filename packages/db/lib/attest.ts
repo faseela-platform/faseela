@@ -204,6 +204,20 @@ export async function completedTaskIds(
 }
 
 /**
+ * Every Task this Member has completed (an accepted Submission), unfiltered — for
+ * the mobile `/me` read, where the app marks done-state across whatever Tracks it
+ * shows without naming the Task ids up front. Same `state = 'accepted'` rule as
+ * `completedTaskIds`, just without the id filter.
+ */
+export async function memberCompletedTaskIds(db: Database, userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ taskId: submission.taskId })
+    .from(submission)
+    .where(and(eq(submission.userId, userId), eq(submission.state, "accepted")));
+  return rows.map((r) => r.taskId);
+}
+
+/**
  * A Member's total Points in one Season.
  *
  * Summed from the ledger on every call rather than cached on the user row. The

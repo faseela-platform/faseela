@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.26",
+    "@better-auth/expo": "1.6.26",
     "@faseela/api-types": "workspace:*",
     "@faseela/db": "workspace:*",
     "@faseela/tokens": "workspace:*",

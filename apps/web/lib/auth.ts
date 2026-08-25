@@ -1,11 +1,13 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { expo } from "@better-auth/expo";
 import { createClient, schema } from "@faseela/db";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { magicLink } from "better-auth/plugins";
+import { bearer, emailOTP, magicLink } from "better-auth/plugins";
 
 import { sendEmail } from "./email";
 import { magicLinkEmail } from "./magic-link-email";
+import { otpEmail } from "./otp-email";
 
 /**
  * The server-side auth instance. Import this from Server Components, Server
@@ -36,6 +38,15 @@ const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 
 export const auth = betterAuth({
   baseURL,
+
+  /**
+   * Native (Expo) clients sign in over a bearer token, not a cookie, and the
+   * magic-link verify redirects back into the app by URL scheme. The web app is the
+   * `baseURL` (trusted by default); the mobile app's `faseela://` scheme — and
+   * Expo Go's `exp://` dev origin — must be trusted explicitly, or Better Auth
+   * rejects the sign-in callback as an untrusted redirect. Web sign-in is unaffected.
+   */
+  trustedOrigins: ["faseela://", "exp://"],
 
   /**
    * Signs session cookies and magic-link tokens. Distinct from `PAYLOAD_SECRET`
@@ -135,6 +146,39 @@ export const auth = betterAuth({
         await sendEmail({ to: email, subject, text, html });
       },
     }),
+
+    /**
+     * One-time sign-in codes for the mobile app (§1/§5). The phone requests a code,
+     * receives it by email (the same Resend transport as the magic link above), and
+     * types it in — chosen over an emailed link because the Expo client cannot
+     * reliably deep-link an inbound email link back into the app. Web sign-in is
+     * unaffected; it keeps using the magic link.
+     */
+    emailOTP({
+      otpLength: 6,
+      /** Ten minutes, matching the magic link — same Lebanese-mobile reasoning. */
+      expiresIn: 60 * 10,
+      async sendVerificationOTP({ email, otp }) {
+        const { subject, text, html } = otpEmail({ otp });
+        await sendEmail({ to: email, subject, text, html });
+      },
+    }),
+
+    /**
+     * Native (Expo) auth. Stores the session as a token the React Native client keeps
+     * in `expo-secure-store` and replays on each request, because a phone has no
+     * cookie jar. The web cookie flow is untouched — this plugin only engages for
+     * requests the Expo client originates.
+     */
+    expo(),
+
+    /**
+     * Accept `Authorization: Bearer <token>` as a session, so the mobile client can
+     * authenticate its API calls with the token the expo flow gave it. Cookie and
+     * bearer sessions coexist; enabling this changes nothing for the web app, which
+     * keeps using the cookie.
+     */
+    bearer(),
 
     /**
      * Must remain last in this array. It reads `Set-Cookie` off the response and
