@@ -61,6 +61,29 @@ export const submissionState = pgEnum("submission_state", [
  */
 export const reviewDecision = pgEnum("review_decision", ["accepted", "returned", "rejected"]);
 
+/**
+ * The kind of a content piece (§33). One `content_item` entity carries them all,
+ * discriminated by this type, rather than a table each — §33 defines a single
+ * content model identified *by* its type, and the Feed (§3) is one merged stream,
+ * so a union of separate tables would be the wrong shape. Kept tight: a
+ * `track_launch` is an `announcement`, cultural scene (§3.4) is `cultural`.
+ *
+ * `announcement` — a short, time-bound notice pointing at an Event or Track (إعلان).
+ * `product`      — a finished cultural artefact under a Track (منتج).
+ * `event`        — a gathering with a time and place (فعالية); uses `event_at`/`event_place`.
+ * `news`         — initiative news (أخبار المبادرة / برامج التأهيل / هيئات الإنتاج).
+ * `cultural`     — the wider cultural scene (§3.4): material with no home Track.
+ * `app_update`   — a platform change worth surfacing (تحديثات التطبيق).
+ */
+export const contentType = pgEnum("content_type", [
+  "announcement",
+  "product",
+  "event",
+  "news",
+  "cultural",
+  "app_update",
+]);
+
 export const track = pgTable(
   "track",
   {
@@ -267,6 +290,78 @@ export const trackSupervisor = pgTable(
     uniqueIndex("track_supervisor_unique").on(t.trackId, t.userId),
     /** The scope read: which Tracks does this Editor supervise. */
     index("track_supervisor_user_idx").on(t.userId),
+  ],
+);
+
+/**
+ * A piece of published content (§33) — the unified model behind the Feed / home
+ * page (§3). One entity for every kind (Announcement, Product, Event, News, the
+ * cultural scene, app updates), discriminated by `type`, because §33 defines a
+ * single content model identified by its type, source, Track (if any),
+ * classification, availability, task-link, dates, state and creator.
+ *
+ * Deliberately mirrors `track`/`task`: the same `publish_state`, the same
+ * `published_at` biconditional, so publishing content behaves exactly as
+ * publishing a Track does. Content may be track-less (§33: "content can be
+ * track-less if it is general Faseela content"), which is why `track_id` is
+ * nullable — and track-less authoring is admin-only (no Track owner to scope to).
+ */
+export const contentItem = pgTable(
+  "content_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: contentType("type").notNull(),
+    /** Arabic is the source language of the domain, so the plain columns are Arabic. */
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** §33 المصدر — free text for now (which programme/wing); Wing modeling deferred. */
+    source: text("source"),
+    /** §33 المسار: content belongs to a Track, or is track-less general content. */
+    trackId: uuid("track_id").references(() => track.id, { onDelete: "cascade" }),
+    /** §33 التصنيف — an optional topic/category tag. */
+    classification: text("classification"),
+    /**
+     * §33 درجة الإتاحة — the minimum Tier that may see this, by tier key; null = public.
+     * Modeled now (the field the spec requires) but not yet *enforced*: the first
+     * content is public, and the `requireTier` seam held since Slice 3 is built when
+     * special/level content (§43) actually exists. No FK to `member_tier` — a tier
+     * key is a stable identifier and content must not block on a threshold row.
+     */
+    minTier: text("min_tier"),
+    /** §33 ارتباطها بمهمة — an optional Task this content relates to. */
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "set null" }),
+    /** Optional R2 object key for an image/poster; rendered via a presigned GET. */
+    mediaKey: text("media_key"),
+    /** Optional outbound link — Channels are links, never ingested (ADR 0013). */
+    linkUrl: text("link_url"),
+    /** For `event` content: when and where (حضوري/مجازي). Both optional. */
+    eventAt: timestamp("event_at", { withTimezone: true }),
+    eventPlace: text("event_place"),
+    state: publishState("state").notNull().default("draft"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    /**
+     * §33 الجهة التي أنشأتها — the authoring Editor/Admin (a `user`). A real FK, no
+     * `onDelete`: an author who has published cannot be dropped out from under their
+     * content; staff are anonymised, never hard-deleted (ADR 0016), the same as
+     * `submission.reviewed_by`.
+     */
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /** The Feed read: published, newest first. */
+    index("content_item_feed_idx").on(t.state, t.publishedAt),
+    /** A Track's own content (its Products/Events) — for the Track page later. */
+    index("content_item_track_idx").on(t.trackId),
+    index("content_item_type_idx").on(t.type),
+    /** The same publish invariant as `track`/`task`: published ⇔ has a publish date. */
+    check(
+      "content_item_published_has_date",
+      sql`(${t.state} = 'published') = (${t.publishedAt} is not null)`,
+    ),
   ],
 );
 

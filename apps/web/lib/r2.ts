@@ -78,6 +78,21 @@ export function submissionMediaKey(taskId: string, userId: string, filename: str
 }
 
 /**
+ * The object key for a content piece's image/poster (§3 Feed media).
+ *
+ * `content/{contentId}/{uuid}.{ext}` — namespaced by the content id, with a fresh
+ * random id per upload so replacing an image never overwrites the old object mid-use.
+ * Unlike a submission, content media is authored by staff and shown on the public
+ * Feed; it still lives in the same private bucket and is served through a presigned
+ * GET (the home is `force-dynamic`, so a per-request short-lived URL is fine).
+ */
+export function contentMediaKey(contentId: string, filename: string): string {
+  const match = /\.([A-Za-z0-9]{1,8})$/.exec(filename);
+  const ext = match ? `.${match[1]!.toLowerCase()}` : "";
+  return `content/${contentId}/${crypto.randomUUID()}${ext}`;
+}
+
+/**
  * Sign an object URL as a presigned query for one method, valid for `expiresIn`
  * seconds. Content-type is deliberately never bound into the signature: it would
  * force the client to send a byte-exact match, a common source of opaque 403s, for

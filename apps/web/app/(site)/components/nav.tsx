@@ -12,6 +12,7 @@ import { SignOutButton } from "./sign-out-button";
  * animations have settled.
  */
 const links = [
+  { label: "المستجدّات", href: "/mustajaddat", route: true },
   { label: "المسارات", href: "/masarat", route: true },
   { label: "لوحة الموسم", href: "/lawha", route: true },
   { label: "من نحن", href: "/#about", route: false },

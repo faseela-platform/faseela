@@ -1,7 +1,7 @@
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 
-import type { Database } from "./client";
-import { task, track, trackSupervisor } from "./content";
+import type { Database, Queryable } from "./client";
+import { contentItem, task, track, trackSupervisor } from "./content";
 import { pointAward } from "./progress";
 
 /**
@@ -395,4 +395,279 @@ export async function adminTrack(db: Database, id: string): Promise<AdminTrackDe
     .orderBy(asc(task.position));
 
   return { ...head, tasks };
+}
+
+// ---------------------------------------------------------------- Content
+
+/**
+ * Authoring the unified content entity (§33) — the pieces the Feed / home renders
+ * (§3). Same shape as the Track/Task writes above: the `published_at` biconditional
+ * is honoured on every state change, results are unions, and *who* may call is
+ * enforced one layer up (§36) — track-scoped content by the Track's supervisor,
+ * track-less content by an Admin.
+ */
+
+export type ContentType =
+  | "announcement"
+  | "product"
+  | "event"
+  | "news"
+  | "cultural"
+  | "app_update";
+
+/** The fields an author sets. `createdBy` is passed separately (from the session),
+ * never the form. `null` clears an optional column; `undefined` leaves it. */
+export type ContentInput = {
+  type: ContentType;
+  title: string;
+  body: string;
+  source?: string | null;
+  trackId?: string | null;
+  classification?: string | null;
+  minTier?: string | null;
+  taskId?: string | null;
+  mediaKey?: string | null;
+  linkUrl?: string | null;
+  eventAt?: Date | null;
+  eventPlace?: string | null;
+};
+
+export type CreateContentResult =
+  | { status: "created"; id: string }
+  | { status: "invalid" }
+  | { status: "track-not-found" }
+  | { status: "task-not-found" };
+
+/**
+ * Confirm the optional Track and Task a piece of content points at actually exist,
+ * so a bad id becomes a clean status rather than a raw foreign-key error. Runs
+ * inside the caller's transaction.
+ */
+async function contentRefsExist(
+  tx: Queryable,
+  trackId: string | null | undefined,
+  taskId: string | null | undefined,
+): Promise<"ok" | "track-not-found" | "task-not-found"> {
+  if (trackId) {
+    const [t] = await tx.select({ id: track.id }).from(track).where(eq(track.id, trackId)).limit(1);
+    if (!t) return "track-not-found";
+  }
+  if (taskId) {
+    const [t] = await tx.select({ id: task.id }).from(task).where(eq(task.id, taskId)).limit(1);
+    if (!t) return "task-not-found";
+  }
+  return "ok";
+}
+
+export async function createContentItem(
+  db: Database,
+  input: ContentInput & { createdBy: string },
+  at: Date = new Date(),
+): Promise<CreateContentResult> {
+  if (input.title.trim() === "" || input.body.trim() === "") return { status: "invalid" };
+
+  return db.transaction(async (tx) => {
+    const refs = await contentRefsExist(tx, input.trackId, input.taskId);
+    if (refs !== "ok") return { status: refs };
+
+    const [inserted] = await tx
+      .insert(contentItem)
+      .values({
+        type: input.type,
+        title: input.title,
+        body: input.body,
+        source: input.source ?? null,
+        trackId: input.trackId ?? null,
+        classification: input.classification ?? null,
+        minTier: input.minTier ?? null,
+        taskId: input.taskId ?? null,
+        mediaKey: input.mediaKey ?? null,
+        linkUrl: input.linkUrl ?? null,
+        eventAt: input.eventAt ?? null,
+        eventPlace: input.eventPlace ?? null,
+        state: "draft",
+        createdBy: input.createdBy,
+        createdAt: at,
+        updatedAt: at,
+      })
+      .returning({ id: contentItem.id });
+    if (!inserted) throw new Error("content insert returned no row");
+    return { status: "created", id: inserted.id };
+  });
+}
+
+export type UpdateContentResult =
+  | { status: "updated" }
+  | { status: "not-found" }
+  | { status: "invalid" }
+  | { status: "track-not-found" }
+  | { status: "task-not-found" };
+
+export async function updateContentItem(
+  db: Database,
+  id: string,
+  input: Partial<ContentInput>,
+  at: Date = new Date(),
+): Promise<UpdateContentResult> {
+  if (input.title !== undefined && input.title.trim() === "") return { status: "invalid" };
+  if (input.body !== undefined && input.body.trim() === "") return { status: "invalid" };
+
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: contentItem.id })
+      .from(contentItem)
+      .where(eq(contentItem.id, id))
+      .limit(1);
+    if (!existing) return { status: "not-found" };
+
+    const refs = await contentRefsExist(tx, input.trackId, input.taskId);
+    if (refs !== "ok") return { status: refs };
+
+    await tx
+      .update(contentItem)
+      .set({
+        ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.body !== undefined ? { body: input.body } : {}),
+        ...(input.source !== undefined ? { source: input.source } : {}),
+        ...(input.trackId !== undefined ? { trackId: input.trackId } : {}),
+        ...(input.classification !== undefined ? { classification: input.classification } : {}),
+        ...(input.minTier !== undefined ? { minTier: input.minTier } : {}),
+        ...(input.taskId !== undefined ? { taskId: input.taskId } : {}),
+        ...(input.mediaKey !== undefined ? { mediaKey: input.mediaKey } : {}),
+        ...(input.linkUrl !== undefined ? { linkUrl: input.linkUrl } : {}),
+        ...(input.eventAt !== undefined ? { eventAt: input.eventAt } : {}),
+        ...(input.eventPlace !== undefined ? { eventPlace: input.eventPlace } : {}),
+        updatedAt: at,
+      })
+      .where(eq(contentItem.id, id));
+    return { status: "updated" };
+  });
+}
+
+/**
+ * Move a content piece between states, keeping the `published_at` invariant exactly
+ * as `setTrackState` does: publishing stamps the date (or keeps the one it had, so
+ * re-publishing never rewrites history), archiving/unpublishing clears it. Returns
+ * false for a missing item.
+ */
+async function setContentState(
+  db: Database,
+  id: string,
+  state: "published" | "archived" | "draft",
+  at: Date,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ publishedAt: contentItem.publishedAt })
+      .from(contentItem)
+      .where(eq(contentItem.id, id))
+      .limit(1);
+    if (!row) return false;
+    const publishedAt = state === "published" ? (row.publishedAt ?? at) : null;
+    await tx
+      .update(contentItem)
+      .set({ state, publishedAt, updatedAt: at })
+      .where(eq(contentItem.id, id));
+    return true;
+  });
+}
+
+export async function publishContentItem(db: Database, id: string, at: Date = new Date()) {
+  return (await setContentState(db, id, "published", at))
+    ? ({ status: "published" } as const)
+    : ({ status: "not-found" } as const);
+}
+export async function archiveContentItem(db: Database, id: string, at: Date = new Date()) {
+  return (await setContentState(db, id, "archived", at))
+    ? ({ status: "archived" } as const)
+    : ({ status: "not-found" } as const);
+}
+export async function unpublishContentItem(db: Database, id: string, at: Date = new Date()) {
+  return (await setContentState(db, id, "draft", at))
+    ? ({ status: "unpublished" } as const)
+    : ({ status: "not-found" } as const);
+}
+
+/**
+ * Delete a content piece. Unlike a Task, content carries no Point awards (the ledger
+ * references Tasks, not content), so there is nothing to protect — a plain delete,
+ * guarded only for a clean not-found.
+ */
+export async function deleteContentItem(
+  db: Database,
+  id: string,
+): Promise<{ status: "deleted" } | { status: "not-found" }> {
+  const deleted = await db
+    .delete(contentItem)
+    .where(eq(contentItem.id, id))
+    .returning({ id: contentItem.id });
+  return deleted.length > 0 ? { status: "deleted" } : { status: "not-found" };
+}
+
+/**
+ * The Track a content piece belongs to — so a content action can gate on scope. The
+ * outer `null` means the piece does not exist; an inner `trackId: null` means it is
+ * track-less (general Faseela content), which the gate treats as admin-only.
+ */
+export async function contentTrackId(
+  db: Database,
+  id: string,
+): Promise<{ trackId: string | null } | null> {
+  const [row] = await db
+    .select({ trackId: contentItem.trackId })
+    .from(contentItem)
+    .where(eq(contentItem.id, id))
+    .limit(1);
+  return row ? { trackId: row.trackId } : null;
+}
+
+export type AdminContentRow = {
+  id: string;
+  type: ContentType;
+  title: string;
+  state: "draft" | "published" | "archived";
+  trackId: string | null;
+  trackTitle: string | null;
+  publishedAt: Date | null;
+  updatedAt: Date;
+};
+
+/**
+ * Every content piece, whatever its state, newest first — the authoring list. Scoped
+ * to one supervisor's Tracks when `supervisorId` is given (§35): the `exists` filter
+ * on `track_id` naturally drops track-less content, which only an Admin may manage.
+ */
+export async function adminContentItems(
+  db: Database,
+  opts?: { supervisorId?: string },
+): Promise<AdminContentRow[]> {
+  const base = db
+    .select({
+      id: contentItem.id,
+      type: contentItem.type,
+      title: contentItem.title,
+      state: contentItem.state,
+      trackId: contentItem.trackId,
+      trackTitle: track.title,
+      publishedAt: contentItem.publishedAt,
+      updatedAt: contentItem.updatedAt,
+    })
+    .from(contentItem)
+    .leftJoin(track, eq(track.id, contentItem.trackId))
+    .$dynamic();
+
+  const scoped = opts?.supervisorId
+    ? base.where(
+        sql`exists (select 1 from ${trackSupervisor} ts where ts.track_id = ${contentItem.trackId} and ts.user_id = ${opts.supervisorId})`,
+      )
+    : base;
+
+  return scoped.orderBy(desc(contentItem.updatedAt));
+}
+
+/** One content piece with every field — the authoring detail view. */
+export async function adminContentItem(db: Database, id: string) {
+  const [row] = await db.select().from(contentItem).where(eq(contentItem.id, id)).limit(1);
+  return row ?? null;
 }

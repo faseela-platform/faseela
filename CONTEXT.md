@@ -38,6 +38,10 @@ _Avoid_: entry, answer, response, upload
 An Editor's decision on a Submission: accepted, rejected, or returned for revision. Accepting a Submission is what mints its Points.
 _Avoid_: approval, moderation, grading
 
+**Content** (محتوى):
+The unified entity behind the Feed and home page (§33): one record for every published piece — an Announcement, a Product, an Event, News, or general cultural material — distinguished by its **type**, not modelled as a table each (ADR 0026). Content may belong to a Track or be **track-less** (general Faseela content). One entity, one publish lifecycle (the same `published_at` rule as a Track). Product, Announcement and Event below are *types* of Content, kept as distinct semantic terms.
+_Avoid_: post, article, item, feed item — and do not give Announcement/Product/Event separate tables.
+
 **Product** (منتج):
 A finished cultural artefact the Initiative published — a book summary, a podcast episode, a video, a poster. Lives under a Track.
 _Avoid_: content item, asset, resource, material
@@ -53,7 +57,7 @@ _Avoid_: news, post, notice, banner
 ### The feed
 
 **Feed** (الصفحة الرئيسة):
-The platform's front page: one merged, reverse-chronological stream of Announcements, Products and Events that Editors published here. Everything in the Feed is authored on the platform — see ADR 0013.
+The platform's front page: a **personalized read** (§3, §43), not authored sections. For a signed-in Member it opens with their own tasks and progress, then a single merged, reverse-chronological stream of published **Content** (Announcements, Products, Events, News, the cultural scene) — "do not split into many sections" (§3). A visitor sees the stream and a sign-in prompt on gated actions. Everything in the stream is authored on the platform — see ADR 0013 — and assembled per request (ADR 0026); it renders at its own route, leaving the static marketing landing at `/` (ADR 0011) untouched.
 _Avoid_: home, timeline, stream, dashboard
 
 **Channel**:

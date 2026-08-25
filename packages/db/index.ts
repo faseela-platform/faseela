@@ -109,6 +109,15 @@ export {
   taskTrackId,
   adminTracks,
   adminTrack,
+  createContentItem,
+  updateContentItem,
+  publishContentItem,
+  archiveContentItem,
+  unpublishContentItem,
+  deleteContentItem,
+  contentTrackId,
+  adminContentItems,
+  adminContentItem,
   type CreateTrackResult,
   type UpdateTrackResult,
   type CreateTaskResult,
@@ -117,7 +126,18 @@ export {
   type AdminTrackRow,
   type AdminTaskRow,
   type AdminTrackDetail,
+  type ContentType,
+  type ContentInput,
+  type CreateContentResult,
+  type UpdateContentResult,
+  type AdminContentRow,
 } from "./lib/content-admin";
+/**
+ * The public Feed read (§3) and the home's task zone (§3.1). Reads only — content is
+ * authored through `content-admin`; here it is rendered.
+ */
+export { feedItems, type FeedItem } from "./lib/feed";
+export { memberHomeTasks, type MemberHomeTask } from "./lib/home";
 /**
  * Exported because it is the *only* sanctioned way to remove a Member: the
  * RESTRICT on `point_award.user_id` makes a plain delete raise, and a caller who
