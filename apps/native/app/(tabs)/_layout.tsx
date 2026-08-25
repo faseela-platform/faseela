@@ -19,6 +19,15 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="mustajaddat"
+        options={{
+          title: "المستجدّات",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: "المسارات",
@@ -33,6 +42,15 @@ export default function TabsLayout() {
           title: "اللوحة",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="trophy-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="hisabi"
+        options={{
+          title: "حسابي",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" color={color} size={size} />
           ),
         }}
       />

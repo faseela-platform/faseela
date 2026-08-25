@@ -59,5 +59,19 @@ export async function seasonLeaderboard(
     .orderBy(sql`sum(${pointAward.points}) desc, max(${pointAward.awardedAt}) asc`)
     .limit(limit);
 
-  return rows as LeaderboardRow[];
+  /**
+   * Coerce the raw-`sql` aggregate columns to the types they claim. Unlike a schema
+   * column (which drizzle parses to a `Date`/`number`), a bare `sql<Date>`/`sql<number>`
+   * expression is passed through as the driver returns it — and node-postgres hands
+   * `max(timestamptz)` back as a **string**. Left uncoerced, `lastAwardedAt` is a
+   * string wearing a `Date` type, and the first consumer to call `.toISOString()` on
+   * it (the JSON API's serializer) throws. Coercing here makes the return honest for
+   * every caller.
+   */
+  return rows.map((r) => ({
+    ...r,
+    points: Number(r.points),
+    rank: Number(r.rank),
+    lastAwardedAt: new Date(r.lastAwardedAt),
+  }));
 }
