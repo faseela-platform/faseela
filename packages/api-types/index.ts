@@ -301,3 +301,45 @@ export function toApiContentItem(item: ContentItemLike, imageUrl: string | null)
   };
 }
 export type FeedResponse = { items: ApiContentItem[] };
+
+/**
+ * A notification in a Member's bell (§38). `seen` is computed per reader against
+ * their own watermark, so the same row serialises differently for two people — which
+ * is why it is a field on the wire rather than something the client could derive.
+ */
+type NotificationLike = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  linkUrl: string | null;
+  trackSlug: string | null;
+  trackTitle: string | null;
+  publishedAt: Date;
+  seen: boolean;
+};
+export type ApiNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  linkUrl: string | null;
+  trackSlug: string | null;
+  trackTitle: string | null;
+  publishedAt: string;
+  seen: boolean;
+};
+export function toApiNotification(n: NotificationLike): ApiNotification {
+  return {
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    body: n.body,
+    linkUrl: n.linkUrl,
+    trackSlug: n.trackSlug,
+    trackTitle: n.trackTitle,
+    publishedAt: n.publishedAt.toISOString(),
+    seen: n.seen,
+  };
+}
+export type NotificationsResponse = { items: ApiNotification[]; unreadCount: number };

@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import type { Database } from "./client";
 import { submission, task } from "./content";
+import { emitPointsAwarded } from "./notification-emit";
 import { pointAward } from "./progress";
 import { currentSeason } from "./seasons";
 
@@ -159,6 +160,17 @@ export async function attestTask(
         awardedAt: at,
       })
       .returning({ id: pointAward.id, points: pointAward.points });
+
+    /**
+     * Tell the Member (§38: «اعتماد النقاط», and «فتح صلاحية جديدة» when this award
+     * carried them over a threshold). Inside the transaction on purpose — Points and
+     * the notice about them commit together.
+     */
+    await emitPointsAwarded(
+      tx,
+      { userId, points: insertedAward[0]!.points, taskId: found.id },
+      at,
+    );
 
     return {
       status: "completed",

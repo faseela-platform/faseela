@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 
+import { NotificationBell } from "../../components/notification-bell";
 import { colors } from "../../lib/theme";
 
 export default function TabsLayout() {
@@ -16,6 +17,8 @@ export default function TabsLayout() {
         headerTitleStyle: { fontFamily: "Cairo_700Bold" },
         headerShadowVisible: false,
         sceneStyle: { backgroundColor: colors.surface },
+        /** The bell rides in every tab's header, so it is reachable from anywhere. */
+        headerRight: () => <NotificationBell />,
       }}
     >
       <Tabs.Screen

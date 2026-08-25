@@ -187,3 +187,32 @@ export {
   type AdminServiceRequest,
   type UpdateServiceRequestStatusResult,
 } from "./lib/service-requests";
+/**
+ * Notifications (§38). The reader's side: what is in a Member's bell, how many are
+ * new, and marking them read. "New" is measured against a watermark on the Member,
+ * so a broadcast costs one row rather than one per reader.
+ */
+export {
+  notificationsFor,
+  unreadNotificationCount,
+  markNotificationsSeen,
+  type MemberNotification,
+} from "./lib/notification-reads";
+/**
+ * Authoring broadcasts (§38's «قابلة للإدارة من لوحة التحكم»). Per-member events are
+ * raised by the transactions that cause them, not written here.
+ */
+export {
+  createNotification,
+  updateNotification,
+  publishNotification,
+  archiveNotification,
+  unpublishNotification,
+  deleteNotification,
+  adminNotifications,
+  type BroadcastType,
+  type NotificationInput,
+  type CreateNotificationResult,
+  type UpdateNotificationResult,
+  type AdminNotification,
+} from "./lib/notification-admin";

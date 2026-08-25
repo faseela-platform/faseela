@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { hero } from "../content";
+import { Num } from "./num";
 import { SignOutButton } from "./sign-out-button";
 
 /**
@@ -53,11 +54,18 @@ export function Nav({
   signedIn = false,
   memberName = null,
   tier = null,
+  unreadCount = 0,
 }: {
   current?: string;
   signedIn?: boolean;
   memberName?: string | null;
   tier?: string | null;
+  /**
+   * How many notifications are new for this Member (§38). Passed in like `tier` and
+   * `memberName`, never read here — the bell renders only inside the signed-in branch,
+   * so the landing page's nav stays static and JavaScript-free.
+   */
+  unreadCount?: number;
 }) {
   return (
     <header className="gutter sticky top-0 z-50 border-b border-[var(--hairline)] bg-[color-mix(in_oklch,var(--surface)_88%,transparent)] backdrop-blur-md">
@@ -134,6 +142,42 @@ export function Nav({
          */}
         {signedIn ? (
           <div className="flex shrink-0 items-center gap-4">
+            {/*
+             * The bell (§38). A link, not a menu: a dropdown would need client
+             * JavaScript on every signed-in page to show what the list page shows
+             * better. The count is capped at a glyph, because the difference between
+             * "twelve" and "many" changes nothing about what you do next.
+             */}
+            <Link
+              href="/ishaarat"
+              aria-label={
+                unreadCount > 0 ? `الإشعارات، ${unreadCount} جديدة` : "الإشعارات"
+              }
+              className="relative flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+              </svg>
+              {unreadCount > 0 ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1.5 end-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-[0.625rem] leading-none font-semibold text-[var(--surface)]"
+                >
+                  {unreadCount > 9 ? <Num value={9} suffix="+" /> : <Num value={unreadCount} />}
+                </span>
+              ) : null}
+            </Link>
+
             {/*
              * The Member's name, now a link to their profile (`/hisabi`) — Slice 3
              * gives the "minimal profile" §30 allowed a home to live at, so the name

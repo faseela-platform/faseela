@@ -3,7 +3,13 @@ import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 
-import { feedItems, memberHomeTasks, memberProgress, type FeedItem } from "@faseela/db";
+import {
+  feedItems,
+  memberHomeTasks,
+  memberProgress,
+  unreadNotificationCount,
+  type FeedItem,
+} from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -35,10 +41,11 @@ export default async function MustajaddatPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id ?? null;
 
-  const [feed, progress, tasks] = await Promise.all([
+  const [feed, progress, tasks, unreadCount] = await Promise.all([
     feedItems(db, { limit: 40 }),
     userId ? memberProgress(db, userId) : Promise.resolve(null),
     userId ? memberHomeTasks(db, userId) : Promise.resolve([]),
+    userId ? unreadNotificationCount(db, userId) : Promise.resolve(0),
   ]);
 
   const mediaUrls = new Map<string, string>();
@@ -58,6 +65,7 @@ export default async function MustajaddatPage() {
         signedIn={Boolean(userId)}
         memberName={session?.user?.name ?? null}
         tier={progress?.tier.name ?? null}
+        unreadCount={unreadCount}
       />
       <main>
         <section className="gutter pt-10 pb-16 md:pb-24">

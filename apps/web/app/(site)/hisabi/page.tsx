@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { memberProgress, memberTrackPoints } from "@faseela/db";
+import { memberProgress, memberTrackPoints, unreadNotificationCount } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -34,9 +34,10 @@ export default async function ProfilePage() {
     redirect(`/dukhul?callbackURL=${encodeURIComponent("/hisabi")}`);
   }
 
-  const [progress, trackPoints] = await Promise.all([
+  const [progress, trackPoints, unreadCount] = await Promise.all([
     memberProgress(db, session.user.id),
     memberTrackPoints(db, session.user.id),
+    unreadNotificationCount(db, session.user.id),
   ]);
 
   /**
@@ -51,7 +52,13 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <Nav current="/hisabi" signedIn memberName={session.user.name} tier={progress.tier.name} />
+      <Nav
+        current="/hisabi"
+        signedIn
+        memberName={session.user.name}
+        tier={progress.tier.name}
+        unreadCount={unreadCount}
+      />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           <div className="reveal max-w-3xl">

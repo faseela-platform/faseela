@@ -66,6 +66,21 @@ export const user = pgTable(
      */
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
 
+    /**
+     * How far this Member has read their notifications (§38, and §3's rule that an
+     * update is shown «من وقت إلى آخر» and not on every login — «حتى لا يكرر عرضه»).
+     * Anything published after this moment is unread; opening the list moves it
+     * forward. A watermark rather than a row per notification per member: one column
+     * answers both "what is new for me" and "how many", with no fan-out when a
+     * broadcast goes to everyone.
+     *
+     * `default now()` is load-bearing — a Member who joins today starts caught up
+     * rather than facing every notice the initiative ever sent.
+     */
+    lastNotificationsSeenAt: timestamp("last_notifications_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

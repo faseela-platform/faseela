@@ -102,6 +102,10 @@ _Avoid_: role, level, rank, Circle
 A Member's current Tier, lifetime Points, and how far the next Tier is — what the profile page (`/hisabi`) shows (spec §48 Phase 1). The read is `memberProgress`.
 _Avoid_: standings, score, ranking
 
+**Notification** (إشعار):
+Something the platform tells a Member because an important event happened (§38): their work was accepted, returned or rejected; their Points were credited; a new capability opened; or an announcement the initiative sent to everyone. Its own entity, not a kind of Content — a notification is *addressed*, carries per-reader seen-state, and drives a badge (ADR 0027). Per-member events are raised by the transaction that causes them; broadcasts are written and sent from `/idara`. Deliberately scarce: §38 says «لا يجب تحويل كل تحديث صغير إلى إشعار».
+_Avoid_: alert, message, push (push is a future *delivery channel* for these, not another concept).
+
 **Service Request** (طلب خدمة):
 An inbound approach from outside the Initiative — a volunteering offer, a suggestion, or a request for scholarly, technical, or media support.
 _Avoid_: contact form, ticket, inquiry, lead

@@ -4,6 +4,7 @@ import type { Database, Queryable } from "./client";
 import { submission, submissionAttempt, task } from "./content";
 import { user } from "./identity";
 import { isStaffRole } from "./members";
+import { emitNotification, emitPointsAwarded } from "./notification-emit";
 import { pointAward } from "./progress";
 import { currentSeason } from "./seasons";
 
@@ -238,6 +239,8 @@ export async function acceptSubmission(
         userId: submission.userId,
         taskId: submission.taskId,
         maxPoints: task.points,
+        /** Named in the notification, so "قُبل عملك" says *which* work. */
+        taskTitle: task.title,
       })
       .from(submission)
       .innerJoin(task, eq(task.id, submission.taskId))
@@ -281,6 +284,28 @@ export async function acceptSubmission(
       .returning({ id: pointAward.id, points: pointAward.points });
 
     if (inserted[0]) {
+      /**
+       * Tell the Member their work was accepted, and that the Points landed (§38:
+       * «قبول المهمة», «اعتماد النقاط», and a tier notice if this crossed a
+       * threshold). In-transaction, so the verdict and the notice are one fact.
+       */
+      await emitNotification(
+        tx,
+        {
+          type: "submission_accepted",
+          userId: row.userId,
+          title: "قُبل عملك",
+          body: `قُبل عملك في «${row.taskTitle}»، واحتُسبت ${earnedPoints.toLocaleString("ar-EG")} نقطة.`,
+          taskId: row.taskId,
+        },
+        at,
+      );
+      await emitPointsAwarded(
+        tx,
+        { userId: row.userId, points: inserted[0].points, taskId: row.taskId },
+        at,
+      );
+
       return {
         status: "accepted",
         awardId: inserted[0].id,
@@ -383,8 +408,14 @@ async function recordNoteVerdict(
     if (trimmed === "") return { ok: false, status: "note-required" };
 
     const [row] = await tx
-      .select({ state: submission.state })
+      .select({
+        state: submission.state,
+        userId: submission.userId,
+        taskId: submission.taskId,
+        taskTitle: task.title,
+      })
       .from(submission)
+      .innerJoin(task, eq(task.id, submission.taskId))
       .where(eq(submission.id, submissionId))
       .limit(1);
     if (!row) throw new Error(`No submission ${submissionId}`);
@@ -408,6 +439,32 @@ async function recordNoteVerdict(
         updatedAt: at,
       })
       .where(eq(submission.id, submissionId));
+
+    /**
+     * Tell the Member (§38: «رفض المهمة لإعادة التعديل» and «رفض نهائي»). The two
+     * verdicts differ in what the Member can do next, so the wording differs: one
+     * invites another attempt, the other closes the Task. The Editor's note is the
+     * body — it is the whole reason the decision is useful to them.
+     */
+    await emitNotification(
+      tx,
+      decision === "returned"
+        ? {
+            type: "submission_returned",
+            userId: row.userId,
+            title: "أُعيد عملك للتحسين",
+            body: `«${row.taskTitle}»: ${trimmed}`,
+            taskId: row.taskId,
+          }
+        : {
+            type: "submission_rejected",
+            userId: row.userId,
+            title: "لم يُقبل عملك",
+            body: `«${row.taskTitle}»: ${trimmed}`,
+            taskId: row.taskId,
+          },
+      at,
+    );
 
     return { ok: true, attemptNo: attempt.attemptNo };
   });

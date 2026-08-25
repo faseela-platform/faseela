@@ -4,6 +4,7 @@ import {
   toApiContentItem,
   toApiLeaderboardRow,
   toApiMemberProfile,
+  toApiNotification,
   toApiProgress,
   toApiSeason,
   toApiTrackDetail,
@@ -246,5 +247,33 @@ describe("toApiContentItem", () => {
         null,
       ).imageUrl,
     ).toBeNull();
+  });
+});
+
+describe("toApiNotification", () => {
+  it("converts the publish date to an ISO string and carries the reader's seen flag", () => {
+    expect(
+      toApiNotification({
+        id: "n-1",
+        type: "submission_accepted",
+        title: "قُبل عملك",
+        body: "قُبل عملك في «تلخيص الفصل»، واحتُسبت ٢٠ نقطة.",
+        linkUrl: null,
+        trackSlug: "reading-groups",
+        trackTitle: "حلقات القراءة",
+        publishedAt: new Date(Date.UTC(2026, 2, 15, 12, 0, 0)),
+        seen: false,
+      }),
+    ).toEqual({
+      id: "n-1",
+      type: "submission_accepted",
+      title: "قُبل عملك",
+      body: "قُبل عملك في «تلخيص الفصل»، واحتُسبت ٢٠ نقطة.",
+      linkUrl: null,
+      trackSlug: "reading-groups",
+      trackTitle: "حلقات القراءة",
+      publishedAt: "2026-03-15T12:00:00.000Z",
+      seen: false,
+    });
   });
 });

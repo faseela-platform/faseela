@@ -2,6 +2,7 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 
 import type { Database, Queryable } from "./client";
 import { contentItem, task, track, trackSupervisor } from "./content";
+import { emitTrackUpdate } from "./notification-emit";
 import { pointAward } from "./progress";
 
 /**
@@ -559,7 +560,13 @@ async function setContentState(
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [row] = await tx
-      .select({ publishedAt: contentItem.publishedAt })
+      .select({
+        publishedAt: contentItem.publishedAt,
+        state: contentItem.state,
+        title: contentItem.title,
+        trackId: contentItem.trackId,
+        taskId: contentItem.taskId,
+      })
       .from(contentItem)
       .where(eq(contentItem.id, id))
       .limit(1);
@@ -569,6 +576,21 @@ async function setContentState(
       .update(contentItem)
       .set({ state, publishedAt, updatedAt: at })
       .where(eq(contentItem.id, id));
+
+    /**
+     * Publishing something onto a Track is §38's «تحديث مهم لمسار يتابعه المستخدم».
+     * Only on the *transition* into published, and only when the piece belongs to a
+     * Track: re-publishing an already-live piece is not news, and track-less general
+     * content follows nobody. In the same transaction, so the notice and the
+     * publication are one fact.
+     */
+    if (state === "published" && row.state !== "published" && row.trackId) {
+      await emitTrackUpdate(
+        tx,
+        { trackId: row.trackId, title: row.title, body: "جديد في المسار.", taskId: row.taskId },
+        at,
+      );
+    }
     return true;
   });
 }

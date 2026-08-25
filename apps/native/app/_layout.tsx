@@ -54,6 +54,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="masarat/[slug]" options={{ title: "المسار" }} />
         <Stack.Screen name="akmil-hisabak" options={{ title: "أكمِل حسابك", presentation: "modal" }} />
+        <Stack.Screen name="ishaarat" options={{ title: "الإشعارات" }} />
       </Stack>
     </>
   );

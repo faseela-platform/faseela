@@ -205,7 +205,14 @@ for (const path of paths) {
         if (el.closest('[aria-hidden="true"]')) return false;
         if (el.closest("nextjs-portal, [data-nextjs-dev-tools-button], #next-logo")) return false;
         if (el.id.startsWith("next-")) return false;
-        const floor = el.tagName === "A" ? 24 : 44;
+        /**
+         * WCAG 2.5.8 exempts a link *inside a sentence* — its size is set by the text
+         * around it. An icon-only link is not that: it is a control wearing an anchor,
+         * so it answers to the same 44px floor as a button. Told apart by whether it
+         * has text of its own.
+         */
+        const isTextLink = el.tagName === "A" && (el.textContent ?? "").trim() !== "";
+        const floor = isTextLink ? 24 : 44;
         return r.height < floor;
       })
       .map((el) => `${el.tagName}#${el.id || "?"}:${Math.round(el.getBoundingClientRect().height)}px`)
