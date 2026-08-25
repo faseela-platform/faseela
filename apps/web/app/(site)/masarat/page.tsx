@@ -87,9 +87,20 @@ export default async function TracksIndexPage() {
                    * The ordinal, large but dim — the same hierarchy the landing page
                    * uses. Latin digits inside an Arabic document need both the
                    * `.num` isolation and `dir="ltr"`, or a two-digit number reorders.
+                   *
+                   * `aria-hidden` because it is decoration, not content: the list order
+                   * and the Track's own name already say which this is, and a reader
+                   * announcing "zero one" before every title is noise.
+                   *
+                   * `--ink-muted`, not `--ink-faint`: hiding it from a screen reader
+                   * does nothing for a sighted reader with low vision, who still has to
+                   * see it — and faint failed the 3:1 floor at 2.21:1. Muted clears it
+                   * while staying well dimmer than the title beside it, which is all the
+                   * hierarchy asked for.
                    */}
                   <span
-                    className="num font-display text-page-title leading-[1.45] font-medium text-[var(--ink-faint)]"
+                    aria-hidden="true"
+                    className="num font-display text-page-title leading-[1.45] font-medium text-[var(--ink-muted)]"
                     dir="ltr"
                   >
                     {String(i + 1).padStart(2, "0")}

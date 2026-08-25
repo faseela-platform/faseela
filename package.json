@@ -20,6 +20,7 @@
     "verify:auth": "node scripts/verify-auth-flow.mjs",
     "verify:seed": "node scripts/verify-seed.mjs",
     "verify:journey": "node scripts/verify-journey.mjs",
+    "verify:page": "node scripts/verify-page.mjs",
     "seed": "node scripts/seed.mjs",
     "seed:dry": "node scripts/seed.mjs --dry-run",
     "clean:probes": "node scripts/clean-probe-rows.mjs",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "axe-core": "^4.13.0",
     "dependency-cruiser": "^17.0.0",
     "dotenv": "^17.4.2",
     "husky": "^9.1.7",

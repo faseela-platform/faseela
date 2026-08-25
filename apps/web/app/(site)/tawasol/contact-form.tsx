@@ -44,8 +44,10 @@ export function ContactForm({ max }: { max: FieldMax }) {
     });
   }
 
+  /** `min-h-11` = 44px: the floor for a touch target, which `py-2.5` alone misses by a
+   * pixel on the select at mobile widths. */
   const input =
-    "text-body-sm w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+    "text-body-sm min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
   const label = "text-caption mb-1.5 block font-medium text-[var(--ink-muted)]";
 
   if (result?.status === "sent") {
