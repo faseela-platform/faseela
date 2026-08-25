@@ -170,3 +170,20 @@ export {
   type SetUserRoleResult,
   type AdminMember,
 } from "./lib/members";
+/**
+ * Contacting Faseela (§37). `createServiceRequest` is the app's only unauthenticated
+ * write, and carries its own guards (field caps, a per-origin rate limit) so every
+ * caller inherits them; the admin reads are gated one layer up, in `/idara`.
+ */
+export {
+  createServiceRequest,
+  adminServiceRequests,
+  updateServiceRequestStatus,
+  SERVICE_REQUEST_MAX,
+  type ServiceRequestInput,
+  type ServiceRequestType,
+  type ServiceRequestStatus,
+  type CreateServiceRequestResult,
+  type AdminServiceRequest,
+  type UpdateServiceRequestStatusResult,
+} from "./lib/service-requests";

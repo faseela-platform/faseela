@@ -16,6 +16,7 @@ const links = [
   { label: "المسارات", href: "/masarat", route: true },
   { label: "لوحة الموسم", href: "/lawha", route: true },
   { label: "من نحن", href: "/#about", route: false },
+  { label: "تواصل", href: "/tawasol", route: true },
 ] as const;
 
 /**

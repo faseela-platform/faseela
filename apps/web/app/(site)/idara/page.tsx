@@ -22,6 +22,7 @@ export default async function IdaraHome() {
   const sections = [
     { href: "/idara/masarat", label: "المسارات والمهام", desc: "أنشئ المسارات والمهام وانشرها.", show: true },
     { href: "/idara/muhtawa", label: "المحتوى", desc: "الأخبار والفعاليات والإنتاجات والإعلانات للصفحة الرئيسة.", show: true },
+    { href: "/idara/tawasol", label: "رسائل التواصل", desc: "الاقتراحات والاستفسارات والملاحظات الواردة.", show: isAdmin },
     { href: "/idara/aada", label: "الأعضاء والصلاحيات", desc: "الأدوار وتعيين مشرفي المسارات.", show: isAdmin },
     { href: "/idara/rutab", label: "الرتب", desc: "حدود نقاط الرتب.", show: isAdmin },
   ].filter((s) => s.show);
