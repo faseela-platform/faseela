@@ -25,4 +25,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Types, lint, deep-module boundaries, tests, and production builds.
+      # `next build` prerenders the ISR /masarat page and statically optimizes the
+      # /api/v1 route handlers, both of which read the database at build time — the
+      # same reads Vercel's build performs. So the build step needs a connection
+      # string, supplied here from repo secrets (read-only use). Tests do not: they
+      # run against in-memory PGlite.
       - run: pnpm check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
