@@ -1,0 +1,398 @@
+import { and, asc, eq, ne, sql } from "drizzle-orm";
+
+import type { Database } from "./client";
+import { task, track, trackSupervisor } from "./content";
+import { pointAward } from "./progress";
+
+/**
+ * The admin authoring layer (spec §34/§35): create and manage Tracks and Tasks —
+ * the writes that used to live only in `scripts/seed.mjs`.
+ *
+ * Two rules run through everything here. First, a published Track or Task **must**
+ * carry a `published_at` and a non-published one **must not** (the biconditional
+ * `*_published_has_date` CHECK) — so every state change sets or clears the date in
+ * the same write. Second, results are returned as unions, not thrown, exactly as
+ * `attest.ts`/`review.ts` do. *Who* may call these is enforced one layer up, in the
+ * `/idara` route gates (§36) — this module is the mechanism, not the authority.
+ */
+
+/** Slugs are Latin-only by policy — Arabic percent-encodes into unreadable URLs. */
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+// ------------------------------------------------------------------ Track
+
+export type CreateTrackResult =
+  | { status: "created"; id: string }
+  | { status: "invalid-slug" }
+  | { status: "slug-taken" };
+
+export async function createTrack(
+  db: Database,
+  input: { slug: string; title: string; summary: string; position?: number },
+  at: Date = new Date(),
+): Promise<CreateTrackResult> {
+  if (!SLUG_RE.test(input.slug)) return { status: "invalid-slug" };
+
+  const inserted = await db
+    .insert(track)
+    .values({
+      slug: input.slug,
+      title: input.title,
+      summary: input.summary,
+      position: input.position ?? 0,
+      state: "draft",
+      createdAt: at,
+      updatedAt: at,
+    })
+    .onConflictDoNothing({ target: track.slug })
+    .returning({ id: track.id });
+
+  return inserted[0]
+    ? { status: "created", id: inserted[0].id }
+    : { status: "slug-taken" };
+}
+
+export type UpdateTrackResult =
+  | { status: "updated" }
+  | { status: "not-found" }
+  | { status: "invalid-slug" }
+  | { status: "slug-taken" };
+
+export async function updateTrack(
+  db: Database,
+  id: string,
+  input: { title?: string; summary?: string; position?: number; slug?: string },
+  at: Date = new Date(),
+): Promise<UpdateTrackResult> {
+  if (input.slug !== undefined && !SLUG_RE.test(input.slug)) return { status: "invalid-slug" };
+
+  return db.transaction(async (tx) => {
+    const [existing] = await tx.select({ id: track.id }).from(track).where(eq(track.id, id)).limit(1);
+    if (!existing) return { status: "not-found" };
+
+    if (input.slug !== undefined) {
+      const [clash] = await tx
+        .select({ id: track.id })
+        .from(track)
+        .where(and(eq(track.slug, input.slug), ne(track.id, id)))
+        .limit(1);
+      if (clash) return { status: "slug-taken" };
+    }
+
+    await tx
+      .update(track)
+      .set({
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.summary !== undefined ? { summary: input.summary } : {}),
+        ...(input.position !== undefined ? { position: input.position } : {}),
+        ...(input.slug !== undefined ? { slug: input.slug } : {}),
+        updatedAt: at,
+      })
+      .where(eq(track.id, id));
+    return { status: "updated" };
+  });
+}
+
+/**
+ * Move a Track between states, keeping the `published_at` invariant: publishing
+ * stamps the date (or keeps the one it already had, so re-publishing never rewrites
+ * history), archiving/unpublishing clears it. Returns false for a missing Track.
+ */
+async function setTrackState(
+  db: Database,
+  id: string,
+  state: "published" | "archived" | "draft",
+  at: Date,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ publishedAt: track.publishedAt })
+      .from(track)
+      .where(eq(track.id, id))
+      .limit(1);
+    if (!row) return false;
+    const publishedAt = state === "published" ? (row.publishedAt ?? at) : null;
+    await tx.update(track).set({ state, publishedAt, updatedAt: at }).where(eq(track.id, id));
+    return true;
+  });
+}
+
+export async function publishTrack(db: Database, id: string, at: Date = new Date()) {
+  return (await setTrackState(db, id, "published", at))
+    ? ({ status: "published" } as const)
+    : ({ status: "not-found" } as const);
+}
+export async function archiveTrack(db: Database, id: string, at: Date = new Date()) {
+  return (await setTrackState(db, id, "archived", at))
+    ? ({ status: "archived" } as const)
+    : ({ status: "not-found" } as const);
+}
+export async function unpublishTrack(db: Database, id: string, at: Date = new Date()) {
+  return (await setTrackState(db, id, "draft", at))
+    ? ({ status: "unpublished" } as const)
+    : ({ status: "not-found" } as const);
+}
+
+// ------------------------------------------------------------------- Task
+
+export type CreateTaskResult =
+  | { status: "created"; id: string }
+  | { status: "track-not-found" }
+  | { status: "invalid-points" };
+
+export async function createTask(
+  db: Database,
+  input: {
+    trackId: string;
+    title: string;
+    instructions: string;
+    mode: "attest" | "review";
+    points: number;
+    position?: number;
+  },
+  at: Date = new Date(),
+): Promise<CreateTaskResult> {
+  if (!Number.isInteger(input.points) || input.points < 1) return { status: "invalid-points" };
+
+  return db.transaction(async (tx) => {
+    const [t] = await tx.select({ id: track.id }).from(track).where(eq(track.id, input.trackId)).limit(1);
+    if (!t) return { status: "track-not-found" };
+
+    const [inserted] = await tx
+      .insert(task)
+      .values({
+        trackId: input.trackId,
+        title: input.title,
+        instructions: input.instructions,
+        mode: input.mode,
+        points: input.points,
+        position: input.position ?? 0,
+        state: "draft",
+        createdAt: at,
+        updatedAt: at,
+      })
+      .returning({ id: task.id });
+    /* A plain insert with no onConflict always returns its row; guard for the type. */
+    if (!inserted) throw new Error("task insert returned no row");
+    return { status: "created", id: inserted.id };
+  });
+}
+
+export type UpdateTaskResult =
+  | { status: "updated" }
+  | { status: "not-found" }
+  | { status: "invalid-points" };
+
+export async function updateTask(
+  db: Database,
+  id: string,
+  input: {
+    title?: string;
+    instructions?: string;
+    mode?: "attest" | "review";
+    points?: number;
+    position?: number;
+  },
+  at: Date = new Date(),
+): Promise<UpdateTaskResult> {
+  if (input.points !== undefined && (!Number.isInteger(input.points) || input.points < 1)) {
+    return { status: "invalid-points" };
+  }
+  const updated = await db
+    .update(task)
+    .set({
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.instructions !== undefined ? { instructions: input.instructions } : {}),
+      ...(input.mode !== undefined ? { mode: input.mode } : {}),
+      ...(input.points !== undefined ? { points: input.points } : {}),
+      ...(input.position !== undefined ? { position: input.position } : {}),
+      updatedAt: at,
+    })
+    .where(eq(task.id, id))
+    .returning({ id: task.id });
+  return updated.length > 0 ? { status: "updated" } : { status: "not-found" };
+}
+
+async function setTaskState(
+  db: Database,
+  id: string,
+  state: "published" | "archived" | "draft",
+  at: Date,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ publishedAt: task.publishedAt })
+      .from(task)
+      .where(eq(task.id, id))
+      .limit(1);
+    if (!row) return false;
+    const publishedAt = state === "published" ? (row.publishedAt ?? at) : null;
+    await tx.update(task).set({ state, publishedAt, updatedAt: at }).where(eq(task.id, id));
+    return true;
+  });
+}
+
+export async function publishTask(db: Database, id: string, at: Date = new Date()) {
+  return (await setTaskState(db, id, "published", at))
+    ? ({ status: "published" } as const)
+    : ({ status: "not-found" } as const);
+}
+export async function archiveTask(db: Database, id: string, at: Date = new Date()) {
+  return (await setTaskState(db, id, "archived", at))
+    ? ({ status: "archived" } as const)
+    : ({ status: "not-found" } as const);
+}
+export async function unpublishTask(db: Database, id: string, at: Date = new Date()) {
+  return (await setTaskState(db, id, "draft", at))
+    ? ({ status: "unpublished" } as const)
+    : ({ status: "not-found" } as const);
+}
+
+export type DeleteTaskResult =
+  | { status: "deleted" }
+  | { status: "not-found" }
+  | { status: "has-awards" };
+
+/**
+ * Delete a Task — but only if nothing was ever earned against it. A Task with a
+ * Point award is the record that a Member did the work; `point_award.task_id` is
+ * `RESTRICT`, and the honest lifecycle end for such a Task is **archive**, not
+ * delete. Checking first turns the database's RESTRICT into a clean status.
+ */
+export async function deleteTask(db: Database, id: string): Promise<DeleteTaskResult> {
+  return db.transaction(async (tx) => {
+    const [t] = await tx.select({ id: task.id }).from(task).where(eq(task.id, id)).limit(1);
+    if (!t) return { status: "not-found" };
+
+    const [award] = await tx
+      .select({ id: pointAward.id })
+      .from(pointAward)
+      .where(eq(pointAward.taskId, id))
+      .limit(1);
+    if (award) return { status: "has-awards" };
+
+    await tx.delete(task).where(eq(task.id, id));
+    return { status: "deleted" };
+  });
+}
+
+// --------------------------------------------------------- Admin reads
+
+export type AdminTrackRow = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  state: "draft" | "published" | "archived";
+  position: number;
+  publishedAt: Date | null;
+  taskCount: number;
+  totalPoints: number;
+};
+
+/**
+ * Every Track, whatever its state, with Task counts — the authoring list. Unlike
+ * the public `publishedTracks`, drafts and archived Tracks appear (you cannot edit
+ * what you cannot see). Scoped to one supervisor's Tracks when `supervisorId` is
+ * given (§35): a supervisor's list shows only what they may manage.
+ */
+export async function adminTracks(
+  db: Database,
+  opts?: { supervisorId?: string },
+): Promise<AdminTrackRow[]> {
+  const base = db
+    .select({
+      id: track.id,
+      slug: track.slug,
+      title: track.title,
+      summary: track.summary,
+      state: track.state,
+      position: track.position,
+      publishedAt: track.publishedAt,
+      taskCount: sql<number>`count(${task.id})::int`,
+      totalPoints: sql<number>`coalesce(sum(${task.points}), 0)::int`,
+    })
+    .from(track)
+    .leftJoin(task, eq(task.trackId, track.id))
+    .$dynamic();
+
+  const scoped = opts?.supervisorId
+    ? base.where(
+        sql`exists (select 1 from ${trackSupervisor} ts where ts.track_id = ${track.id} and ts.user_id = ${opts.supervisorId})`,
+      )
+    : base;
+
+  const rows = await scoped
+    .groupBy(track.id, track.slug, track.title, track.summary, track.state, track.position, track.publishedAt)
+    .orderBy(asc(track.position));
+
+  return rows.map((r) => ({
+    ...r,
+    taskCount: Number(r.taskCount),
+    totalPoints: Number(r.totalPoints),
+  }));
+}
+
+export type AdminTaskRow = {
+  id: string;
+  title: string;
+  instructions: string;
+  mode: "attest" | "review";
+  points: number;
+  state: "draft" | "published" | "archived";
+  position: number;
+  publishedAt: Date | null;
+};
+
+export type AdminTrackDetail = Omit<AdminTrackRow, "taskCount" | "totalPoints"> & {
+  tasks: AdminTaskRow[];
+};
+
+/**
+ * The Track a Task belongs to, or null — so a Task action can gate on its Track's
+ * scope (a supervisor may edit a Task only in a Track they run). Reads the *real*
+ * link from the row, never trusting a Track id the caller passed alongside.
+ */
+export async function taskTrackId(db: Database, taskId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ trackId: task.trackId })
+    .from(task)
+    .where(eq(task.id, taskId))
+    .limit(1);
+  return row?.trackId ?? null;
+}
+
+/** One Track with all its Tasks, any state — the authoring detail view. */
+export async function adminTrack(db: Database, id: string): Promise<AdminTrackDetail | null> {
+  const [head] = await db
+    .select({
+      id: track.id,
+      slug: track.slug,
+      title: track.title,
+      summary: track.summary,
+      state: track.state,
+      position: track.position,
+      publishedAt: track.publishedAt,
+    })
+    .from(track)
+    .where(eq(track.id, id))
+    .limit(1);
+  if (!head) return null;
+
+  const tasks = await db
+    .select({
+      id: task.id,
+      title: task.title,
+      instructions: task.instructions,
+      mode: task.mode,
+      points: task.points,
+      state: task.state,
+      position: task.position,
+      publishedAt: task.publishedAt,
+    })
+    .from(task)
+    .where(eq(task.trackId, id))
+    .orderBy(asc(task.position));
+
+  return { ...head, tasks };
+}

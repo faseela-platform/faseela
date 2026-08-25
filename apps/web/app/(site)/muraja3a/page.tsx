@@ -4,7 +4,7 @@ import Link from "next/link";
 import { memberProgress, reviewQueue } from "@faseela/db";
 
 import { db } from "@/lib/db";
-import { requireEditor } from "@/lib/require-editor";
+import { requireStaff } from "@/lib/require-track-access";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
 
@@ -28,14 +28,15 @@ export const dynamic = "force-dynamic";
 const dateFmt = new Intl.DateTimeFormat("ar", { day: "numeric", month: "long" });
 
 export default async function ReviewQueuePage() {
-  const editor = await requireEditor();
-  const queue = await reviewQueue(db);
+  const staff = await requireStaff();
+  /** §35: a supervisor sees only their Tracks' submissions; an admin sees all. */
+  const queue = await reviewQueue(db, staff.role === "admin" ? undefined : staff.supervisedTrackIds);
   /** An Editor is a Member too, so their own tier shows in the nav as everywhere. */
-  const tier = (await memberProgress(db, editor.id)).tier.name;
+  const tier = (await memberProgress(db, staff.id)).tier.name;
 
   return (
     <>
-      <Nav current="/muraja3a" signedIn memberName={editor.name} tier={tier} />
+      <Nav current="/muraja3a" signedIn memberName={staff.name} tier={tier} />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           <div className="reveal max-w-3xl">

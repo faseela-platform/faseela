@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { memberProgress, submissionForReview } from "@faseela/db";
+import { canManageTrackScope, memberProgress, submissionForReview, submissionTrackId } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { presignGetUrl, r2IsConfigured } from "@/lib/r2";
-import { requireEditor } from "@/lib/require-editor";
+import { requireStaff } from "@/lib/require-track-access";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
 import { ReviewDecision } from "../review-decision";
@@ -51,14 +51,22 @@ const STATE_LABEL: Record<"accepted" | "returned" | "rejected" | "draft" | "canc
 };
 
 export default async function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const editor = await requireEditor();
+  const staff = await requireStaff();
   const { id } = await params;
+
+  /**
+   * §35/§36: a supervisor may open only their own Tracks' Submissions. Resolve the
+   * Submission's Track and refuse (404) if it is out of scope — enforced here on the
+   * server, not by hiding the link, so editing the URL cannot reach it.
+   */
+  const trackId = await submissionTrackId(db, id);
+  if (!trackId || !canManageTrackScope(staff.role, staff.supervisedTrackIds, trackId)) notFound();
 
   const detail = await submissionForReview(db, id);
   if (!detail) notFound();
 
   /** An Editor is a Member too, so their own tier shows in the nav as everywhere. */
-  const tier = (await memberProgress(db, editor.id)).tier.name;
+  const tier = (await memberProgress(db, staff.id)).tier.name;
 
   /**
    * Presigned read URLs for any attached files, minted now and short-lived, so an
@@ -74,7 +82,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <Nav current="/muraja3a" signedIn memberName={editor.name} tier={tier} />
+      <Nav current="/muraja3a" signedIn memberName={staff.name} tier={tier} />
       <main>
         <section className="gutter pt-12 pb-16 md:pb-24">
           <Link

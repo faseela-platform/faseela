@@ -428,8 +428,16 @@ export type ReviewQueueItem = {
  * the Submission first arrived so nothing waits forever behind newer work. Joined
  * to the Task and Member so the queue reads as a list of people and work rather
  * than a list of ids.
+ *
+ * `reviewerTrackIds` scopes the queue to a supervisor's own Tracks (§35): pass the
+ * Track ids they supervise and they see only those Submissions. Omit it for a
+ * central admin, who sees everything. An empty array means "no Tracks", so an
+ * unassigned Editor sees an empty queue rather than the whole thing.
  */
-export async function reviewQueue(db: Database): Promise<ReviewQueueItem[]> {
+export async function reviewQueue(
+  db: Database,
+  reviewerTrackIds?: string[],
+): Promise<ReviewQueueItem[]> {
   const rows = await db
     .select({
       submissionId: submission.id,
@@ -446,10 +454,29 @@ export async function reviewQueue(db: Database): Promise<ReviewQueueItem[]> {
     .from(submission)
     .innerJoin(task, eq(task.id, submission.taskId))
     .innerJoin(user, eq(user.id, submission.userId))
-    .where(eq(submission.state, "pending"))
+    .where(
+      reviewerTrackIds
+        ? and(eq(submission.state, "pending"), inArray(task.trackId, reviewerTrackIds))
+        : eq(submission.state, "pending"),
+    )
     .orderBy(asc(submission.createdAt));
 
   return rows.map((r) => ({ ...r, attemptCount: Number(r.attemptCount) }));
+}
+
+/**
+ * The Track a Submission belongs to (via its Task) — for scoping a review to a
+ * supervisor's own Tracks (§35). Null if the Submission does not exist. Used by the
+ * review gates so a supervisor cannot open or decide another Track's Submission.
+ */
+export async function submissionTrackId(db: Database, submissionId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ trackId: task.trackId })
+    .from(submission)
+    .innerJoin(task, eq(task.id, submission.taskId))
+    .where(eq(submission.id, submissionId))
+    .limit(1);
+  return row?.trackId ?? null;
 }
 
 export type ReviewAttempt = {

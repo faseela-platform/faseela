@@ -237,6 +237,39 @@ export const submissionAttempt = pgTable(
   ],
 );
 
+/**
+ * Who supervises which Track (spec §35). A supervisor is an Editor the central
+ * admin has assigned to a Track; they may manage that Track — its Tasks and its
+ * Submissions — and no other, unless assigned more. This is *scope*, layered on
+ * top of the `user.role` staff flag: `admin` is global and needs no row here;
+ * an `editor` manages exactly the Tracks they appear against.
+ *
+ * A join table, not a column, because §35 allows several supervisors per Track
+ * and a supervisor may hold several Tracks — a many-to-many the role enum cannot
+ * express. Assignment is a deliberate admin act (§35: never granted by Points).
+ */
+export const trackSupervisor = pgTable(
+  "track_supervisor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trackId: uuid("track_id")
+      .notNull()
+      .references(() => track.id, { onDelete: "cascade" }),
+    /** The Editor. Cascade like `session`/`account`: an assignment is pure access,
+     * and access is exactly what a removed account should lose. */
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /** One assignment per (Track, Editor) — assigning twice is a no-op, not a duplicate. */
+    uniqueIndex("track_supervisor_unique").on(t.trackId, t.userId),
+    /** The scope read: which Tracks does this Editor supervise. */
+    index("track_supervisor_user_idx").on(t.userId),
+  ],
+);
+
 export const trackRelations = relations(track, ({ many }) => ({
   tasks: many(task, { relationName: "task_trackId" }),
 }));

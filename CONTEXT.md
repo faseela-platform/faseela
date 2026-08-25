@@ -67,8 +67,16 @@ A registered person who follows Tracks, completes Tasks, and earns Points.
 _Avoid_: user, participant, subscriber, customer
 
 **Editor**:
-A Member of the Initiative's staff who publishes Products, Announcements and Events, and Reviews Submissions. Two or three people in practice.
-_Avoid_: admin, moderator, staff, content manager
+A Member with a staff role who reviews Submissions and, when assigned as a **Supervisor**, manages that Track's Tasks and content. Staff is granted by an Admin, never earned by Points (ADR 0023). Two or three people in practice.
+_Avoid_: admin, moderator, content manager
+
+**Supervisor** (مشرف المسار):
+An Editor the central Admin has assigned to a Track (§35). They manage that Track — its Tasks, its content, its Submissions — and no other, unless assigned more. Assignment is a deliberate act, never automatic from Points; a Track may have several Supervisors. Scope, layered on the staff role (ADR 0025).
+_Avoid_: owner, moderator, manager
+
+**Admin** (الإدارة المركزية):
+The central administration (§34): the global staff role with authority over every Track, Member, role, tier threshold, and setting. Distinct from a Supervisor, who is scoped to their own Track(s).
+_Avoid_: superuser, root, owner
 
 **Point** (نقطة):
 The unit of earned cultural effort, minted only by an accepted Submission. Never spent, never transferred — Points are a record, not a currency.

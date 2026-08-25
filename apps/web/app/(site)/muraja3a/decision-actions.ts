@@ -2,24 +2,45 @@
 
 import { revalidatePath } from "next/cache";
 
-import { acceptSubmission, rejectSubmission, returnSubmission } from "@faseela/db";
+import {
+  acceptSubmission,
+  canManageTrackScope,
+  rejectSubmission,
+  returnSubmission,
+  submissionTrackId,
+} from "@faseela/db";
 
 import { db } from "@/lib/db";
-import { requireEditor } from "@/lib/require-editor";
+import { requireStaff } from "@/lib/require-track-access";
 
 /**
  * The Editor's three verdicts (spec §25), as Server Actions.
  *
- * Every one re-checks authority with `requireEditor` on the server — the id of the
- * reviewing Editor comes from the session, never the form, so nobody can accept
- * work in another Editor's name any more than a Member can submit in another's.
- * The rules (pending-only, graded value ≤ max, the frozen mint, the attempt stamp)
- * all live in `@faseela/db`; this layer authenticates, translates, and revalidates.
+ * Every one re-checks authority with `gate` on the server — the id of the reviewing
+ * Editor comes from the session, never the form, so nobody can accept work in
+ * another Editor's name any more than a Member can submit in another's. It also
+ * confirms the Submission's Track is one this staffer supervises (§35/§36), so a
+ * supervisor cannot decide another Track's work by posting its id. The rules
+ * (pending-only, graded value ≤ max, the frozen mint, the attempt stamp) all live
+ * in `@faseela/db`; this layer authenticates, scopes, translates, and revalidates.
  */
 export type DecisionState = {
   status: "accepted" | "returned" | "rejected" | "refused";
   message: string;
 };
+
+/**
+ * Authenticate the staffer and confirm they may decide this Submission. Returns the
+ * reviewer's id on success, or a `refused` DecisionState the caller returns as-is.
+ */
+async function gate(submissionId: string): Promise<{ editorId: string } | DecisionState> {
+  const staff = await requireStaff();
+  const trackId = await submissionTrackId(db, submissionId);
+  if (!trackId || !canManageTrackScope(staff.role, staff.supervisedTrackIds, trackId)) {
+    return { status: "refused", message: "هذه المشاركة ليست ضمن مساراتك." };
+  }
+  return { editorId: staff.id };
+}
 
 function revalidate(submissionId: string) {
   revalidatePath("/muraja3a");
@@ -29,8 +50,9 @@ function revalidate(submissionId: string) {
 }
 
 export async function acceptReview(submissionId: string, points: number): Promise<DecisionState> {
-  const editor = await requireEditor();
-  const result = await acceptSubmission(db, submissionId, editor.id, points);
+  const gated = await gate(submissionId);
+  if ("status" in gated) return gated;
+  const result = await acceptSubmission(db, submissionId, gated.editorId, points);
   revalidate(submissionId);
 
   switch (result.status) {
@@ -48,8 +70,9 @@ export async function acceptReview(submissionId: string, points: number): Promis
 }
 
 export async function returnReview(submissionId: string, note: string): Promise<DecisionState> {
-  const editor = await requireEditor();
-  const result = await returnSubmission(db, submissionId, editor.id, note);
+  const gated = await gate(submissionId);
+  if ("status" in gated) return gated;
+  const result = await returnSubmission(db, submissionId, gated.editorId, note);
   revalidate(submissionId);
 
   switch (result.status) {
@@ -65,8 +88,9 @@ export async function returnReview(submissionId: string, note: string): Promise<
 }
 
 export async function rejectReview(submissionId: string, note: string): Promise<DecisionState> {
-  const editor = await requireEditor();
-  const result = await rejectSubmission(db, submissionId, editor.id, note);
+  const gated = await gate(submissionId);
+  if ("status" in gated) return gated;
+  const result = await rejectSubmission(db, submissionId, gated.editorId, note);
   revalidate(submissionId);
 
   switch (result.status) {

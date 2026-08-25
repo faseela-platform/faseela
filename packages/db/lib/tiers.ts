@@ -121,3 +121,44 @@ export async function memberProgress(db: Database, userId: string): Promise<Memb
     pointsToNext: nextTier ? nextTier.minPoints - points : null,
   };
 }
+
+export type TierEditResult =
+  | { status: "updated" }
+  | { status: "not-found" }
+  | { status: "invalid" };
+
+export type TierUpdate = { name?: string; minPoints?: number };
+
+/**
+ * Edit a tier's threshold and/or Arabic display name in one write (§46, admin-only)
+ * — mirroring `updateTrack`/`updateTask` so an Admin's form saves both fields
+ * atomically, never a threshold that lands while the rename fails. Because tiers are
+ * derived on read, this re-tiers every Member on their next read — no migration, no
+ * backfill. Refuses a negative threshold (the DB CHECK would too) and an empty name;
+ * the ladder need not stay monotonic — `tierForPoints` takes the highest rung a total
+ * meets regardless. The `key` never changes.
+ */
+export async function updateTier(
+  db: Database,
+  key: string,
+  input: TierUpdate,
+): Promise<TierEditResult> {
+  const set: { name?: string; minPoints?: number } = {};
+  if (input.minPoints !== undefined) {
+    if (!Number.isInteger(input.minPoints) || input.minPoints < 0) return { status: "invalid" };
+    set.minPoints = input.minPoints;
+  }
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (name.length === 0) return { status: "invalid" };
+    set.name = name;
+  }
+  if (set.name === undefined && set.minPoints === undefined) return { status: "invalid" };
+
+  const updated = await db
+    .update(memberTier)
+    .set(set)
+    .where(eq(memberTier.key, key))
+    .returning({ id: memberTier.id });
+  return updated.length > 0 ? { status: "updated" } : { status: "not-found" };
+}

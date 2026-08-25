@@ -31,6 +31,7 @@ export {
   returnSubmission,
   rejectSubmission,
   reviewQueue,
+  submissionTrackId,
   submissionForReview,
   memberSubmissions,
   type SubmissionInput,
@@ -58,10 +59,27 @@ export {
   memberLifetimePoints,
   memberTrackPoints,
   memberProgress,
+  updateTier,
   type Tier,
+  type TierUpdate,
   type TrackPoints,
   type MemberProgress,
+  type TierEditResult,
 } from "./lib/tiers";
+/**
+ * Track supervision (§35) — which Editors manage which Tracks; the scope layered on
+ * the staff `role`. `canManageTrackScope` is the pure predicate the web gates share.
+ */
+export {
+  assignSupervisor,
+  removeSupervisor,
+  supervisorsOfTrack,
+  tracksSupervisedBy,
+  canManageTrackScope,
+  type AssignResult,
+  type RemoveSupervisorResult,
+  type TrackSupervisorRow,
+} from "./lib/supervisors";
 /**
  * The only sanctioned way to read Tracks for the public site. Exported as
  * functions rather than leaving pages to query `schema.track` themselves,
@@ -70,6 +88,36 @@ export {
  * an Editor's unfinished draft to the public.
  */
 export { publishedTracks, trackBySlug, type TrackSummary, type TrackDetail } from "./lib/tracks";
+/**
+ * The admin authoring surface (spec §34/§35) — the Track/Task writes that retire
+ * `scripts/seed.mjs`. Authority is enforced by the `/idara` route gates; these are
+ * the mechanism. Admin reads (`adminTracks`/`adminTrack`) see drafts, unlike the
+ * public `published`-only reads above.
+ */
+export {
+  createTrack,
+  updateTrack,
+  publishTrack,
+  archiveTrack,
+  unpublishTrack,
+  createTask,
+  updateTask,
+  publishTask,
+  archiveTask,
+  unpublishTask,
+  deleteTask,
+  taskTrackId,
+  adminTracks,
+  adminTrack,
+  type CreateTrackResult,
+  type UpdateTrackResult,
+  type CreateTaskResult,
+  type UpdateTaskResult,
+  type DeleteTaskResult,
+  type AdminTrackRow,
+  type AdminTaskRow,
+  type AdminTrackDetail,
+} from "./lib/content-admin";
 /**
  * Exported because it is the *only* sanctioned way to remove a Member: the
  * RESTRICT on `point_award.user_id` makes a plain delete raise, and a caller who
@@ -88,7 +136,11 @@ export {
   isProfileComplete,
   roleOfUser,
   isStaffRole,
+  setUserRole,
+  adminMemberList,
   type MemberProfile,
   type SetMemberProfileResult,
   type UserRole,
+  type SetUserRoleResult,
+  type AdminMember,
 } from "./lib/members";

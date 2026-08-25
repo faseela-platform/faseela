@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import type { Database } from "./client";
 import { account, session, user } from "./identity";
+import { pointAward } from "./progress";
 
 export type UserRole = "member" | "editor" | "admin";
 
@@ -23,6 +24,56 @@ export function isStaffRole(role: UserRole | null): boolean {
 export async function roleOfUser(db: Database, userId: string): Promise<UserRole | null> {
   const rows = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
   return rows[0]?.role ?? null;
+}
+
+export type SetUserRoleResult = { status: "updated" } | { status: "no-such-user" };
+
+/**
+ * Confer or revoke a staff role on a user by id — the admin dashboard's version of
+ * `scripts/set-role.mjs` (spec §34). A role is granted, never earned (ADR 0023); the
+ * authority to call this is the admin gate, not this function.
+ */
+export async function setUserRole(
+  db: Database,
+  userId: string,
+  role: UserRole,
+  at: Date = new Date(),
+): Promise<SetUserRoleResult> {
+  const updated = await db
+    .update(user)
+    .set({ role, updatedAt: at })
+    .where(eq(user.id, userId))
+    .returning({ id: user.id });
+  return updated.length > 0 ? { status: "updated" } : { status: "no-such-user" };
+}
+
+export type AdminMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  points: number;
+};
+
+/**
+ * Every member with their role and **lifetime** Points, richest first — the admin
+ * member view (§34). Points are summed from the ledger, not stored (ADR 0015); the
+ * tier is derived from `points` in the UI via the shared `tierForPoints`.
+ */
+export async function adminMemberList(db: Database): Promise<AdminMember[]> {
+  const rows = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      points: sql<number>`coalesce(sum(${pointAward.points}), 0)::int`,
+    })
+    .from(user)
+    .leftJoin(pointAward, eq(pointAward.userId, user.id))
+    .groupBy(user.id, user.name, user.email, user.role)
+    .orderBy(desc(sql`coalesce(sum(${pointAward.points}), 0)`));
+  return rows.map((r) => ({ ...r, points: Number(r.points) }));
 }
 
 export type AnonymiseResult =

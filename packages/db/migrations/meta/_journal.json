@@ -29,6 +29,13 @@
       "when": 1787593862562,
       "tag": "0003_member_tiers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787620421044,
+      "tag": "0004_track_supervisors",
+      "breakpoints": true
     }
   ]
 }
