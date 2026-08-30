@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 /**
@@ -8,6 +9,10 @@ import { useEffect } from "react";
  * The markup ships in its final state. This island:
  *   1. does nothing under reduced motion (every load otherwise replays — the owner's call,
  *      2026-08-30: the page should look the same on every refresh);
+ *   1b. re-runs on every route change. It lives in the root layout, which React keeps mounted
+ *      across client navigations — so an effect that ran once would never observe the next
+ *      page's `[data-reveal]` elements, and with `data-reveal-armed` still on <html> they
+ *      stayed invisible until a hard refresh (owner report, 2026-08-30);
  *   2. observes every `[data-reveal]`; on the FIRST observer callback it marks the elements
  *      already on screen as revealed, then sets `data-reveal-armed` on <html>, which is what
  *      hides the still-offscreen ones (see landing.css). Nothing is hidden until the observer
@@ -18,6 +23,7 @@ import { useEffect } from "react";
  * stagger can never push the last item of a row past the reader's patience.
  */
 export function RevealObserver() {
+  const pathname = usePathname();
   useEffect(() => {
     const html = document.documentElement;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -58,7 +64,7 @@ export function RevealObserver() {
       io.disconnect();
       html.removeAttribute("data-reveal-armed");
     };
-  }, []);
+  }, [pathname]);
 
   return null;
 }

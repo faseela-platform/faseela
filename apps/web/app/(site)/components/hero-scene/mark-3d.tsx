@@ -24,12 +24,17 @@ const CHIP_POSITIONS: React.CSSProperties[] = [
 
 const CHIP_DELAYS = ["-1.5s", "-3.5s", "-5s"] as const;
 
-/** Back to front. The ground shadow belongs with the book; the drop shadow with the plant. */
-const MARK_DEPTHS: { z: number; layers: readonly MarkLayer[]; front?: boolean }[] = [
-  { z: 0, layers: ["shadow", "paper", "covers"] },
-  { z: 34, layers: ["lines"] },
-  { z: 72, layers: ["stem", "leaves", "veins"], front: true },
-];
+/**
+ * Back to front. The ground shadow is its own layer that the WebGL swap does NOT hide (the
+ * canvas draws the mark, not its shadow on the page); the drop shadow goes with the plant.
+ */
+const MARK_DEPTHS: { z: number; layers: readonly MarkLayer[]; front?: boolean; keep?: boolean }[] =
+  [
+    { z: 0, layers: ["shadow"], keep: true },
+    { z: 0, layers: ["paper", "covers"] },
+    { z: 34, layers: ["lines"] },
+    { z: 72, layers: ["stem", "leaves", "veins"], front: true },
+  ];
 
 export function Mark3D() {
   return (
@@ -128,10 +133,10 @@ export function Mark3D() {
            * lines a step forward, the plant in front. Each depth draws only its own parts, so
            * the tilt shows real depth between them rather than a ghost copy of the whole mark.
            */}
-          {MARK_DEPTHS.map(({ z, layers, front }, i) => (
+          {MARK_DEPTHS.map(({ z, layers, front, keep }, i) => (
             <div
-              key={z}
-              className="hero-mark-layer absolute"
+              key={i}
+              className={`${keep ? "hero-mark-shadow" : "hero-mark-layer"} absolute`}
               style={{
                 left: `${(STAGE.markX / STAGE.width) * 100}%`,
                 top: `${(STAGE.markY / STAGE.height) * 100}%`,
@@ -144,7 +149,7 @@ export function Mark3D() {
             >
               <Mark
                 size={STAGE.markWidth}
-                shadow={i === 0}
+                shadow={keep || front ? true : false}
                 grow
                 layers={layers}
                 idPrefix={`hero-mark-${i}`}

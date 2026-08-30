@@ -15,7 +15,9 @@ import { buildMarkGeometry, MARK_FRAME, MARK_PIVOT, MARK_Z, paintGradient } from
  *  - `frameloop="demand"`: nothing renders unless something changed. Pointer and scroll write
  *    targets; `useFrame` eases toward them and re-invalidates only while the error is above ε,
  *    so the scene settles and then costs zero GPU time at rest.
- *  - `dpr` capped at 1.5, no antialias on coarse pointers, no shadows, no post-processing.
+ *  - `dpr` 1.5–2 and MSAA on: the mark replaces a vector SVG, so its edges must be as clean
+ *    as the SVG's — a device that passed the gate can afford it and renders only on demand.
+ *    No shadows, no post-processing.
  *  - An orthographic camera framing the viewBox exactly, so the canvas overlays the CSS mark
  *    pixel-for-pixel and the swap between them is invisible.
  *  - A 2 s self-check: if the first two seconds average under ~30 fps, `onFail` unmounts the
@@ -48,7 +50,7 @@ export type SceneTargets = { pointerX: number; pointerY: number; scroll: number 
  * is scaled on the scene (`environmentIntensity`) — a material's `envMapIntensity` does not
  * apply to a scene-level environment, which was measured, not assumed.
  */
-const LIGHT = { hemi: 0.85, env: 0.36 } as const;
+const LIGHT = { hemi: 0.75, env: 0.32, key: 0.22 } as const;
 
 export function SceneCanvas({
   targets,
@@ -69,7 +71,7 @@ export function SceneCanvas({
   return (
     <Canvas
       frameloop="demand"
-      dpr={[1, 1.5]}
+      dpr={[1.5, 2]}
       orthographic
       camera={{
         left: 0,
@@ -81,7 +83,7 @@ export function SceneCanvas({
         position: [0, 0, 100],
       }}
       gl={{
-        antialias: fine,
+        antialias: true,
         stencil: false,
         alpha: true,
         powerPreference: "low-power",
@@ -120,6 +122,7 @@ function themeColors() {
     paperHi: new Color(MARK_COLORS.paperHi),
     paperLo: new Color(MARK_COLORS.paperLo),
     pageLine: new Color(MARK_COLORS.pageLine),
+    paperLine: new Color(MARK_COLORS.paperLine),
     vein: new Color(MARK_COLORS.vein),
   };
 }
@@ -203,6 +206,7 @@ function MarkMesh({
     <>
       {/* Soft fill only; the environment map does the shaping. */}
       <hemisphereLight args={["#ffffff", "#9fb8b2", LIGHT.hemi]} />
+      <directionalLight position={[-80, 140, 200]} intensity={LIGHT.key} />
       <group position={[MARK_PIVOT.x, MARK_PIVOT.y, 0]}>
         <group ref={group}>
           <group position={[-MARK_PIVOT.x, -MARK_PIVOT.y, 0]}>
@@ -210,10 +214,10 @@ function MarkMesh({
               <meshStandardMaterial vertexColors roughness={0.85} metalness={0} />
             </mesh>
             <mesh geometry={geometry.coverRight}>
-              <meshStandardMaterial vertexColors roughness={0.92} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.8} metalness={0} />
             </mesh>
             <mesh geometry={geometry.coverLeft}>
-              <meshStandardMaterial vertexColors roughness={0.92} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.8} metalness={0} />
             </mesh>
             {/* The stem is unlit: the SVG's gold gradient exactly, so the swap from the CSS mark
                 changes nothing the eye can catch. Its roundness comes from the tube's silhouette
@@ -222,11 +226,23 @@ function MarkMesh({
               <meshBasicMaterial vertexColors />
             </mesh>
             <mesh geometry={geometry.leafLower} position={[0, 0, MARK_Z.leaves]}>
-              <meshStandardMaterial vertexColors roughness={0.9} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.8} metalness={0} />
             </mesh>
             <mesh geometry={geometry.leafUpper} position={[0, 0, MARK_Z.leaves]}>
-              <meshStandardMaterial vertexColors roughness={0.9} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.8} metalness={0} />
             </mesh>
+            {/* The SVG's sheen — a white 20% highlight across each cover — and its paper line,
+                both flat and unlit, so the 3D mark carries the same light the flat one does. */}
+            {geometry.sheens.map((g, i) => (
+              <mesh key={`sheen-${i}`} geometry={g} position={[0, 0, MARK_Z.lines - 0.1]}>
+                <meshBasicMaterial color="#ffffff" transparent opacity={0.2} />
+              </mesh>
+            ))}
+            {geometry.paperLines.map((g, i) => (
+              <mesh key={`paperline-${i}`} geometry={g} position={[0, 0, MARK_Z.paper + 4.6]}>
+                <meshBasicMaterial color={colors.paperLine} transparent opacity={0.9} />
+              </mesh>
+            ))}
             {/* Page lines and veins: flat, unlit, translucent — the strokes the SVG draws. */}
             {geometry.lines.map((g, i) => (
               <mesh key={`line-${i}`} geometry={g} position={[0, 0, MARK_Z.lines]}>

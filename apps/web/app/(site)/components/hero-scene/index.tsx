@@ -174,6 +174,10 @@ export function HeroScene({ children }: { children: React.ReactNode }) {
     <div
       ref={ref}
       className="relative mx-auto w-full max-w-[460px]"
+      // The same perspective as the CSS stage: the canvas wrapper floats with `rotateY`, and a
+      // rotateY with no perspective collapses to a horizontal scale that resamples the canvas
+      // into a soft blur. With perspective it is a real turn, like the SVG layers next to it.
+      style={{ perspective: "1200px" }}
       data-scene={scene}
       data-scene-reason={reason || undefined}
     >

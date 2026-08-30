@@ -5,6 +5,7 @@ import {
   Color,
   ExtrudeGeometry,
   type BufferGeometry,
+  ShapeGeometry,
   TubeGeometry,
   Vector3,
 } from "three";
@@ -55,8 +56,8 @@ function extrude(d: string, depth: number, bevel: number): BufferGeometry {
     bevelEnabled: true,
     bevelThickness: bevel,
     bevelSize: bevel,
-    bevelSegments: 2,
-    curveSegments: 10,
+    bevelSegments: 3,
+    curveSegments: 24,
   });
 }
 
@@ -65,7 +66,7 @@ function ribbons(d: string, width: number): BufferGeometry[] {
   const { paths } = loader.parse(svgYUp(d));
   const style = SVGLoader.getStrokeStyle(width, "#fff", "round", "round", 4);
   return (paths[0]?.subPaths ?? []).map((sub) =>
-    SVGLoader.pointsToStroke(sub.getSpacedPoints(24), style, 12, 0.001),
+    SVGLoader.pointsToStroke(sub.getSpacedPoints(48), style, 16, 0.001),
   );
 }
 
@@ -73,11 +74,11 @@ function stemTube(): BufferGeometry {
   const { paths } = loader.parse(svgYUp(MARK_PATHS.stem));
   const sub = paths[0]?.subPaths[0];
   if (!sub) throw new Error("stem path did not parse");
-  const points = sub.getSpacedPoints(48).map((p) => new Vector3(p.x, p.y, 0));
+  const points = sub.getSpacedPoints(64).map((p) => new Vector3(p.x, p.y, 0));
   // Radius a fifth over the stroke's half-width: a lit tube's sides fall into shadow, so its
   // visible face reads narrower than a flat stroke of the same width. Measured against the
   // SVG stem, not assumed.
-  return new TubeGeometry(new CatmullRomCurve3(points), 48, MARK_STROKES.stem * 0.6, 10, false);
+  return new TubeGeometry(new CatmullRomCurve3(points), 96, MARK_STROKES.stem * 0.6, 14, false);
 }
 
 /**
@@ -102,11 +103,20 @@ export function paintGradient(geometry: BufferGeometry, top: Color, bottom: Colo
   geometry.getAttribute("color").needsUpdate = true;
 }
 
+/** A filled SVG shape as a flat face (no depth) — for the sheen highlights. */
+function flat(d: string): BufferGeometry {
+  return new ShapeGeometry(shapesOf(d), 24);
+}
+
 export type MarkGeometry = Record<MarkPart, BufferGeometry> & {
   /** The six page lines, flat on the covers' front face. */
   lines: BufferGeometry[];
   /** The two leaf veins, flat on the leaves. */
   veins: BufferGeometry[];
+  /** The white sheen across each cover (the SVG's 20% highlight). */
+  sheens: BufferGeometry[];
+  /** The thin line along the paper edge. */
+  paperLines: BufferGeometry[];
 };
 
 /** Depth per part, in viewBox units. Covers thickest; leaves thin; the stem sits proud of the spine. */
@@ -126,6 +136,8 @@ export function buildMarkGeometry(): MarkGeometry {
       ...ribbons(MARK_PATHS.veinLower, MARK_STROKES.vein),
       ...ribbons(MARK_PATHS.veinUpper, MARK_STROKES.vein),
     ],
+    sheens: [flat(MARK_PATHS.sheenRight), flat(MARK_PATHS.sheenLeft)],
+    paperLines: ribbons(MARK_PATHS.paperLine, MARK_STROKES.paperLine),
   };
 }
 
