@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { tierThresholds } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { Nav } from "../../components/nav";
+import { BackLink } from "../../components/ui";
 import { TierRow } from "./tier-row";
 
 /**
@@ -27,22 +27,20 @@ export default async function IdaraRutab() {
     <>
       <Nav current="/idara" signedIn memberName={admin.name} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <Link
-            href="/idara"
-            className="text-body-sm mb-10 inline-block font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
-          >
-            <span aria-hidden="true">→</span> لوحة التحكم
-          </Link>
+        <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
+          <BackLink href="/idara">لوحة التحكم</BackLink>
 
-          <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+          <h1
+            data-reveal="0"
+            className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]"
+          >
             الرتب
           </h1>
-          <p className="text-body-sm mt-4 max-w-xl text-[var(--ink-muted)]">
+          <p className="lede text-body-lg mt-4 max-w-xl text-[var(--ink-muted)]">
             حدود النقاط لكل رتبة. تعديل الحد يُعيد ترتيب الأعضاء فوراً دون ترحيل.
           </p>
 
-          <div className="hairline rule-draw mt-10" />
+          <div className="hairline mt-10" />
           <ul className="mt-4 max-w-2xl">
             {tiers.map((t) => (
               <TierRow key={t.key} tier={{ key: t.key, name: t.name, minPoints: t.minPoints }} />

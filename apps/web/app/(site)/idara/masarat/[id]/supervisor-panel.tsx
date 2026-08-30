@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 
-import { assignSupervisorAction, removeSupervisorAction, type ActionState } from "../../admin-actions";
+import {
+  assignSupervisorAction,
+  removeSupervisorAction,
+  type ActionState,
+} from "../../admin-actions";
+import { buttonClass } from "../../../components/ui";
 
 type Editor = { id: string; name: string };
 
@@ -38,7 +43,7 @@ export function SupervisorPanel({
                 type="button"
                 disabled={pending}
                 onClick={() => run(() => removeSupervisorAction(trackId, s.id))}
-                className="text-caption font-semibold text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--ink)] disabled:opacity-50"
+                className={buttonClass("ghost", "sm")}
               >
                 اسحب الإشراف
               </button>
@@ -51,10 +56,11 @@ export function SupervisorPanel({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <select
             dir="rtl"
+            aria-label="اختر مشرفاً"
             value={selected}
             disabled={pending}
             onChange={(e) => setSelected(e.target.value)}
-            className="text-body-sm rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
+            className="text-body-sm min-h-11 rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
           >
             <option value="">اختر عضواً…</option>
             {assignable.map((e) => (
@@ -66,19 +72,25 @@ export function SupervisorPanel({
           <button
             type="button"
             disabled={pending || !selected}
-            onClick={() => run(async () => {
-              const r = await assignSupervisorAction(trackId, selected);
-              if (r.status === "ok") setSelected("");
-              return r;
-            })}
-            className="text-body-sm rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)] disabled:opacity-50"
+            onClick={() =>
+              run(async () => {
+                const r = await assignSupervisorAction(trackId, selected);
+                if (r.status === "ok") setSelected("");
+                return r;
+              })
+            }
+            className={buttonClass("secondary", "sm")}
           >
             عيّن مشرفاً
           </button>
         </div>
       ) : null}
 
-      <p aria-live="polite" role={result?.status === "error" ? "alert" : undefined} className="text-caption mt-2 min-h-[1.1em] text-[var(--ink-muted)]">
+      <p
+        aria-live="polite"
+        role={result?.status === "error" ? "alert" : undefined}
+        className="text-caption mt-2 min-h-[1.1em] text-[var(--ink-muted)]"
+      >
         {result?.status === "error" ? result.message : null}
       </p>
     </div>

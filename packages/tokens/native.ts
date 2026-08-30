@@ -13,9 +13,9 @@
  * re-exported from `lib/` untouched rather than mirrored.
  */
 
-import type { ColorScale } from "./lib/colors.js";
+import type { ColorScale, LogoStop } from "./lib/colors.js";
 
-export type { ColorScale, ScaleStep } from "./lib/colors.js";
+export type { ColorScale, LogoStop, ScaleStep } from "./lib/colors.js";
 
 /** Hex mirror of `seedling` (primary, from the logo's leaves and book). */
 export const seedlingHex: ColorScale = {
@@ -62,17 +62,36 @@ export const paperHex: ColorScale = {
   "950": "#0b0e0d",
 };
 
+/** Hex mirror of `logo` — the mark's gradient stops as designed (ADR 0029). */
+export const logoHex: Record<LogoStop, string> = {
+  "teal-hi": "#1ecfae",
+  "teal-lo": "#0e9b82",
+  "gold-hi": "#e3bd4e",
+  "gold-lo": "#b18f2f",
+  "teal-hi-night": "#35e2c2",
+  "teal-lo-night": "#14b899",
+  "gold-hi-night": "#ecd08a",
+  "gold-lo-night": "#c7a958",
+};
+
 /** Hex mirror of `lightRoles`. `surfaceRaised` is the CSS keyword `white` there — `#ffffff` here. */
 export const lightRolesNative = {
   surface: paperHex["50"],
   surfaceRaised: "#ffffff",
   border: paperHex["200"],
   ink: paperHex["950"],
-  inkMuted: paperHex["500"],
+  inkMuted: paperHex["600"],
+  inkFaint: paperHex["400"],
   brand: seedlingHex["500"],
   brandFill: seedlingHex["400"],
+  brandDeep: seedlingHex["600"],
   accent: stemHex["500"],
   accentFill: stemHex["400"],
+  accentInk: stemHex["600"],
+  tealHi: logoHex["teal-hi"],
+  tealLo: logoHex["teal-lo"],
+  goldHi: logoHex["gold-hi"],
+  goldLo: logoHex["gold-lo"],
 } as const;
 
 /** Hex mirror of `darkRoles` — brand roles on steps 100-200 for APCA, same as the source. */
@@ -81,11 +100,18 @@ export const darkRolesNative = {
   surfaceRaised: paperHex["900"],
   border: paperHex["800"],
   ink: paperHex["50"],
-  inkMuted: paperHex["400"],
+  inkMuted: paperHex["300"],
+  inkFaint: paperHex["500"],
   brand: seedlingHex["200"],
   brandFill: seedlingHex["300"],
+  brandDeep: seedlingHex["100"],
   accent: stemHex["200"],
   accentFill: stemHex["300"],
+  accentInk: stemHex["200"],
+  tealHi: logoHex["teal-hi-night"],
+  tealLo: logoHex["teal-lo-night"],
+  goldHi: logoHex["gold-hi-night"],
+  goldLo: logoHex["gold-lo-night"],
 } as const;
 
 export { duration } from "./lib/motion.js";

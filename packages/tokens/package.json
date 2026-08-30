@@ -6,6 +6,7 @@
   "exports": {
     ".": "./index.ts",
     "./native": "./native.ts",
+    "./brand": "./brand.ts",
     "./theme.css": "./theme.css"
   },
   "scripts": {

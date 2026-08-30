@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { hero } from "../content";
+import { Mark } from "./mark";
 import { Num } from "./num";
 import { SignOutButton } from "./sign-out-button";
+import { ThemeToggle } from "./theme-toggle";
 
 /**
  * `route: true` means a real page, reached with `next/link` so the client router
@@ -79,11 +81,10 @@ export function Nav({
          * "فسيلـةالمسارات" as one run of letters, which in Arabic reads as a
          * single word rather than two elements.
          */}
-        <Link
-          href="/"
-          className="font-display text-card-title shrink-0 leading-[1.5] font-semibold text-[var(--brand)]"
-        >
-          {hero.wordmark}
+        <Link href="/" className="text-card-title flex shrink-0 items-center gap-2.5 leading-[1.5]">
+          {/* The mark beside the wordmark — logo 6a (ADR 0029). Decorative here: the link's text is its name. */}
+          <Mark size={36} shadow={false} idPrefix="nav-mark" />
+          <span className="wordmark">{hero.wordmark}</span>
         </Link>
 
         {/*
@@ -132,16 +133,23 @@ export function Nav({
          * The end slot changes with the session, and what it offers is different in
          * kind rather than just in label.
          *
-         * Signed out, the primary action stays انضم إلينا — pointing at Linktree,
-         * because someone who has never heard of Faseela should be invited to join
-         * the initiative, not handed a login form. Sign-in sits beside it as the
-         * quieter option, for the Member who already belongs.
+         * Signed out, the primary action is انضم إلينا. It once pointed at Linktree
+         * (the app was not live); since Slice 1 an account is one e-mail away, so the
+         * invitation leads to sign-in. دخول sits beside it as the quieter wording of the
+         * same door, for the Member who already belongs.
          *
          * Signed in, both are pointless: they are already a Member and already
          * authenticated. The slot becomes sign-out.
          */}
         {signedIn ? (
-          <div className="flex shrink-0 items-center gap-4">
+          /*
+           * On a phone this slot cannot hold the toggle, the bell, a name, a tier badge and
+           * sign-out beside the wordmark: it overflowed 393px by 61–106px. The name and tier
+           * are hidden below `sm` — they live on /hisabi, one tap away via the bell's
+           * neighbour — and the gap tightens; the actions stay.
+           */
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             {/*
              * The bell (§38). A link, not a menu: a dropdown would need client
              * JavaScript on every signed-in page to show what the list page shows
@@ -150,9 +158,7 @@ export function Nav({
              */}
             <Link
               href="/ishaarat"
-              aria-label={
-                unreadCount > 0 ? `الإشعارات، ${unreadCount} جديدة` : "الإشعارات"
-              }
+              aria-label={unreadCount > 0 ? `الإشعارات، ${unreadCount} جديدة` : "الإشعارات"}
               className="relative flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
             >
               <svg
@@ -171,7 +177,7 @@ export function Nav({
               {unreadCount > 0 ? (
                 <span
                   aria-hidden="true"
-                  className="absolute top-1.5 end-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-[0.625rem] leading-none font-semibold text-[var(--surface)]"
+                  className="absolute end-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-[0.625rem] leading-none font-semibold text-[var(--surface)]"
                 >
                   {unreadCount > 9 ? <Num value={9} suffix="+" /> : <Num value={unreadCount} />}
                 </span>
@@ -188,13 +194,14 @@ export function Nav({
             {memberName && memberName.trim() ? (
               <Link
                 href="/hisabi"
-                className="flex items-center gap-2 transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                className="hidden min-h-11 items-center gap-2 transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70 sm:flex"
               >
                 <span className="text-body-sm max-w-[9rem] truncate font-medium text-[var(--ink)]">
                   {memberName}
                 </span>
                 {tier ? (
-                  <span className="text-caption rounded-full bg-[color-mix(in_oklch,var(--brand)_12%,transparent)] px-2 py-0.5 font-semibold text-[var(--brand)]">
+                  /* The tier in gold — the identity's colour for standing (ADR 0029). */
+                  <span className="text-caption rounded-full bg-[color-mix(in_oklch,var(--gold-hi)_18%,transparent)] px-2 py-0.5 font-semibold text-[var(--accent-ink)]">
                     {tier}
                   </span>
                 ) : null}
@@ -202,7 +209,7 @@ export function Nav({
             ) : (
               <Link
                 href="/akmil-hisabak"
-                className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                className="text-body-sm hidden min-h-11 items-center font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70 sm:flex"
               >
                 أكمل حسابك
               </Link>
@@ -211,20 +218,20 @@ export function Nav({
           </div>
         ) : (
           <div className="flex shrink-0 items-center gap-4">
+            <ThemeToggle />
             <Link
               href="/dukhul"
               className="text-body-sm hidden font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--ink)] sm:block"
             >
               دخول
             </Link>
-            <a
-              href="https://linktr.ee/faseela_24"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-body-sm shrink-0 rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
+            {/* Since Slice 1 an account is one e-mail away: the invitation leads to sign-in, not a link tree. */}
+            <Link
+              href="/dukhul"
+              className="text-body-sm shrink-0 rounded-[var(--radius-btn)] border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
             >
               انضم إلينا
-            </a>
+            </Link>
           </div>
         )}
       </nav>

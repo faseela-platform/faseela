@@ -51,6 +51,22 @@
   --color-paper-900: oklch(0.243 0.006 178.3);
   --color-paper-950: oklch(0.16 0.006 178.3);
 
+  /*
+   * The mark's own gradient stops — logo 6a, ADR 0029. Converted from the designed hex
+   * (#1ecfae→#0e9b82 teal, #e3bd4e→#b18f2f gold) with culori at four decimals so the
+   * native hex mirror round-trips exactly. The `-night` stops are the owner's night
+   * palette: lighter and slightly less saturated so they hold on paper-950.
+   * These are display colours (fills, gradients, the wordmark); never body text.
+   */
+  --color-logo-teal-hi: oklch(0.7652 0.1396 175.24);
+  --color-logo-teal-lo: oklch(0.6169 0.1135 175.55);
+  --color-logo-gold-hi: oklch(0.8114 0.1346 90.03);
+  --color-logo-gold-lo: oklch(0.6645 0.118 88.68);
+  --color-logo-teal-hi-night: oklch(0.821 0.1423 176.63);
+  --color-logo-teal-lo-night: oklch(0.6998 0.1296 174.53);
+  --color-logo-gold-hi-night: oklch(0.8655 0.0939 88.56);
+  --color-logo-gold-lo-night: oklch(0.7447 0.1065 89.37);
+
   /* ---------------------------------------------------------------------------
    * Type families. The display font is deliberately a token: ADR 0009 keeps it
    * swappable so a licensed face with a kashida axis can replace Cairo without a
@@ -114,6 +130,9 @@
   --ease-move: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --ease-hover: cubic-bezier(0.25, 0.1, 0, 1);
+  /* Fast start, long settle. For press feedback and the grow intro — anything that
+   * should feel like it arrives instantly and then rests. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
   --duration-hover: 130ms;
   --duration-press: 150ms;
@@ -138,6 +157,15 @@
   --section-y: 10rem; /* 160px. Reference measures 200px; scaled for a lighter, less dense page. */
   --section-y-sm: 5rem;
   --cell-min-h: 22rem; /* Tall grid cells: index pinned top, content pinned bottom. */
+
+  /* ---------------------------------------------------------------------------
+   * Radii — ADR 0012 (revised). Buttons 12, cards and chips 16; nested radius =
+   * outer − padding, derived at the use site, never a third token.
+   * ------------------------------------------------------------------------- */
+
+  --radius-btn: 12px;
+  --radius-card: 16px;
+  --radius-chip: 16px;
 }
 
 /* -----------------------------------------------------------------------------
@@ -152,11 +180,24 @@
   --surface-raised: white;
   --border: var(--color-paper-200);
   --ink: var(--color-paper-950);
-  --ink-muted: var(--color-paper-500);
+  /* paper-600, not 500: the owner's landing measured its muted text one step darker, and
+   * it reads better on the paper ground (ADR 0029). */
+  --ink-muted: var(--color-paper-600);
   --brand: var(--color-seedling-500);
   --brand-fill: var(--color-seedling-400);
+  /* Hover/pressed state of brand fills, and the teal of small text on paper. */
+  --brand-deep: var(--color-seedling-600);
   --accent: var(--color-stem-500);
   --accent-fill: var(--color-stem-400);
+  /* Gold as small TEXT (points, tiers, captions): stem-600 clears 4.5:1 on paper where stem-500
+   * (3.9:1) does not. Display-size gold keeps --accent. */
+  --accent-ink: var(--color-stem-600);
+
+  /* The mark's gradients, as roles so the night palette can swap them. */
+  --teal-hi: var(--color-logo-teal-hi);
+  --teal-lo: var(--color-logo-teal-lo);
+  --gold-hi: var(--color-logo-gold-hi);
+  --gold-lo: var(--color-logo-gold-lo);
 
   /*
    * Hairline. The reference defines grid cells with a 1px rule and no fill, border-radius or
@@ -164,8 +205,30 @@
    */
   --hairline: var(--color-paper-100);
   /* Dim index numerals. In the reference the ordinal is large but recessive, never the brightest
-   * element on screen. */
-  --ink-faint: var(--color-paper-300);
+   * element on screen. paper-400 (was 300) so it still clears contrast for low-vision readers. */
+  --ink-faint: var(--color-paper-400);
+
+  /*
+   * Atmosphere — derived, CSS-only (no native mirror; the app has its own gradients).
+   * The blobs and glow are the hero's ambient light; --glow also shadows the primary CTA.
+   */
+  --blob-a: color-mix(in oklch, var(--teal-hi) 16%, transparent);
+  --blob-b: color-mix(in oklch, var(--gold-hi) 14%, transparent);
+  --glow: color-mix(in oklch, var(--teal-lo) 25%, transparent);
+
+  /*
+   * Elevation — stacked translucent shadows (surfaces rule), tinted with the ink so they
+   * read as the paper's own shadow, never grey. 1 = resting control, 2 = raised card /
+   * popover, 3 = the hero's floating layers. Under night these collapse to a ring.
+   */
+  --elevation-1:
+    0 1px 2px color-mix(in oklch, var(--ink) 6%, transparent),
+    0 2px 8px -2px color-mix(in oklch, var(--ink) 8%, transparent);
+  --elevation-2:
+    0 2px 4px color-mix(in oklch, var(--ink) 5%, transparent),
+    0 12px 32px -12px color-mix(in oklch, var(--ink) 18%, transparent);
+  --elevation-3: 0 24px 60px -20px color-mix(in oklch, var(--ink) 22%, transparent);
+  --card-shadow: var(--elevation-2);
 }
 
 /*
@@ -178,13 +241,42 @@
   --surface-raised: var(--color-paper-900);
   --border: var(--color-paper-800);
   --ink: var(--color-paper-50);
-  --ink-muted: var(--color-paper-400);
+  --ink-muted: var(--color-paper-300);
   --brand: var(--color-seedling-200);
   --brand-fill: var(--color-seedling-300);
+  --brand-deep: var(--color-seedling-100);
   --accent: var(--color-stem-200);
   --accent-fill: var(--color-stem-300);
+  --accent-ink: var(--color-stem-200);
+  --teal-hi: var(--color-logo-teal-hi-night);
+  --teal-lo: var(--color-logo-teal-lo-night);
+  --gold-hi: var(--color-logo-gold-hi-night);
+  --gold-lo: var(--color-logo-gold-lo-night);
   --hairline: var(--color-paper-800);
-  --ink-faint: var(--color-paper-700);
+  --ink-faint: var(--color-paper-500);
+
+  --blob-a: color-mix(in oklch, var(--teal-hi) 13%, transparent);
+  --blob-b: color-mix(in oklch, var(--gold-hi) 9%, transparent);
+  --glow: color-mix(in oklch, var(--teal-hi) 20%, transparent);
+
+  /* Shadows are invisible on a dark ground; depth becomes a 1px light ring (surfaces rule). */
+  --elevation-1: 0 0 0 1px color-mix(in oklch, white 8%, transparent);
+  --elevation-2:
+    0 0 0 1px color-mix(in oklch, white 10%, transparent),
+    0 24px 60px -24px color-mix(in oklch, black 60%, transparent);
+  --elevation-3:
+    0 0 0 1px color-mix(in oklch, white 12%, transparent),
+    0 32px 80px -24px color-mix(in oklch, black 70%, transparent);
+  --card-shadow: var(--elevation-2);
+}
+
+/* The toggle sets `data-theme="dark"`; the absence of the attribute is light. `color-scheme`
+ * tells the browser so native controls, scrollbars and form fields follow. */
+:root {
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* -----------------------------------------------------------------------------

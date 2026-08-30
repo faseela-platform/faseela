@@ -9,6 +9,15 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
+import {
+  buttonClass,
+  Card,
+  EmptyState,
+  PageHeader,
+  Pill,
+  Points,
+  ProgressBar,
+} from "../components/ui";
 
 /**
  * A Member's profile — their standing on the permission ladder (spec §48's
@@ -60,42 +69,34 @@ export default async function ProfilePage() {
         unreadCount={unreadCount}
       />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <div className="reveal max-w-3xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">حسابي</p>
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-              {session.user.name?.trim() || "عضو"}
-            </h1>
-            <p className="text-lede mt-4 flex items-center gap-3 text-[var(--ink-muted)]">
-              رتبتك الحالية
-              <span className="text-body-sm rounded-full bg-[color-mix(in_oklch,var(--brand)_12%,transparent)] px-3 py-1 font-semibold text-[var(--brand)]">
-                {progress.tier.name}
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="حسابي"
+            title={session.user.name?.trim() || "عضو"}
+            lede={
+              <span className="flex flex-wrap items-center gap-3">
+                رتبتك الحالية
+                <Pill tone="gold">{progress.tier.name}</Pill>
               </span>
-            </p>
-          </div>
+            }
+          />
 
-          {/* Points + progress to the next rung. */}
-          <div className="reveal mt-12 max-w-3xl rounded-md border border-[var(--border)] px-6 py-6">
+          {/* Points + progress to the next rung — gold, because this is what the initiative counts. */}
+          <Card tone="gold" reveal={80} className="mt-10 max-w-3xl">
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-body-sm text-[var(--ink-muted)]">مجموع نقاطك</p>
-              <p className="font-display text-[clamp(1.6rem,3vw,2.441rem)] leading-[1.2] font-medium text-[var(--brand)]">
+              <p className="font-display text-[clamp(1.8rem,3.4vw,2.8rem)] leading-[1.2] font-extrabold text-[var(--accent-ink)]">
                 <Num value={progress.points} />
               </p>
             </div>
 
             {/*
-             * The band bar. `aria-hidden` on the visual bar because the sentence
-             * below states the same thing in words — a screen reader gets the fact,
-             * not a decorative track. CSS-only width, no client JS (ADR 0011).
+             * The band bar. `aria-hidden` on the visual bar because the sentence below
+             * states the same thing in words — a screen reader gets the fact, not a
+             * decorative track.
              */}
-            <div
-              aria-hidden="true"
-              className="mt-5 h-2 w-full overflow-hidden rounded-full bg-[var(--hairline)]"
-            >
-              <div
-                className="h-full rounded-full bg-[var(--brand)]"
-                style={{ width: `${Math.round(fill * 100)}%` }}
-              />
+            <div className="mt-5">
+              <ProgressBar fill={fill} tone="gold" />
             </div>
 
             <p className="text-body-sm mt-4 text-[var(--ink-muted)]">
@@ -112,40 +113,38 @@ export default async function ProfilePage() {
                 <>بلغت أعلى رتبة. استمرّ في الإسهام.</>
               )}
             </p>
-          </div>
-
-          <div className="hairline rule-draw mt-16" />
+          </Card>
 
           {/* Where the Points came from, per Track. */}
-          <h2 className="text-caption mt-12 mb-8 font-semibold text-[var(--ink-muted)]">
+          <h2 className="text-body-sm mt-14 mb-4 font-bold text-[var(--brand)]">
             نقاطك حسب المسار
           </h2>
 
           {trackPoints.length === 0 ? (
-            <div className="py-6">
-              <p className="text-body-lg max-w-lg text-[var(--ink-muted)]">
-                لم تُحتسب لك نقاط بعد. أنجز مهمة في أحد المسارات لتبدأ رحلتك.
-              </p>
-              <Link
-                href="/masarat"
-                className="text-body-sm mt-6 inline-block font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
-              >
-                <span aria-hidden="true">→</span> تصفّح المسارات
-              </Link>
-            </div>
+            <EmptyState
+              title="لم تُحتسب لك نقاط بعد."
+              body="أنجز مهمة في أحد المسارات لتبدأ رحلتك."
+              action={
+                <Link href="/masarat" className={buttonClass("primary", "sm")}>
+                  تصفّح المسارات
+                </Link>
+              }
+            />
           ) : (
-            <ol className="reveal-stagger max-w-3xl">
+            <ol className="max-w-3xl">
               {trackPoints.map((row, i) => (
-                <li key={row.trackId} style={{ ["--i" as string]: i }}>
+                <li key={row.trackId} data-reveal={String(Math.min(i, 4) * 60)}>
                   <Link
                     href={`/masarat/${row.trackSlug}`}
-                    className="group flex items-baseline justify-between gap-4 border-b border-[var(--hairline)] py-5 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
+                    className="group flex min-h-14 items-center justify-between gap-4 border-b border-[var(--hairline)] px-3 py-4 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
                   >
                     <span className="text-body-lg font-medium text-[var(--ink)] group-hover:text-[var(--brand)]">
                       {row.trackTitle}
                     </span>
-                    <span className="text-body-sm shrink-0 font-semibold text-[var(--brand)]">
-                      <Num value={row.points} /> نقطة
+                    <span className="text-body-sm shrink-0">
+                      <Points>
+                        <Num value={row.points} />
+                      </Points>
                     </span>
                   </Link>
                 </li>

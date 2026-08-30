@@ -1,10 +1,10 @@
 /**
  * Landing page content, in Arabic, extracted from Faseela's own profile document and the app
- * specification. Kept separate from the components so copy edits never touch layout, and so this
- * file becomes the migration source when Payload takes over.
+ * specification, then revised to the owner's landing design (assets/design/faseela-landing.dc.html,
+ * 2026-08-28) — ADR 0029. Kept separate from the components so copy edits never touch layout.
  *
  * Vocabulary follows CONTEXT.md: مسار (Track), مهمة (Task), نقطة (Point), موسم (Season),
- * محطة (Station).
+ * محطة (Station), رتبة (Tier).
  */
 
 export const hero = {
@@ -12,22 +12,40 @@ export const hero = {
   wordmark: "فسيلـة",
   /** Split at word boundaries for the stagger — never at letters, which would sever cursive joins. */
   taglineWords: ["نغرس", "الوعي", "في", "جيلٍ", "يصنع", "غدَه"],
+  /** The word the tagline lights in teal. */
+  taglineAccentIndex: 1,
+  /**
+   * No platform clause ("قريباً على iOS وAndroid") — the app ships with the site (owner, 2026-08-29).
+   */
   lede: "مبادرة شبابية لبنانية تبني الإنسان عبر المعرفة والعمل، وتفتح للشباب مساراتٍ يسيرون فيها خطوةً خطوة.",
   cta: "ابدأ مسارك",
+  ctaHref: "/masarat",
   ctaSecondary: "تعرّف علينا",
+  ctaSecondaryHref: "#about",
+  /**
+   * The three chips that orbit the mark — the product loop, never anything user-specific
+   * (owner decision D6). Also rendered as a row on phones where they cannot orbit.
+   */
+  chips: [
+    { label: "اختر مساراً", sub: "٩ مسارات معرفية", icon: "tracks" },
+    { label: "أنجز مهمّة", sub: "قصيرة، في وقتك", icon: "check" },
+    { label: "اجمع نقاطاً", sub: "وارتقِ في الرتب", icon: "ring" },
+  ],
 } as const;
 
 export const hadith = {
   text: "إذا قامت الساعة وفي يد أحدكم فسيلة فليغرسها",
   attribution: "حديث شريف",
+  /** The quote card in "من نحن" adds the provenance of the name. */
+  cardAttribution: "حديث شريف — ومنه اسم المبادرة",
 } as const;
 
-/** Numbers are real, from the profile document and the public channels. */
+/** Numbers are real, from the profile document and the public channels. Labels per the owner's landing. */
 export const stats = [
-  { value: "17200", suffix: "+", label: "متابع على إنستغرام" },
-  { value: "50", suffix: "", label: "عضواً في فريق العمل" },
-  { value: "5", suffix: "", label: "أجنحة عمل" },
-  { value: "7", suffix: "", label: "دوائر استهداف" },
+  { value: 17200, suffix: "+", label: "متابع على إنستغرام", tone: "brand" },
+  { value: 50, suffix: "", label: "عضواً في فريق العمل", tone: "accent" },
+  { value: 5, suffix: "", label: "أجنحة عمل متخصّصة", tone: "brand" },
+  { value: 7, suffix: "", label: "دوائر استهداف في المجتمع", tone: "accent" },
 ] as const;
 
 export const about = {
@@ -58,6 +76,22 @@ export const wings = [
     body: "بناء الشراكات والتواصل مع المؤسسات والمجتمع المحلي.",
   },
 ] as const;
+
+/** The product, as the owner's landing frames it: one platform, web and app together. */
+export const app = {
+  eyebrow: "المنصّة",
+  title: "مسارات ومهام ونقاط — في تطبيق واحد",
+  body: "اختر مساراً، أنجز مهامه القصيرة في وقتك، واجمع نقاطاً تُراكم تقدّمك داخل الموسم. على الويب وفي تطبيق الهاتف.",
+  /** Captions under the three phone mockups. */
+  screens: ["الصفحة الرئيسة", "مسار ومهام", "المواسم والصدارة"],
+  features: [
+    { label: "مسارات ومهام قصيرة", tone: "brand" },
+    { label: "نقاط تُمنح بالمراجعة", tone: "accent" },
+    { label: "مواسم ولوحة صدارة", tone: "brand" },
+    { label: "رتب تُفتح بالتقدّم", tone: "accent" },
+  ],
+  mockupNote: "لقطات توضيحية من التطبيق",
+} as const;
 
 export const tracks = {
   eyebrow: "كيف تعمل",
@@ -100,18 +134,21 @@ export const channels = [
 ] as const;
 
 /**
- * The sticky rail's entries. Kept here rather than derived from the DOM because the rail is a
- * reading aid with its own editorial ordering, not a mechanical table of contents.
+ * The closing invitation. "انضم إلينا" now leads to sign-in: since Slice 1 an account is one
+ * e-mail away, so the invitation is to the product, not to a link tree.
  */
-export const rail = [
-  { id: "about", label: "من نحن" },
-  { id: "tracks", label: "كيف تعمل" },
-  { id: "stations", label: "محطــــات" },
-  { id: "channels", label: "قنواتنا" },
-] as const;
-
 export const cta = {
-  title: "انطلق مع فسيلة",
-  body: "سجّل الآن وابدأ أول مسار. التطبيق قيد الإعداد، ويمكنك الانضمام إلى قنواتنا حتى إطلاقه.",
+  title: "انطلق مع فسيلـة",
+  body: "سجّل الآن وابدأ أول مسار، وتابع محطاتنا وجديدنا على قنواتنا.",
   primary: "انضم إلينا",
+  primaryHref: "/dukhul",
+  secondary: "اكتشف المنصّة",
+  secondaryHref: "#app",
+} as const;
+
+export const footer = {
+  copyright: "© فسيلـة",
+  year: 2026,
+  tagline: "مبادرة شبابية لبنانية",
+  motto: "نغرس الوعي في جيلٍ يصنع غدَه",
 } as const;

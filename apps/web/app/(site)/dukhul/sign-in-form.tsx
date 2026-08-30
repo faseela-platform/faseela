@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { signIn } from "@/lib/auth-client";
+import { buttonClass } from "../components/ui";
 
 /**
  * The magic-link request form.
@@ -42,7 +43,7 @@ export function SignInForm({ callbackURL }: { callbackURL: string }) {
             setState("idle");
             setError(null);
           }}
-          className="text-body-sm mt-6 font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+          className={buttonClass("ghost", "sm", "-ms-4 mt-4")}
         >
           استخدم بريداً آخر
         </button>
@@ -104,14 +105,14 @@ export function SignInForm({ callbackURL }: { callbackURL: string }) {
         disabled={state === "sending"}
         aria-invalid={state === "error"}
         aria-describedby={state === "error" ? "email-error" : undefined}
-        className="text-body-lg min-h-[44px] w-full rounded-md border border-[var(--border)] bg-transparent px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-faint)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
+        className="text-body-lg min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-muted)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
       />
 
       <button
         type="submit"
         disabled={state === "sending" || email.length === 0}
         aria-busy={state === "sending"}
-        className="text-body-lg mt-6 min-h-[44px] w-full rounded-md bg-[var(--brand)] px-6 py-3 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("primary", "md", "mt-6 w-full")}
       >
         {state === "sending" ? "جارٍ الإرسال…" : "أرسل رابط الدخول"}
       </button>

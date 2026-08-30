@@ -46,10 +46,10 @@ export function RequestRow({
               {KIND_LABEL[request.requestType]}
             </span>
             {request.signedIn ? (
-              <span className="text-caption mr-2 font-normal text-[var(--ink-faint)]">عضو</span>
+              <span className="text-caption mr-2 font-normal text-[var(--ink-muted)]">عضو</span>
             ) : null}
           </p>
-          <p className="text-caption mt-1 text-[var(--ink-faint)]" dir="ltr">
+          <p className="text-caption mt-1 text-[var(--ink-muted)]" dir="ltr">
             {[request.email, request.phone].filter(Boolean).join(" · ") || "—"}
           </p>
         </div>
@@ -61,7 +61,7 @@ export function RequestRow({
             disabled={pending}
             onChange={(e) => change(e.target.value as ServiceRequestStatus)}
             aria-label="حالة الرسالة"
-            className="text-body-sm rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[var(--ink)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
+            className="text-body-sm min-h-11 rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[var(--ink)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -82,7 +82,7 @@ export function RequestRow({
       <p className="text-body-sm mt-3 max-w-2xl whitespace-pre-wrap text-[var(--ink-muted)]">
         {request.body}
       </p>
-      <p className="text-caption mt-2 text-[var(--ink-faint)]">{request.createdAt}</p>
+      <p className="text-caption mt-2 text-[var(--ink-muted)]">{request.createdAt}</p>
     </li>
   );
 }

@@ -6,6 +6,9 @@ import {
   seedling,
   stem,
   paper,
+  logo,
+  lightRoles,
+  darkRoles,
   duration,
   travel,
   lineHeight,
@@ -42,6 +45,49 @@ describe("colour parity", () => {
       }
     });
   }
+
+  it("logo stops match theme.css", () => {
+    for (const [stop, value] of Object.entries(logo)) {
+      expect(cssVar(`--color-logo-${stop}`), `--color-logo-${stop}`).toBe(value);
+    }
+  });
+});
+
+describe("role parity", () => {
+  // Every role in `lightRoles` / `darkRoles` must point at the same CSS variable in the
+  // matching block, so a role that moved a step in one place cannot pass in the other.
+  const cssNameFor = (role: string) => `--${role.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+  const varFor = (value: string): string | undefined => {
+    for (const [scaleName, scale] of [
+      ["seedling", seedling],
+      ["stem", stem],
+      ["paper", paper],
+    ] as const) {
+      for (const [step, v] of Object.entries(scale))
+        if (v === value) return `var(--color-${scaleName}-${step})`;
+    }
+    for (const [stop, v] of Object.entries(logo))
+      if (v === value) return `var(--color-logo-${stop})`;
+    return value === "white" ? "white" : undefined;
+  };
+  const block = (start: number, end: number) => css.slice(start, end);
+  const darkStart = css.search(/\[data-theme=["']dark["']\]/);
+  const lightBlock = block(css.indexOf(":root {"), darkStart);
+  const darkBlock = block(darkStart, css.indexOf("color-scheme"));
+  const readRole = (b: string, name: string) =>
+    b.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, "m"))?.[1]?.trim();
+
+  it("light roles match the :root block", () => {
+    for (const [role, value] of Object.entries(lightRoles)) {
+      expect(readRole(lightBlock, cssNameFor(role)), `light ${role}`).toBe(varFor(value));
+    }
+  });
+
+  it("dark roles match the [data-theme=dark] block", () => {
+    for (const [role, value] of Object.entries(darkRoles)) {
+      expect(readRole(darkBlock, cssNameFor(role)), `dark ${role}`).toBe(varFor(value));
+    }
+  });
 });
 
 describe("motion parity", () => {

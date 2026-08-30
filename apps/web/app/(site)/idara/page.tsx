@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { requireStaff } from "@/lib/require-track-access";
 import { Nav } from "../components/nav";
+import { PageHeader } from "../components/ui";
 
 /**
  * The dashboard home (spec §34/§35). Staff-gated; a member gets a 404. An admin
@@ -20,11 +21,42 @@ export default async function IdaraHome() {
   const isAdmin = staff.role === "admin";
 
   const sections = [
-    { href: "/idara/masarat", label: "المسارات والمهام", desc: "أنشئ المسارات والمهام وانشرها.", show: true },
-    { href: "/idara/muhtawa", label: "المحتوى", desc: "الأخبار والفعاليات والإنتاجات والإعلانات للصفحة الرئيسة.", show: true },
-    { href: "/idara/ishaarat", label: "الإشعارات", desc: "أرسِل إعلاناً أو تحديثاً إلى الأعضاء.", show: isAdmin },
-    { href: "/idara/tawasol", label: "رسائل التواصل", desc: "الاقتراحات والاستفسارات والملاحظات الواردة.", show: isAdmin },
-    { href: "/idara/aada", label: "الأعضاء والصلاحيات", desc: "الأدوار وتعيين مشرفي المسارات.", show: isAdmin },
+    {
+      href: "/idara/masarat",
+      label: "المسارات والمهام",
+      desc: "أنشئ المسارات والمهام وانشرها.",
+      show: true,
+    },
+    {
+      href: "/idara/muhtawa",
+      label: "المحتوى",
+      desc: "الأخبار والفعاليات والإنتاجات والإعلانات للصفحة الرئيسة.",
+      show: true,
+    },
+    {
+      href: "/muraja3a",
+      label: "قائمة المراجعة",
+      desc: "الأعمال المُرسَلة بانتظار قرارك.",
+      show: true,
+    },
+    {
+      href: "/idara/ishaarat",
+      label: "الإشعارات",
+      desc: "أرسِل إعلاناً أو تحديثاً إلى الأعضاء.",
+      show: isAdmin,
+    },
+    {
+      href: "/idara/tawasol",
+      label: "رسائل التواصل",
+      desc: "الاقتراحات والاستفسارات والملاحظات الواردة.",
+      show: isAdmin,
+    },
+    {
+      href: "/idara/aada",
+      label: "الأعضاء والصلاحيات",
+      desc: "الأدوار وتعيين مشرفي المسارات.",
+      show: isAdmin,
+    },
     { href: "/idara/rutab", label: "الرتب", desc: "حدود نقاط الرتب.", show: isAdmin },
   ].filter((s) => s.show);
 
@@ -32,41 +64,43 @@ export default async function IdaraHome() {
     <>
       <Nav current="/idara" signedIn memberName={staff.name} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <div className="reveal max-w-3xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">لوحة التحكم</p>
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-              {isAdmin ? "الإدارة المركزية" : "إدارة مساراتك"}
-            </h1>
-            <p className="text-lede mt-6 max-w-xl text-[var(--ink-muted)]">
-              {isAdmin
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="لوحة التحكم"
+            title={isAdmin ? "الإدارة المركزية" : "إدارة مساراتك"}
+            lede={
+              isAdmin
                 ? "أنشئ المحتوى وأدره، عيّن المشرفين، وضبط الرتب."
-                : "أدر المسارات المُسندة إليك: مهامها ومحتواها ومراجعة تسليماتها."}
-            </p>
-          </div>
+                : "أدر المسارات المُسندة إليك: مهامها ومحتواها ومراجعة تسليماتها."
+            }
+          />
 
-          <div className="hairline rule-draw mt-12" />
-
-          <ol className="reveal-stagger mt-8 max-w-3xl">
+          {/* The sections as a card grid — each a whole-card link, because the card's
+              only text IS its label and description. */}
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sections.map((s, i) => (
-              <li key={s.href} style={{ ["--i" as string]: i }}>
+              <li key={s.href} data-reveal={String((i % 3) * 80)}>
                 <Link
                   href={s.href}
-                  className="group flex items-baseline justify-between gap-4 border-b border-[var(--hairline)] py-6 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
+                  className="group flex h-full min-h-[9rem] flex-col justify-between rounded-[var(--radius-card)] bg-[var(--surface-raised)] p-6 transition-[transform,box-shadow] duration-[150ms] ease-[var(--ease-out-expo)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
+                  style={{ boxShadow: "var(--card-shadow)" }}
                 >
                   <div>
-                    <p className="text-body-lg font-medium text-[var(--ink)] group-hover:text-[var(--brand)]">
+                    <p className="font-display text-card-title font-bold text-[var(--ink)] group-hover:text-[var(--brand)]">
                       {s.label}
                     </p>
-                    <p className="text-body-sm mt-1 text-[var(--ink-muted)]">{s.desc}</p>
+                    <p className="text-body-sm mt-2 text-[var(--ink-muted)]">{s.desc}</p>
                   </div>
-                  <span aria-hidden="true" className="text-[var(--ink-faint)] group-hover:text-[var(--brand)]">
+                  <span
+                    aria-hidden="true"
+                    className="mt-4 inline-block self-end text-[var(--ink-muted)] transition-colors group-hover:text-[var(--brand)] ltr:rotate-180"
+                  >
                     ←
                   </span>
                 </Link>
               </li>
             ))}
-          </ol>
+          </ul>
         </section>
       </main>
     </>

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { createContentAction, type ContentActionState } from "./content-actions";
 import { CONTENT_TYPES, CONTENT_TYPE_LABEL, type ContentType } from "./content-types";
+import { buttonClass } from "../../components/ui";
 
 /**
  * Create a content piece as a draft, then land on its editor to add media and
@@ -35,7 +36,7 @@ export function CreateContentForm({
   }
 
   const input =
-    "text-body-sm w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+    "min-h-11 text-body-sm w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
   const label = "text-caption mb-1 block text-[var(--ink-muted)]";
 
   return (
@@ -117,7 +118,7 @@ export function CreateContentForm({
             type="button"
             disabled={pending || title.trim() === "" || body.trim() === ""}
             onClick={submit}
-            className="text-body-sm rounded-md bg-[var(--brand)] px-5 py-2 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 disabled:opacity-50"
+            className={buttonClass("primary", "sm")}
           >
             {pending ? "…" : "أنشئ مسودة"}
           </button>

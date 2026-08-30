@@ -4,10 +4,12 @@ The design system as code. Colour, type, and motion.
 
 ## Entry points
 
-| Import | Use for |
-|---|---|
-| `@faseela/tokens/theme.css` | The web. A Tailwind v4 `@theme` block plus semantic roles. |
-| `@faseela/tokens` | Motion `transition` objects, React Native styles, tests. |
+| Import                      | Use for                                                                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `@faseela/tokens/theme.css` | The web. A Tailwind v4 `@theme` block plus semantic roles.                                                                    |
+| `@faseela/tokens`           | Motion `transition` objects, tests — OKLCH strings.                                                                           |
+| `@faseela/tokens/native`    | React Native: the same scales and roles as precomputed hex.                                                                   |
+| `@faseela/tokens/brand`     | The mark's geometry and colours (logo 6a, ADR 0029) — the single source for `<Mark>`, the icons, the 3D scene and the Lottie. |
 
 `theme.css` is the source of truth. The TypeScript mirrors it, because Motion and React
 Native cannot read a CSS custom property.
@@ -18,7 +20,7 @@ Native cannot read a CSS custom property.
 without the other and the test fails, naming the token that drifted. Two unchecked copies of
 the same numbers would be worse than none.
 
-The same file asserts the *constraints* the numbers exist to satisfy — display leading never
+The same file asserts the _constraints_ the numbers exist to satisfy — display leading never
 below 1.42, body leading above Latin's 1.5, `--leading-tight` overridden, dark-mode brand
 roles in the 100–200 range. So an edit that keeps both copies in sync but reintroduces a known
 defect still fails.
@@ -30,12 +32,12 @@ on the floor. Reverted.
 
 ```css
 /* apps/web/app/globals.css */
-@import 'tailwindcss';
-@import '@faseela/tokens/theme.css';
+@import "tailwindcss";
+@import "@faseela/tokens/theme.css";
 ```
 
 ```tsx
-import { duration, easing, stagger } from '@faseela/tokens';
+import { duration, easing, stagger } from "@faseela/tokens";
 
 <motion.div
   animate={{ opacity: 1 }}

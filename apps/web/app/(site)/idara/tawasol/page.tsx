@@ -6,6 +6,7 @@ import { adminServiceRequests, type ServiceRequestStatus } from "@faseela/db";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { Nav } from "../../components/nav";
+import { BackLink } from "../../components/ui";
 import { STATUS_LABEL } from "../../components/service-request-types";
 import { RequestRow } from "./request-row";
 
@@ -55,18 +56,16 @@ export default async function IdaraTawasol({
     <>
       <Nav current="/idara" signedIn memberName={admin.name} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <Link
-            href="/idara"
-            className="text-body-sm mb-10 inline-block font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
-          >
-            <span aria-hidden="true">→</span> لوحة التحكم
-          </Link>
+        <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
+          <BackLink href="/idara">لوحة التحكم</BackLink>
 
-          <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+          <h1
+            data-reveal="0"
+            className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]"
+          >
             رسائل التواصل
           </h1>
-          <p className="text-body-sm mt-4 max-w-xl text-[var(--ink-muted)]">
+          <p className="lede text-body-lg mt-4 max-w-xl text-[var(--ink-muted)]">
             الاقتراحات والاستفسارات والملاحظات التي وصلت عبر صفحة التواصل.
           </p>
 
@@ -76,9 +75,9 @@ export default async function IdaraTawasol({
                 key={f.value}
                 href={f.value === "all" ? "/idara/tawasol" : `/idara/tawasol?status=${f.value}`}
                 aria-current={active === f.value ? "page" : undefined}
-                className={`text-caption rounded-full border px-4 py-1.5 font-semibold transition-colors duration-[130ms] ease-[var(--ease-hover)] ${
+                className={`text-caption inline-flex min-h-11 items-center rounded-full border px-4 font-semibold transition-colors duration-[130ms] ease-[var(--ease-hover)] ${
                   active === f.value
-                    ? "border-[var(--brand)] text-[var(--brand)]"
+                    ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] text-[var(--brand)]"
                     : "border-[var(--border)] text-[var(--ink-muted)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
                 }`}
               >
@@ -87,7 +86,7 @@ export default async function IdaraTawasol({
             ))}
           </nav>
 
-          <div className="hairline rule-draw mt-8" />
+          <div className="hairline mt-8" />
 
           {requests.length === 0 ? (
             <p className="text-body-sm mt-10 text-[var(--ink-muted)]">لا رسائل في هذه الحالة.</p>

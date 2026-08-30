@@ -5,6 +5,7 @@ import {
   seedling,
   stem,
   paper,
+  logo,
   lightRoles,
   darkRoles,
   duration,
@@ -16,6 +17,7 @@ import {
   seedlingHex,
   stemHex,
   paperHex,
+  logoHex,
   lightRolesNative,
   darkRolesNative,
   duration as durationNative,
@@ -74,6 +76,13 @@ describe("native hex scales match the OKLCH sources", () => {
       }
     });
   }
+
+  it("logoHex matches logo at every stop", () => {
+    expect(Object.keys(logoHex).sort()).toEqual(Object.keys(logo).sort());
+    for (const [stop, oklch] of Object.entries(logo)) {
+      expectHexClose(logoHex[stop as keyof typeof logoHex], oklch, `logo-${stop}`);
+    }
+  });
 });
 
 describe("native role maps reference the same steps as the OKLCH role maps", () => {
@@ -89,6 +98,9 @@ describe("native role maps reference the same steps as the OKLCH role maps", () 
     for (const step of Object.keys(oklchScale) as Array<keyof ColorScale>) {
       hexForOklch.set(oklchScale[step], hexScale[step]);
     }
+  }
+  for (const stop of Object.keys(logo) as Array<keyof typeof logo>) {
+    hexForOklch.set(logo[stop], logoHex[stop]);
   }
   // lightRoles.surfaceRaised is the CSS keyword `white`; RN gets the literal hex.
   hexForOklch.set("white", "#ffffff");

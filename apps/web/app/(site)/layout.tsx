@@ -3,6 +3,8 @@ import type React from "react";
 import { Cairo, Rubik } from "next/font/google";
 
 import "../globals.css";
+import { RevealObserver } from "./components/reveal-observer";
+import { ThemeScript } from "./components/theme-script";
 
 /**
  * Cairo for display, Rubik for UI and body — ADR 0009.
@@ -29,7 +31,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7fbfa",
+  // paper-50 by day, paper-950 by night — the browser chrome follows the page.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7fbfa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0e0d" },
+  ],
 };
 
 /**
@@ -48,8 +54,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // `lang` and `dir` on <html> are what make logical CSS properties resolve correctly.
     // Every `margin-inline-start` in this codebase depends on this one attribute.
-    <html lang="ar" dir="rtl" className={`${cairo.variable} ${rubik.variable} h-full antialiased`}>
+    // `suppressHydrationWarning` because `theme-script.tsx` may add `data-theme` before React
+    // hydrates; that attribute is the visitor's choice, not a mismatch to repair.
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${cairo.variable} ${rubik.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <ThemeScript />
+      </head>
       <body className="font-body flex min-h-full flex-col bg-[var(--surface)] text-[var(--ink)]">
+        {/* One-shot section reveals on every page (ADR 0011 revised); ~1 KB, additive. */}
+        <RevealObserver />
         {children}
       </body>
     </html>

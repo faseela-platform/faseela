@@ -42,6 +42,15 @@ Vercel project `faseela` exists and is linked (`.vercel/project.json`).
 email provider (Resend) is wired — magic links currently log to console (ADR 0018). `emailIsDeliverable`
 in `apps/web/lib/email.ts` flips the `/dukhul` form on the day a transport is configured.
 
+## Visual verification (never skip)
+
+After any UI change, open the affected page in a real browser (Playwright MCP `playwright` server
+when connected, else `pnpm verify:page <paths>`), screenshot it in RTL, LTR and at 393px, and look
+at the images before finishing. Canvas/WebGL output is invisible to the accessibility tree — verify
+it with screenshots only. Animations: take sequential screenshots or read `getAnimations()` /
+computed transforms via JS, never trust a single frame. Dev data only — everything the browser
+sees is sent to the API.
+
 ## Ask before
 
 Registering domains/accounts, editing shell profiles, spending money, or installing the Vercel/GitHub

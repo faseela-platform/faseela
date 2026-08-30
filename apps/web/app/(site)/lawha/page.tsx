@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
+import { buttonClass, Card, EmptyState, PageHeader, Pill, Points } from "../components/ui";
 
 /**
  * The Leaderboard for the current Season.
@@ -53,21 +54,15 @@ export default async function LeaderboardPage() {
       <>
         <Nav current="/lawha" />
         <main>
-          <section className="gutter flex min-h-[60vh] items-center py-16">
-            <div className="reveal max-w-xl">
-              <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">لوحة الموسم</p>
-              <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-                لا يوجد موسم مفتوح
-              </h1>
-              <p className="text-lede mt-6 text-[var(--ink-muted)]">
-                الموسم الحالي انتهى، والموسم القادم لم يبدأ بعد. النقاط لا تُحتسب خارج المواسم،
-                وترتيب المواسم السابقة محفوظ.
-              </p>
-              <Link
-                href="/masarat"
-                className="text-body-sm mt-8 inline-block font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
-              >
-                <span aria-hidden="true">→</span> تصفّح المسارات
+          <section className="gutter mx-auto flex min-h-[60vh] max-w-[1440px] items-center py-16">
+            <div className="max-w-xl">
+              <PageHeader
+                eyebrow="لوحة الموسم"
+                title="لا يوجد موسم مفتوح"
+                lede="الموسم الحالي انتهى، والموسم القادم لم يبدأ بعد. النقاط لا تُحتسب خارج المواسم، وترتيب المواسم السابقة محفوظ."
+              />
+              <Link href="/masarat" className={buttonClass("secondary", "md", "mt-8")}>
+                تصفّح المسارات
               </Link>
             </div>
           </section>
@@ -88,8 +83,7 @@ export default async function LeaderboardPage() {
    */
   const myPoints = session?.user ? await memberSeasonPoints(db, session.user.id, season.id) : null;
   const myRow = session?.user ? rows.find((r) => r.userId === session.user.id) : undefined;
-  /** The reader's tier (lifetime), for the nav badge — distinct from their
-   * season Points above. */
+  /** The reader's tier (lifetime), for the nav badge — distinct from their season Points above. */
   const tier = session?.user ? (await memberProgress(db, session.user.id)).tier.name : null;
 
   return (
@@ -101,34 +95,28 @@ export default async function LeaderboardPage() {
         tier={tier}
       />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <div className="reveal max-w-3xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">لوحة الموسم</p>
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-              {season.title}
-            </h1>
-            <p className="text-lede mt-6 max-w-xl text-[var(--ink-muted)]">
-              الترتيب محسوب من النقاط المُحتسبة في هذا الموسم وحده. المتساوون في النقاط يتساوون في
-              الترتيب.
-            </p>
-          </div>
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="لوحة الموسم"
+            title={season.title}
+            lede="الترتيب محسوب من النقاط المُحتسبة في هذا الموسم وحده. المتساوون في النقاط يتساوون في الترتيب."
+          />
 
           {/*
-           * The reader's own line, above the table.
-           *
-           * Shown even at zero points, and even when they are far down the list.
-           * The alternative — only appearing once you rank — makes the page feel
-           * closed to the Member who most needs a reason to start.
+           * The reader's own line, above the table — a teal-tinted card, because it is
+           * the live state, theirs. Shown even at zero points, and even when they are
+           * far down the list: only appearing once you rank makes the page feel closed
+           * to the Member who most needs a reason to start.
            */}
           {session?.user && myPoints !== null ? (
-            <div className="reveal mt-12 rounded-md border border-[var(--border)] px-6 py-5">
+            <Card tone="brand" reveal={80} className="mt-10 max-w-3xl">
               <p className="text-body-sm text-[var(--ink-muted)]">
                 {myPoints === 0 ? (
                   <>
                     لم تُحتسب لك نقاط في هذا الموسم بعد.{" "}
                     <Link
                       href="/masarat"
-                      className="font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                      className="font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
                     >
                       ابدأ بمهمة
                     </Link>
@@ -136,9 +124,9 @@ export default async function LeaderboardPage() {
                 ) : (
                   <>
                     نقاطك في هذا الموسم:{" "}
-                    <span className="font-semibold text-[var(--ink)]">
+                    <Points>
                       <Num value={myPoints} />
-                    </span>
+                    </Points>
                     {myRow ? (
                       <>
                         {" — "}الترتيب{" "}
@@ -150,49 +138,56 @@ export default async function LeaderboardPage() {
                   </>
                 )}
               </p>
-            </div>
+            </Card>
           ) : null}
 
-          <div className="hairline rule-draw mt-12" />
-
           {/*
-           * Nobody has earned anything yet. Distinct from the no-Season state
-           * above: the Season is open, the Tasks are there, and the first Member to
-           * complete one leads. Saying that is an invitation.
+           * Nobody has earned anything yet. Distinct from the no-Season state above:
+           * the Season is open, the Tasks are there, and the first Member to complete
+           * one leads. Saying that is an invitation.
            */}
           {rows.length === 0 ? (
-            <div className="py-16">
-              <p className="text-body-lg max-w-lg text-[var(--ink-muted)]">
-                لم تُحتسب نقاط في هذا الموسم بعد. أول من يُنجز مهمة يتصدّر اللوحة.
-              </p>
-              <Link
-                href="/masarat"
-                className="text-body-sm mt-8 inline-block rounded-md bg-[var(--brand)] px-6 py-3 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90"
-              >
-                اختر مهمة
-              </Link>
+            <div className="mt-10 border-t border-[var(--hairline)]">
+              <EmptyState
+                title="لم تُحتسب نقاط في هذا الموسم بعد."
+                body="أول من يُنجز مهمة يتصدّر اللوحة."
+                action={
+                  <Link href="/masarat" className={buttonClass("primary", "sm")}>
+                    اختر مهمة
+                  </Link>
+                }
+              />
             </div>
           ) : (
-            <ol className="reveal-stagger mt-8">
+            <ol className="mt-10 max-w-3xl">
               {rows.map((row, i) => {
                 const isMe = session?.user?.id === row.userId;
+                const top = row.rank <= 3;
 
                 return (
                   <li
                     key={row.userId}
-                    style={{ ["--i" as string]: i }}
-                    className={`flex items-baseline justify-between gap-4 border-b border-[var(--hairline)] py-5 ${
-                      isMe ? "bg-[color-mix(in_oklch,var(--brand)_6%,transparent)] px-4" : ""
+                    data-reveal={String(Math.min(i, 4) * 60)}
+                    className={`flex items-center justify-between gap-4 border-b border-[var(--hairline)] px-3 py-4 ${
+                      isMe
+                        ? "rounded-[var(--radius-card)] bg-[color-mix(in_oklch,var(--brand)_6%,transparent)]"
+                        : ""
                     }`}
                   >
-                    <div className="flex items-baseline gap-5">
+                    <div className="flex items-center gap-4">
                       {/*
-                       * The rank through `Num`, not as a bare numeral. `Num`
-                       * formats with `Intl` for ar-LB and wraps the result in a
-                       * bidi isolate — without which a two-digit rank inside RTL
-                       * prose reorders, rendering 10 as 01.
+                       * The rank: gold for the top three (the positions a Member says out
+                       * loud), muted after. Through `Num`, which formats with `Intl` for
+                       * ar-LB and wraps the result in a bidi isolate — without which a
+                       * two-digit rank inside RTL prose reorders, rendering 10 as 01.
                        */}
-                      <span className="text-body-lg w-8 shrink-0 font-semibold text-[var(--ink-faint)]">
+                      <span
+                        className={`font-display text-body flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-extrabold ${
+                          top
+                            ? "bg-[color-mix(in_oklch,var(--gold-hi)_18%,transparent)] text-[var(--accent)]"
+                            : "text-[var(--ink-muted)]"
+                        }`}
+                      >
                         <Num value={row.rank} />
                       </span>
 
@@ -201,15 +196,17 @@ export default async function LeaderboardPage() {
                             their §5 profile never renders as a blank row. */}
                         {row.name.trim() || "عضو"}
                         {isMe ? (
-                          <span className="text-caption ms-2 font-semibold text-[var(--brand)]">
+                          <Pill tone="brand" className="ms-2">
                             أنت
-                          </span>
+                          </Pill>
                         ) : null}
                       </span>
                     </div>
 
-                    <span className="text-body-lg shrink-0 font-semibold text-[var(--brand)]">
-                      <Num value={row.points} /> نقطة
+                    <span className="text-body-lg shrink-0">
+                      <Points>
+                        <Num value={row.points} />
+                      </Points>
                     </span>
                   </li>
                 );

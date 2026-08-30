@@ -6,7 +6,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { emailIsDeliverable } from "@/lib/email";
 import { safeInternalPath } from "@/lib/safe-path";
+import { Mark } from "../components/mark";
 import { Nav } from "../components/nav";
+import { buttonClass, Card } from "../components/ui";
 import { SignInForm } from "./sign-in-form";
 
 /**
@@ -48,23 +50,24 @@ export default async function SignInPage({
     <>
       <Nav />
       <main>
-        <section className="gutter flex min-h-[70vh] items-center py-16">
-          <div className="reveal w-full max-w-md">
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
+        <section className="gutter mx-auto flex min-h-[70vh] max-w-[1440px] items-center py-16">
+          <Card reveal={0} className="w-full max-w-md p-8">
+            <Mark size={56} idPrefix="signin-mark" />
+            <h1 className="font-display mt-5 text-[clamp(1.75rem,3.6vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]">
               تسجيل الدخول
             </h1>
-            <p className="text-lede mt-5 text-[var(--ink-muted)]">
+            <p className="lede text-body mt-3 text-[var(--ink-muted)]">
               أدخل بريدك الإلكتروني، ونرسل إليك رابطاً تدخل به مباشرة. لا كلمة سرّ، ولا حساب جديد.
             </p>
 
-            <div className="hairline rule-draw mt-10 mb-10" />
-
-            {emailIsDeliverable ? (
-              <SignInForm callbackURL={safeInternalPath(callbackURL)} />
-            ) : (
-              <NotYetOpen />
-            )}
-          </div>
+            <div className="mt-8">
+              {emailIsDeliverable ? (
+                <SignInForm callbackURL={safeInternalPath(callbackURL)} />
+              ) : (
+                <NotYetOpen />
+              )}
+            </div>
+          </Card>
         </section>
       </main>
     </>
@@ -86,16 +89,13 @@ export default async function SignInPage({
  */
 function NotYetOpen() {
   return (
-    <div className="rounded-md border border-[var(--border)] p-6">
+    <div className="rounded-[var(--radius-card)] border border-[var(--border)] p-5">
       <p className="text-body-lg font-medium text-[var(--ink)]">التسجيل لم يُفتح بعد.</p>
       <p className="text-body-sm mt-3 leading-[1.7] text-[var(--ink-muted)]">
         نُعِدّ الآن ما يلزم لإرسال روابط الدخول إلى بريدك. إلى أن يكتمل ذلك، يمكنك تصفّح المسارات
         والمهامّ ولوحة النقاط دون تسجيل.
       </p>
-      <Link
-        href="/masarat"
-        className="text-body-sm mt-6 inline-block font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
-      >
+      <Link href="/masarat" className={buttonClass("secondary", "sm", "mt-5")}>
         تصفّح المسارات
       </Link>
     </div>

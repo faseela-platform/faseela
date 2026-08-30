@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "faseela",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "extra": {
       "supportsRTL": true,
       "forcesRTL": true,
@@ -14,9 +14,6 @@
       "eas": {
         "projectId": "2f4ad9d1-2044-45b6-bd40-f78ffe73d954"
       }
-    },
-    "ios": {
-      "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
@@ -38,11 +35,16 @@
         {
           "backgroundColor": "#f7fbfa",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 120,
+          "dark": {
+            "backgroundColor": "#0b0e0d",
+            "image": "./assets/images/splash-icon.png"
+          }
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true,

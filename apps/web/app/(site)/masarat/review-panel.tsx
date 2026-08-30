@@ -9,6 +9,7 @@ import {
   submitReviewWork,
   type ReviewActionState,
 } from "./review-actions";
+import { buttonClass } from "../components/ui";
 
 /**
  * The Member's side of a `review` Task (spec §16–§21).
@@ -56,7 +57,7 @@ export function ReviewPanel({
 
   if (state === "pending") {
     return (
-      <p className="text-caption font-semibold text-[var(--ink-muted)]">
+      <p className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--ink-muted)]">
         <span aria-hidden="true">⏳</span> عملك قيد المراجعة.
       </p>
     );
@@ -64,7 +65,7 @@ export function ReviewPanel({
 
   if (state === "accepted") {
     return (
-      <p className="text-caption font-semibold text-[var(--brand)]">
+      <p className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--accent)]">
         <span aria-hidden="true">✓</span> قُبل عملك، ونُقّطت المهمة.
       </p>
     );
@@ -77,7 +78,7 @@ export function ReviewPanel({
           <span aria-hidden="true">—</span> لم يُقبل عمل هذه المهمة.
         </p>
         {reviewNote ? (
-          <p className="text-caption mt-2 max-w-sm text-[var(--ink-faint)]">
+          <p className="text-caption mt-2 max-w-sm text-[var(--ink-muted)]">
             ملاحظة المراجع: {reviewNote}
           </p>
         ) : null}
@@ -195,7 +196,7 @@ function ComposeForm({
        * Member reads what to change before they start changing it (§24).
        */}
       {isRevision && reviewNote ? (
-        <div className="mb-4 rounded-md border border-[var(--border)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] px-4 py-3">
+        <div className="mb-4 rounded-[var(--radius-btn)] bg-[color-mix(in_oklch,var(--gold-hi)_14%,transparent)] px-4 py-3">
           <p className="text-caption font-semibold text-[var(--ink)]">أُعيد عملك للتحسين</p>
           <p className="text-body-sm mt-1 text-[var(--ink-muted)]">{reviewNote}</p>
         </div>
@@ -215,7 +216,7 @@ function ComposeForm({
         onChange={(e) => setBody(e.target.value)}
         disabled={pending}
         placeholder="اكتب إجابتك هنا…"
-        className="text-body-sm w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
+        className="text-body-sm w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
       />
 
       {/*
@@ -271,7 +272,7 @@ function ComposeForm({
           type="button"
           disabled={pending || uploading}
           onClick={onSubmit}
-          className="text-body-sm rounded-md bg-[var(--brand)] px-5 py-2 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className={buttonClass("primary", "sm")}
         >
           {pending ? "جارٍ الإرسال…" : isRevision ? "أعد الإرسال" : "أرسل للمراجعة"}
         </button>
@@ -281,7 +282,7 @@ function ComposeForm({
             type="button"
             disabled={pending}
             onClick={onCancel}
-            className="text-caption font-semibold text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--ink)] disabled:opacity-50"
+            className={buttonClass("ghost", "sm")}
           >
             أغلق المسودة
           </button>
@@ -290,7 +291,7 @@ function ComposeForm({
         {/* The auto-save indicator (§21) — reassurance, not a control. */}
         <span
           aria-hidden={!savedNote}
-          className={`text-caption text-[var(--ink-faint)] transition-opacity duration-300 ${
+          className={`text-caption text-[var(--ink-muted)] transition-opacity duration-300 ${
             savedNote ? "opacity-100" : "opacity-0"
           }`}
         >

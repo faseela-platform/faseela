@@ -4,7 +4,20 @@ Date: 2026-08-07
 
 ## Status
 
-Accepted
+Accepted; **revised 2026-08-29 (Slice 9, ADR 0029, owner decisions D1/D5/D7)**.
+
+What changes: the ground is **light by default with a night theme** the visitor can toggle
+(`data-theme="dark"`, set before first paint); **raised cards with soft elevation and 12/16 px
+radii** are allowed on the landing (steps, the stations card, the hero chips) and on product
+surfaces — "hairlines, not cards" no longer binds the marketing page; **gold is a co-primary**
+carrying the wordmark, ordinals, points and tiers, while teal keeps structure and actions; and the
+landing's composition is the owner's design (`assets/design/faseela-landing.dc.html`), not the
+Phenomenon Studio rubric.
+
+What stays: hard alignment to the start margin (the one centred block is the closing invitation,
+which has nothing to align to), restraint in type size, ordinals recessive relative to their
+content, one primary action per view, and directional glyphs avoided under RTL. The rubric in
+`docs/design/reference.md` is now guidance for product pages rather than the landing's contract.
 
 ## Context
 

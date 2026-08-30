@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { createTrackAction, type ActionState } from "./track-actions";
+import { buttonClass } from "../components/ui";
 
 /**
  * Create a Track (admin-only, §34). A new Track always starts as a draft — it does
@@ -19,7 +20,11 @@ export function CreateTrackForm() {
 
   function submit() {
     start(async () => {
-      const r = await createTrackAction({ slug: slug.trim(), title: title.trim(), summary: summary.trim() });
+      const r = await createTrackAction({
+        slug: slug.trim(),
+        title: title.trim(),
+        summary: summary.trim(),
+      });
       setResult(r);
       if (r.status === "ok") {
         setSlug("");
@@ -30,20 +35,44 @@ export function CreateTrackForm() {
   }
 
   const input =
-    "text-body-sm w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+    "min-h-11 text-body-sm w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
   const isError = result?.status === "error";
 
   return (
-    <div className="max-w-xl rounded-md border border-[var(--border)] px-6 py-5">
+    <div className="max-w-xl rounded-[var(--radius-card)] bg-[var(--surface-raised)] px-6 py-5 shadow-[var(--card-shadow)]">
       <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">مسار جديد</p>
 
-      <label htmlFor="new-track-title" className="text-caption mb-1 block text-[var(--ink-muted)]">العنوان</label>
-      <input id="new-track-title" dir="rtl" value={title} disabled={pending} onChange={(e) => setTitle(e.target.value)} className={`${input} mb-3`} />
+      <label htmlFor="new-track-title" className="text-caption mb-1 block text-[var(--ink-muted)]">
+        العنوان
+      </label>
+      <input
+        id="new-track-title"
+        dir="rtl"
+        value={title}
+        disabled={pending}
+        onChange={(e) => setTitle(e.target.value)}
+        className={`${input} mb-3`}
+      />
 
-      <label htmlFor="new-track-summary" className="text-caption mb-1 block text-[var(--ink-muted)]">الوصف</label>
-      <textarea id="new-track-summary" dir="rtl" rows={2} value={summary} disabled={pending} onChange={(e) => setSummary(e.target.value)} className={`${input} mb-3`} />
+      <label
+        htmlFor="new-track-summary"
+        className="text-caption mb-1 block text-[var(--ink-muted)]"
+      >
+        الوصف
+      </label>
+      <textarea
+        id="new-track-summary"
+        dir="rtl"
+        rows={2}
+        value={summary}
+        disabled={pending}
+        onChange={(e) => setSummary(e.target.value)}
+        className={`${input} mb-3`}
+      />
 
-      <label htmlFor="new-track-slug" className="text-caption mb-1 block text-[var(--ink-muted)]">المُعرّف (لاتيني)</label>
+      <label htmlFor="new-track-slug" className="text-caption mb-1 block text-[var(--ink-muted)]">
+        المُعرّف (لاتيني)
+      </label>
       <input
         id="new-track-slug"
         dir="ltr"
@@ -58,7 +87,7 @@ export function CreateTrackForm() {
         type="button"
         disabled={pending || !title.trim() || !slug.trim()}
         onClick={submit}
-        className="text-body-sm mt-4 rounded-md bg-[var(--brand)] px-5 py-2 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("primary", "sm", "mt-4")}
       >
         {pending ? "جارٍ الإنشاء…" : "أنشئ المسار"}
       </button>

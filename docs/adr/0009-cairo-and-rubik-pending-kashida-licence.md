@@ -8,12 +8,21 @@ Accepted. The licensing question was escalated to Abdullah and resolved: **ship 
 (Cairo + Rubik); revisit after launch.** The deferral below stands as written — it is a post-launch
 reconsideration, not a blocker.
 
+_2026-08-25 note:_ an "Arabic UI Display" family supplied for consideration was identified from its
+name table as Apple's SF Arabic ("subject to the iOS Software License Agreement") — licence-locked
+to Apple platforms, 5 Latin glyphs, no variable axis. Rejected; Cairo + Rubik stand. 29LT Idris
+remains the documented upgrade path.
+
+_2026-08-29 note (ADR 0029):_ the wordmark weight is now **Cairo 700**, coloured by a gold gradient
+through `background-clip: text`. Still live text, still the authored tatweel, still no
+letter-spacing.
+
 ## Context
 
 The landing page's art direction depends on kinetic Arabic typography. The obvious implementation —
 tweening `letter-spacing` on a headline — is not available in Arabic: the script is cursive, and
-uniform tracking severs the joins, which reads as misspelling rather than styling. W3C's *Arabic &
-Persian Layout Requirements* §7.3 is explicit that stretching Arabic "does not correspond to
+uniform tracking severs the joins, which reads as misspelling rather than styling. W3C's _Arabic &
+Persian Layout Requirements_ §7.3 is explicit that stretching Arabic "does not correspond to
 letter-spacing in non-cursive scripts."
 
 Genuine Arabic elongation is a **kashida** — an extension of the join itself — which on the web means

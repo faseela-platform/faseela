@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { signOut } from "@/lib/auth-client";
+import { buttonClass } from "./ui";
 
 /**
  * Sign out.
@@ -32,7 +33,7 @@ export function SignOutButton() {
           router.refresh();
         })
       }
-      className="text-body-sm shrink-0 rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)] disabled:opacity-50"
+      className={buttonClass("ghost", "sm", "shrink-0")}
     >
       {pending ? "…" : "خروج"}
     </button>

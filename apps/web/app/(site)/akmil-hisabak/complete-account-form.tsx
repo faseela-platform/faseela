@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { completeAccount } from "./actions";
+import { buttonClass } from "../components/ui";
 
 /**
  * Collects the §5 account data a Member did not give at sign-in: a full name and
@@ -46,7 +47,7 @@ export function CompleteAccountForm({ next }: { next: string }) {
         disabled={pending}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? "profile-error" : undefined}
-        className="text-body-lg min-h-[44px] w-full rounded-md border border-[var(--border)] bg-transparent px-4 py-3 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-faint)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
+        className="text-body-lg min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-transparent px-4 py-3 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-muted)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
       />
 
       <label htmlFor="phone" className="text-body-sm mt-6 mb-3 block font-medium text-[var(--ink)]">
@@ -71,7 +72,7 @@ export function CompleteAccountForm({ next }: { next: string }) {
         disabled={pending}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? "profile-error" : undefined}
-        className="text-body-lg min-h-[44px] w-full rounded-md border border-[var(--border)] bg-transparent px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-faint)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
+        className="text-body-lg min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-transparent px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-muted)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
       />
       <p className="text-body-sm mt-2 text-[var(--ink-muted)]">
         رقم هاتفك هو وسيلة التواصل الأساسية. لن نتحقّق منه الآن.
@@ -81,7 +82,7 @@ export function CompleteAccountForm({ next }: { next: string }) {
         type="submit"
         disabled={pending || name.trim().length === 0 || phone.trim().length === 0}
         aria-busy={pending}
-        className="text-body-lg mt-8 min-h-[44px] w-full rounded-md bg-[var(--brand)] px-6 py-3 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("primary", "md", "mt-8 w-full")}
       >
         {pending ? "جارٍ الحفظ…" : "متابعة"}
       </button>

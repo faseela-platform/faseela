@@ -1,13 +1,15 @@
 import type { ApiNotification, NotificationsResponse } from "@faseela/api-types";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, I18nManager, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, I18nManager, Linking, StyleSheet, Text, View } from "react-native";
 
 import { EmptyView, ErrorView, LoadingView } from "../components/feedback";
+import { ScalePressable } from "../components/pressable";
 import { useSession } from "../lib/auth-client";
 import { authedFetch } from "../lib/authed-api";
 import { row } from "../lib/rtl";
-import { colors, radius, space, text } from "../lib/theme";
+import { useTheme, useThemeStyles } from "../lib/theme-context";
+import { radius, space, text } from "../lib/theme";
 
 /**
  * الإشعارات on the phone (§38) — the same bell as the web, reading the same rows.
@@ -17,21 +19,23 @@ import { colors, radius, space, text } from "../lib/theme";
  * to be fresh. Opening it also marks everything read, which is what §3's "don't show
  * it again" asks for.
  */
-const KIND: Record<string, { label: string; tone: string }> = {
-  submission_accepted: { label: "قُبل", tone: colors.brand },
-  submission_returned: { label: "للتحسين", tone: colors.accent },
-  submission_rejected: { label: "لم يُقبل", tone: colors.inkMuted },
-  points_awarded: { label: "نقاط", tone: colors.brand },
-  tier_unlocked: { label: "رتبة", tone: colors.accent },
-  track_update: { label: "مسار", tone: colors.inkMuted },
-  app_update: { label: "تحديث", tone: colors.inkMuted },
-  announcement: { label: "إعلان", tone: colors.brand },
+const KIND: Record<string, { label: string; tone: "brand" | "gold" | "muted" }> = {
+  submission_accepted: { label: "قُبل", tone: "brand" },
+  submission_returned: { label: "للتحسين", tone: "gold" },
+  submission_rejected: { label: "لم يُقبل", tone: "muted" },
+  points_awarded: { label: "نقاط", tone: "gold" },
+  tier_unlocked: { label: "رتبة", tone: "gold" },
+  track_update: { label: "مسار", tone: "brand" },
+  app_update: { label: "تحديث", tone: "muted" },
+  announcement: { label: "إعلان", tone: "brand" },
 };
 
 const dateFmt = new Intl.DateTimeFormat("ar", { day: "numeric", month: "long" });
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(makeStyles);
   const isRTL = I18nManager.isRTL;
   const { data: session } = useSession();
   const [state, setState] = useState<{
@@ -65,9 +69,7 @@ export default function NotificationsScreen() {
   );
 
   if (!session) {
-    return (
-      <EmptyView title="سجّل دخولك" detail="افتح تبويب «حسابي» لتصلك إشعاراتك" />
-    );
+    return <EmptyView title="سجّل دخولك" detail="افتح تبويب «حسابي» لتصلك إشعاراتك" />;
   }
   if (state.loading) return <LoadingView />;
   if (state.error || !state.items) {
@@ -85,6 +87,12 @@ export default function NotificationsScreen() {
     return <EmptyView title="لا إشعارات بعد" detail="سيصلك هنا خبر قبول عملك واحتساب نقاطك" />;
   }
 
+  const toneColors = {
+    brand: { bg: colors.tintBrand, ink: colors.brand },
+    gold: { bg: colors.chipBg, ink: colors.chipInk },
+    muted: { bg: colors.hairline, ink: colors.inkMuted },
+  } as const;
+
   return (
     <FlatList
       style={styles.list}
@@ -92,12 +100,15 @@ export default function NotificationsScreen() {
       data={state.items}
       keyExtractor={(n) => n.id}
       renderItem={({ item }) => {
-        const kind = KIND[item.type] ?? { label: "إشعار", tone: colors.inkMuted };
+        const kind = KIND[item.type] ?? { label: "إشعار", tone: "muted" as const };
+        const tone = toneColors[kind.tone];
 
         const card = (
           <View style={[styles.card, !item.seen && styles.unread]}>
             <View style={[styles.head, row(isRTL)]}>
-              <Text style={[styles.kind, { color: kind.tone }]}>{kind.label}</Text>
+              <View style={[styles.pill, { backgroundColor: tone.bg }]}>
+                <Text style={[styles.kind, { color: tone.ink }]}>{kind.label}</Text>
+              </View>
               <Text style={styles.when}>{dateFmt.format(new Date(item.publishedAt))}</Text>
             </View>
             <Text style={styles.title}>{item.title}</Text>
@@ -113,12 +124,21 @@ export default function NotificationsScreen() {
          */
         if (item.trackSlug) {
           return (
-            <Pressable onPress={() => router.push(`/masarat/${item.trackSlug}`)}>{card}</Pressable>
+            <ScalePressable
+              onPress={() => router.push(`/masarat/${item.trackSlug}`)}
+              accessibilityRole="button"
+            >
+              {card}
+            </ScalePressable>
           );
         }
         if (item.linkUrl) {
           const url = item.linkUrl;
-          return <Pressable onPress={() => Linking.openURL(url)}>{card}</Pressable>;
+          return (
+            <ScalePressable onPress={() => Linking.openURL(url)} accessibilityRole="link">
+              {card}
+            </ScalePressable>
+          );
         }
         return card;
       }}
@@ -126,21 +146,23 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  list: { backgroundColor: colors.surface },
-  content: { padding: space.lg, gap: space.md, flexGrow: 1 },
-  card: {
-    backgroundColor: colors.surfaceRaised,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.card,
-    padding: space.lg,
-    gap: space.xs,
-  },
-  unread: { borderColor: colors.brand },
-  head: { justifyContent: "space-between", alignItems: "baseline" },
-  kind: { ...text.caption },
-  when: { ...text.caption, color: colors.inkMuted },
-  title: { ...text.bodyStrong, color: colors.ink },
-  body: { ...text.body, color: colors.inkMuted },
-});
+const makeStyles = ({ colors, shadow }: ReturnType<typeof useTheme>) =>
+  StyleSheet.create({
+    list: { backgroundColor: colors.surface },
+    content: { padding: space.lg, gap: space.md, flexGrow: 1, paddingBottom: space.xxl },
+    card: {
+      backgroundColor: colors.surfaceRaised,
+      borderRadius: radius.card,
+      padding: space.lg,
+      gap: space.xs,
+      ...shadow(1),
+    },
+    /* Unread = the teal tint, the same surface rule as the web. */
+    unread: { backgroundColor: colors.tintBrand },
+    head: { justifyContent: "space-between", alignItems: "center", marginBottom: space.xs },
+    pill: { borderRadius: radius.chip, paddingHorizontal: space.md, paddingVertical: 3 },
+    kind: { ...text.captionStrong },
+    when: { ...text.caption, color: colors.inkMuted },
+    title: { ...text.bodyStrong, color: colors.ink },
+    body: { ...text.body, color: colors.inkMuted },
+  });

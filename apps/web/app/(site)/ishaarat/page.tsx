@@ -8,6 +8,7 @@ import { notificationsFor, unreadNotificationCount, type MemberNotification } fr
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Nav } from "../components/nav";
+import { buttonClass, EmptyState, PageHeader, Pill } from "../components/ui";
 import { markAllSeenAction } from "./actions";
 
 /**
@@ -30,16 +31,17 @@ const dateFmt = new Intl.DateTimeFormat("ar", {
   minute: "2-digit",
 });
 
-/** A quiet mark per kind — colour alone would carry the meaning otherwise. */
-const KIND: Record<string, { label: string; tone: string }> = {
-  submission_accepted: { label: "قُبل", tone: "var(--brand)" },
-  submission_returned: { label: "للتحسين", tone: "var(--accent)" },
-  submission_rejected: { label: "لم يُقبل", tone: "var(--ink-muted)" },
-  points_awarded: { label: "نقاط", tone: "var(--brand)" },
-  tier_unlocked: { label: "رتبة", tone: "var(--accent)" },
-  track_update: { label: "مسار", tone: "var(--ink-muted)" },
-  app_update: { label: "تحديث", tone: "var(--ink-muted)" },
-  announcement: { label: "إعلان", tone: "var(--brand)" },
+/** A quiet mark per kind — colour alone would carry the meaning otherwise. Gold for the
+ * things the initiative counts (points, tiers), teal for the product's own events. */
+const KIND: Record<string, { label: string; tone: "brand" | "gold" | "muted" }> = {
+  submission_accepted: { label: "قُبل", tone: "brand" },
+  submission_returned: { label: "للتحسين", tone: "gold" },
+  submission_rejected: { label: "لم يُقبل", tone: "muted" },
+  points_awarded: { label: "نقاط", tone: "gold" },
+  tier_unlocked: { label: "رتبة", tone: "gold" },
+  track_update: { label: "مسار", tone: "brand" },
+  app_update: { label: "تحديث", tone: "muted" },
+  announcement: { label: "إعلان", tone: "brand" },
 };
 
 /** Where tapping it should take the reader, if anywhere. */
@@ -61,68 +63,58 @@ export default async function IshaaratPage() {
 
   return (
     <>
-      <Nav
-        current="/ishaarat"
-        signedIn
-        memberName={session.user.name}
-        unreadCount={unreadCount}
-      />
+      <Nav current="/ishaarat" signedIn memberName={session.user.name} unreadCount={unreadCount} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <div className="reveal flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-xl">
-              <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">الإشعارات</p>
-              <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-                ما الجديد لديك
-              </h1>
-            </div>
-
-            {unreadCount > 0 ? (
-              <form action={markAllSeenAction}>
-                <button
-                  type="submit"
-                  className="text-body-sm min-h-11 rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
-                >
-                  تحديد الكل كمقروء
-                </button>
-              </form>
-            ) : null}
-          </div>
-
-          <div className="hairline rule-draw mt-10" />
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="الإشعارات"
+            title="ما الجديد لديك"
+            aside={
+              unreadCount > 0 ? (
+                <form action={markAllSeenAction}>
+                  <button type="submit" className={buttonClass("secondary", "sm")}>
+                    تحديد الكل كمقروء
+                  </button>
+                </form>
+              ) : null
+            }
+          />
 
           {items.length === 0 ? (
-            <p className="text-body-lg mt-12 max-w-lg text-[var(--ink-muted)]">
-              لا إشعارات بعد. سيصلك هنا خبر قبول عملك واحتساب نقاطك وكل جديد من المبادرة.
-            </p>
+            <div className="mt-8 border-t border-[var(--hairline)]">
+              <EmptyState
+                title="لا إشعارات بعد."
+                body="سيصلك هنا خبر قبول عملك واحتساب نقاطك وكل جديد من المبادرة."
+              />
+            </div>
           ) : (
-            <ol className="reveal-stagger mt-4 max-w-3xl">
+            <ol className="mt-8 max-w-3xl space-y-3">
               {items.map((n, i) => {
-                const kind = KIND[n.type] ?? { label: "إشعار", tone: "var(--ink-muted)" };
+                const kind = KIND[n.type] ?? { label: "إشعار", tone: "muted" as const };
                 const href = destination(n);
 
+                /* Unseen = a raised, teal-tinted card; seen = a quiet row. The difference is
+                 * the whole point of the page, so it is carried by surface, not by colour alone
+                 * (the pill says what kind it is). */
                 const inner = (
                   <article
-                    className={`border-b border-[var(--hairline)] py-5 ps-4 transition-colors duration-[130ms] ease-[var(--ease-hover)] ${
-                      n.seen ? "" : "bg-[color-mix(in_oklch,var(--brand)_4%,transparent)]"
+                    className={`rounded-[var(--radius-card)] px-5 py-4 transition-colors duration-[130ms] ease-[var(--ease-hover)] ${
+                      n.seen
+                        ? "border border-[var(--hairline)]"
+                        : "bg-[color-mix(in_oklch,var(--brand)_6%,var(--surface-raised))]"
                     }`}
-                    style={{ borderInlineStartWidth: n.seen ? 0 : 2, borderInlineStartColor: kind.tone }}
+                    style={n.seen ? undefined : { boxShadow: "var(--elevation-1)" }}
                   >
-                    <div className="flex flex-wrap items-baseline justify-between gap-3">
-                      <p className="text-caption font-semibold" style={{ color: kind.tone }}>
-                        {kind.label}
-                        {n.trackTitle ? (
-                          <span className="font-normal text-[var(--ink-faint)]">
-                            {" "}
-                            · {n.trackTitle}
-                          </span>
-                        ) : null}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-caption flex items-center gap-2 text-[var(--ink-muted)]">
+                        <Pill tone={kind.tone}>{kind.label}</Pill>
+                        {n.trackTitle ? <span>{n.trackTitle}</span> : null}
                       </p>
-                      <p className="text-caption text-[var(--ink-faint)]">
+                      <p className="text-caption text-[var(--ink-muted)]">
                         {dateFmt.format(n.publishedAt)}
                       </p>
                     </div>
-                    <h2 className="text-body-lg mt-1 leading-[1.5] font-medium text-[var(--ink)]">
+                    <h2 className="text-body-lg mt-2 leading-[1.5] font-bold text-[var(--ink)]">
                       {n.title}
                     </h2>
                     <p className="text-body-sm mt-1 leading-[1.7] text-[var(--ink-muted)]">
@@ -132,7 +124,7 @@ export default async function IshaaratPage() {
                 );
 
                 return (
-                  <li key={n.id} style={{ ["--i" as string]: i }}>
+                  <li key={n.id} data-reveal={String(Math.min(i, 4) * 60)}>
                     {href ? (
                       <Link
                         href={href}

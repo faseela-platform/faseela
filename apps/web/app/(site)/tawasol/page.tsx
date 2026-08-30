@@ -5,6 +5,7 @@ import { SERVICE_REQUEST_MAX } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { Nav } from "../components/nav";
+import { Card, PageHeader } from "../components/ui";
 import { ContactForm } from "./contact-form";
 
 /**
@@ -36,26 +37,19 @@ export default async function TawasolPage() {
         memberName={session?.user?.name ?? null}
       />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <div className="reveal max-w-2xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">التواصل</p>
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-              تواصل معنا
-            </h1>
-            <p className="text-lede mt-6 text-[var(--ink-muted)]">
-              اقتراح تريد مشاركته، استفسار يشغلك، ملاحظة على المبادرة أو على التطبيق — اكتب لنا
-              وسنقرأ رسالتك.
-            </p>
-          </div>
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="التواصل"
+            title="تواصل معنا"
+            lede="اقتراح تريد مشاركته، استفسار يشغلك، ملاحظة على المبادرة أو على التطبيق — اكتب لنا وسنقرأ رسالتك."
+          />
 
-          <div className="hairline rule-draw mt-12" />
-
-          <div className="mt-10">
+          <Card reveal={80} className="mt-10 max-w-2xl">
             {/* The caps come from the database module, so the form shows exactly the
                 limits the server will hold it to — one source of truth, passed down
                 rather than imported into the browser bundle. */}
             <ContactForm max={SERVICE_REQUEST_MAX} />
-          </div>
+          </Card>
         </section>
       </main>
     </>

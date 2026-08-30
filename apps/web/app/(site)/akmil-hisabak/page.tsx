@@ -7,7 +7,9 @@ import { isProfileComplete, memberProfile } from "@faseela/db";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { safeInternalPath } from "@/lib/safe-path";
+import { Mark } from "../components/mark";
 import { Nav } from "../components/nav";
+import { Card } from "../components/ui";
 import { CompleteAccountForm } from "./complete-account-form";
 
 /**
@@ -43,20 +45,21 @@ export default async function CompleteAccountPage({
     <>
       <Nav signedIn memberName={session.user.name} />
       <main>
-        <section className="gutter flex min-h-[70vh] items-center py-16">
-          <div className="reveal w-full max-w-md">
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
+        <section className="gutter mx-auto flex min-h-[70vh] max-w-[1440px] items-center py-16">
+          <Card reveal={0} className="w-full max-w-md p-8">
+            <Mark size={56} idPrefix="complete-mark" />
+            <h1 className="font-display mt-5 text-[clamp(1.75rem,3.6vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]">
               أكمل حسابك
             </h1>
-            <p className="text-lede mt-5 text-[var(--ink-muted)]">
+            <p className="lede text-body mt-3 text-[var(--ink-muted)]">
               خطوة أخيرة قبل أن تبدأ: أخبرنا باسمك ورقم هاتفك. نستخدمهما للتواصل معك وعرض اسمك على
               اللوحة.
             </p>
 
-            <div className="hairline rule-draw mt-10 mb-10" />
-
-            <CompleteAccountForm next={safeInternalPath(next)} />
-          </div>
+            <div className="mt-8">
+              <CompleteAccountForm next={safeInternalPath(next)} />
+            </div>
+          </Card>
         </section>
       </main>
     </>

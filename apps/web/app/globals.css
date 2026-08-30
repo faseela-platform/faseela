@@ -1,223 +1,6 @@
 @import "tailwindcss";
 @import "@faseela/tokens/theme.css";
-
-/*
- * Scroll-driven reveals.
- *
- * Native CSS `animation-timeline` only — ADR 0011. These run off the main thread, which is what
- * makes a fully scroll-driven page viable on a mid-range Android.
- *
- * Authored static-first: the markup carries the FINAL state. Motion is layered on inside the
- * @supports guard. An unsupported browser therefore shows finished content rather than a blank page.
- */
-
-@keyframes reveal-up {
-  from {
-    opacity: 0;
-    transform: translateY(var(--travel-lg));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes reveal-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes grow {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* A hairline that draws itself as the section enters. Cheap: scaleX is a compositor property. */
-@keyframes draw-rule {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-@supports (animation-timeline: view()) {
-  @media not (prefers-reduced-motion: reduce) {
-    /*
-     * Ranges are expressed in `entry-crossing`, and every one of them completes well before 100%.
-     *
-     * Two earlier attempts were wrong, and both failed the same way: content frozen part-way through
-     * its reveal, permanently, which reads as missing rather than animating.
-     *
-     *   1. `entry X% cover Y%` — `cover` requires the element to travel through the viewport, which
-     *      needs scrollable content after it. Tall landing-page sections had it; the short /masarat
-     *      index did not, so its last cell sat at opacity 0.
-     *
-     *   2. `entry X% entry 100%` — `entry 100%` means the element is *fully* inside the viewport. A
-     *      22rem lattice cell (--cell-min-h) is 352px tall, and on a 390px phone viewport a cell can
-     *      barely ever be fully inside it. The range therefore still could not complete.
-     *
-     * `entry-crossing` measures the element's leading edge crossing the viewport's leading edge, and
-     * is independent of both element height and remaining document length. Ending at 60% means the
-     * reveal is finished once the element is a little over halfway in — comfortably reachable for a
-     * cell taller than the viewport, on a page with nothing after it.
-     *
-     * MDN, "animation-range": the `entry-crossing` named range exists precisely for elements whose
-     * size is comparable to the scrollport.
-     */
-    .reveal {
-      animation: reveal-up linear both;
-      animation-timeline: view();
-      animation-range: entry-crossing 5% entry-crossing 55%;
-    }
-
-    .reveal-fade {
-      animation: reveal-fade linear both;
-      animation-timeline: view();
-      animation-range: entry-crossing 5% entry-crossing 60%;
-    }
-
-    .reveal-grow {
-      animation: grow linear both;
-      animation-timeline: view();
-      animation-range: entry-crossing 0% entry-crossing 55%;
-    }
-
-    /*
-     * Per-child stagger without JS: each child's range is offset by its index, set inline as --i.
-     * Cheaper than a JS stagger and still off the main thread.
-     *
-     * Same `entry-crossing` correction as above — see the reasoning on `.reveal`. This selector is
-     * where the defect was found: three seeded Tracks rendered, one visible.
-     *
-     * The stagger offset is capped at 3 so a long list cannot push a late child's start beyond its
-     * own end, and the end is held at a fixed 65% rather than offset per child, so every cell
-     * finishes at the same crossing point no matter how many precede it. An offset end is what makes
-     * the last item of a long list unreachable.
-     */
-    .reveal-stagger > * {
-      animation: reveal-up linear both;
-      animation-timeline: view();
-      animation-range: entry-crossing calc(min(var(--i, 0), 3) * 8%) entry-crossing 65%;
-    }
-
-    /*
-     * Rules draw from the start edge, which is the right edge under RTL — the direction the reader
-     * is already moving. `transform-origin` needs the logical keyword for this to mirror correctly.
-     */
-    .rule-draw {
-      transform-origin: right center;
-      animation: draw-rule linear both;
-      animation-timeline: view();
-      /* A 1px rule is effectively zero-height, so `entry` is safe here — but kept consistent. */
-      animation-range: entry-crossing 0% entry-crossing 60%;
-    }
-  }
-}
-
-/*
- * Hero sequence — load-triggered, one shot. Not scroll-linked: it fires before meaningful scroll is
- * possible. Beats overlap by ~200ms so the devices read as one movement.
- */
-
-@keyframes draw-ornament {
-  from {
-    stroke-dashoffset: var(--dash-length, 1200);
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/*
- * The wordmark reveal. `clip-path` is the only technique that leaves Arabic glyphs completely
- * untouched, so every cursive join and the authored tatweel survive intact. Splitting Arabic into
- * letters, or applying letter-spacing, would sever them.
- *
- * `inset()` sides are physical, so under dir="rtl" the wordmark is uncovered from the right:
- * `inset(0 0 0 100%)` collapses toward the right edge, which appears first, matching the reading
- * direction.
- */
-@keyframes reveal-wordmark {
-  from {
-    clip-path: inset(0 0 0 100%);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes rise-line {
-  from {
-    opacity: 0;
-    transform: translateY(var(--travel-lg));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media not (prefers-reduced-motion: reduce) {
-  .hero-ornament [data-draw] {
-    animation: draw-ornament 900ms var(--ease-enter) both;
-  }
-
-  .hero-eyebrow {
-    animation: reveal-fade 600ms var(--ease-enter) 200ms both;
-  }
-
-  /*
-   * The headline reveals line by line. Each line is a block with its own clip wrapper, so the
-   * reveal sweeps along the reading axis without ever touching a glyph.
-   */
-  .hero-line > span {
-    animation: reveal-wordmark 800ms var(--ease-enter) calc(500ms + (var(--i, 0) * 140ms)) both;
-  }
-
-  .hero-lede {
-    animation: rise-line 700ms var(--ease-enter) 1100ms both;
-  }
-
-  .hero-actions {
-    animation: rise-line 700ms var(--ease-enter) 1250ms both;
-  }
-
-  .hero-rule {
-    transform-origin: right center;
-    animation: draw-rule 900ms var(--ease-enter) 1400ms both;
-  }
-}
-
-/*
- * Reduced motion: final state, instantly. Not a softer animation — reduced means reduced, opacity
- * fades included. Visually identical to the unsupported-browser path, so one fallback serves both.
- */
-@media (prefers-reduced-motion: reduce) {
-  .hero-ornament [data-draw] {
-    stroke-dashoffset: 0;
-  }
-
-  .hero-line > span {
-    clip-path: none;
-  }
-
-  .hero-rule,
-  .rule-draw {
-    transform: scaleX(1);
-  }
-}
+@import "./landing.css";
 
 /* -----------------------------------------------------------------------------
  * Editorial primitives. See docs/design/reference.md.
@@ -249,120 +32,6 @@
   background: var(--hairline);
 }
 
-/*
- * Grid cells defined by rules rather than cards. Each cell draws its own start-edge and top rules;
- * the outer edges are trimmed so the grid reads as a lattice rather than a set of boxes.
- * `border-inline-start` is logical and therefore mirrors under RTL automatically.
- */
-.lattice {
-  display: grid;
-  border-top: 1px solid var(--hairline);
-}
-
-.lattice > * {
-  border-bottom: 1px solid var(--hairline);
-  min-height: var(--cell-min-h);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-block: 2rem;
-  padding-inline: 0 2rem;
-}
-
-/*
- * A lattice whose cells size to their content.
- *
- * `--cell-min-h` is 22rem, tuned for the landing page where every cell holds a
- * similar amount of copy and the uniform height is what makes the grid read as a
- * lattice. On the Tracks index the cells are genuinely uneven — a Track with two
- * Tasks and a three-line summary next to one with no Tasks yet — and forcing the
- * short cell to 352px opened a ~440px void in the middle of the page.
- *
- * `auto` rather than a smaller fixed value: any fixed floor is wrong for content
- * an Editor controls and whose length we cannot predict.
- */
-.lattice-auto > * {
-  min-height: auto;
-}
-
-@media (min-width: 768px) {
-  .lattice-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .lattice-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  /* The rule belongs between cells, so the first column in each row does not draw one. */
-  .lattice-2 > *:nth-child(2n) {
-    border-inline-start: 1px solid var(--hairline);
-    padding-inline-start: 2rem;
-  }
-
-  .lattice-3 > *:not(:nth-child(3n + 1)) {
-    border-inline-start: 1px solid var(--hairline);
-    padding-inline-start: 2rem;
-  }
-}
-
-/* -----------------------------------------------------------------------------
- * Media slots.
- *
- * Faseela's own photography is not yet cleared for use (rights and consent are the media wing's to
- * grant), so these slots currently render a graphic placeholder built from the brand's botanical
- * motif. They are real layout slots, not stand-ins: when approved photography arrives, an <img> or
- * next/image drops in as a child and the placeholder is simply removed. No composition changes.
- *
- * Aspect ratios are fixed so the page reserves the space now and cannot shift layout later — CLS is
- * paid for at build time rather than on a Lebanese mobile connection.
- * -------------------------------------------------------------------------- */
-
-.media {
-  position: relative;
-  overflow: hidden;
-  background: var(--color-paper-100);
-}
-
-.media > img,
-.media > video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/*
- * The placeholder.
- *
- * The first attempt filled the slot with a dotted seed field, and it was a mistake: a textured grey
- * rectangle draws MORE attention than the photograph it stands in for, which inverts the intent. A
- * reserved slot should read as deliberate space, not as a missing asset.
- *
- * So this is a hairline frame and nothing else — the same 1px rule that defines every other cell on
- * the page, with no fill and no texture. It sits in the composition as quiet structure.
- */
-.media-placeholder {
-  background: transparent;
-  border: 1px solid var(--hairline);
-}
-
-/*
- * A single centred seed mark, at very low contrast. Enough to signal intent to anyone looking
- * closely; invisible at a glance. Drawn with one gradient, so no request and no decode.
- */
-.media-placeholder::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(
-    circle at 50% 50%,
-    color-mix(in oklch, var(--accent) 18%, transparent) 0 2.5px,
-    transparent 2.6px
-  );
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
 /* -----------------------------------------------------------------------------
  * The sticky rail.
  *
@@ -387,74 +56,104 @@
   }
 }
 
-/*
- * Fixed to the page margin rather than sticky inside one section. A position indicator that tracks a
- * single section is worse than none, so this lives at the page level and stays for the whole scroll.
- *
- * Placement is physical (`left`), not logical, and that is deliberate. `inset-inline-start` resolves
- * to the RIGHT edge under RTL, which is where the content is hard-aligned — the first attempt put the
- * rail directly on top of the headline. A passive indicator belongs on the side the reader's eye is
- * NOT travelling along, which under RTL is the physical left.
- *
- * Kept horizontal. A vertical strip was the obvious way to save margin width, but `writing-mode:
- * vertical-rl` rendered the Arabic labels upside down and mirrored — rotating a line of Arabic is not
- * the same as setting it vertically, and no combination of `text-orientation` fixes it. Arabic simply
- * does not belong in a rotated margin strip (docs/design/typography.md).
- *
- * So it stays a short horizontal list in a narrow fixed column, right-aligned so the ragged edge
- * faces the content and the labels read normally.
- */
-.rail {
-  position: fixed;
-  left: 1.5rem;
-  top: 50svh;
-  transform: translateY(-50%);
-  z-index: 30;
-  width: 7rem;
-  text-align: end;
+/* Arabic numerals inside RTL prose need bidi isolation or the digits reorder. Tabular figures
+ * because every .num is a live quantity — points, ranks, counts — that sits in a column or
+ * ticks up, and proportional digits would make the column shimmer. */
+.num {
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
 }
 
-.rail ul {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
+/* -----------------------------------------------------------------------------
+ * Type polish — Slice 9 (typography skill, ADR 0009 notes).
+ *
+ * `font-synthesis: none`: a weight or style the font does not carry must fall back to the
+ * nearest real one, never a faux-bold smear of Arabic joins. `text-wrap: balance` on headings
+ * is word-level, so it never touches a join; `pretty` on ledes kills the orphaned last word.
+ * No tracking anywhere — see docs/design/typography.md.
+ * -------------------------------------------------------------------------- */
+html {
+  font-synthesis: none;
+  font-optical-sizing: auto;
+  -webkit-text-size-adjust: 100%;
 }
 
-.rail-item {
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
-@supports (animation-timeline: view()) {
-  @media not (prefers-reduced-motion: reduce) {
-    .rail-item {
-      animation: rail-activate linear both;
-      animation-timeline: view(block);
-      animation-range: cover 0% cover 100%;
-    }
+/* Smooth anchor scrolling is motion: only for those who did not ask for less of it. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-/* Arabic numerals inside RTL prose need bidi isolation or the digits reorder. */
-.num {
-  unicode-bidi: isolate;
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
+.text-lede,
+.lede {
+  text-wrap: pretty;
+}
+
+/* Underlines that respect Arabic descenders: thickness from the font, offset off the baseline,
+ * skipping ink. Applies only where a link is underlined (prose); nav links carry no underline. */
+a {
+  text-decoration-thickness: from-font;
+  text-underline-offset: 0.16em;
+  text-decoration-skip-ink: auto;
+}
+
+/* Selection in a gold tint — the accent, not the brand, so a selected run reads as highlighted
+ * rather than as a teal button. Follows the theme through the tokens. */
 ::selection {
-  background: var(--color-seedling-100);
-  color: var(--color-paper-950);
+  background: color-mix(in oklch, var(--gold-hi) 38%, var(--surface));
+  color: var(--ink);
 }
 
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 3px;
+/*
+ * The wordmark — فسيلـــة in Cairo 700, gold gradient (ADR 0029). Live text with the authored
+ * tatweel; the gradient is clipped to the glyphs. The `@supports` fallback is flat accent gold, and
+ * the ::selection override keeps the letters visible while selected (a clipped-transparent fill
+ * would otherwise vanish under the highlight).
+ */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  background-image: linear-gradient(180deg, var(--gold-hi), var(--gold-lo));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* Cairo's descenders reach below the line box; give the clip room so nothing is shaved. */
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
 }
 
-html {
-  scroll-behavior: smooth;
+.wordmark::selection {
+  -webkit-text-fill-color: var(--ink);
+  color: var(--ink);
+}
+
+@supports not (background-clip: text) {
+  .wordmark {
+    color: var(--accent);
+    -webkit-text-fill-color: currentColor;
+    background-image: none;
+  }
 }
 
 body {
   background: var(--surface);
   color: var(--ink);
+}
+
+/* -----------------------------------------------------------------------------
+ * Theme swap. `theme-toggle.tsx` adds this class for two frames while it flips
+ * `data-theme`, so no element crossfades the change at its own pace.
+ * -------------------------------------------------------------------------- */
+html.no-transitions *,
+html.no-transitions *::before,
+html.no-transitions *::after {
+  transition: none !important;
 }

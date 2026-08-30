@@ -67,6 +67,11 @@ const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   reducedMotion: "reduce",
 });
+/** `THEME=dark` verifies the night palette: the cookie the toggle writes, read pre-paint. */
+if (process.env.THEME === "dark") {
+  const { hostname } = new URL(BASE);
+  await context.addCookies([{ name: "faseela-theme", value: "dark", domain: hostname, path: "/" }]);
+}
 if (SESSION) {
   const { hostname, protocol } = new URL(BASE);
   await context.addCookies([
@@ -88,7 +93,10 @@ for (const path of paths) {
   console.log(`\n${path}`);
 
   const page = await context.newPage();
-  const response = await page.goto(url, { waitUntil: "networkidle" });
+  // `load` + a settle, not `networkidle`: in production Next prefetches every in-viewport link,
+  // and `networkidle` never arrives on a page with a dozen of them.
+  const response = await page.goto(url, { waitUntil: "load" });
+  await page.waitForTimeout(1500);
   const status = response?.status() ?? 0;
   if (status >= 400) {
     check(path, `page responds (got ${status})`, false, SESSION ? "" : "— gated? set SESSION");
@@ -156,7 +164,12 @@ for (const path of paths) {
   for (const v of axe) {
     console.log(`    a11y  ${v.impact.padEnd(8)} ${v.id} ×${v.nodes}  ${v.target}`);
   }
-  check(path, "no critical/serious accessibility violations", serious.length === 0, `(${serious.length})`);
+  check(
+    path,
+    "no critical/serious accessibility violations",
+    serious.length === 0,
+    `(${serious.length})`,
+  );
 
   // ---------------------------------------------------------------- direction 2: LTR
   /**
@@ -172,13 +185,19 @@ for (const path of paths) {
   const ltrOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
-  check(path, "no horizontal overflow when mirrored to LTR", ltrOverflow <= 1, `(${ltrOverflow}px)`);
+  check(
+    path,
+    "no horizontal overflow when mirrored to LTR",
+    ltrOverflow <= 1,
+    `(${ltrOverflow}px)`,
+  );
   await page.close();
 
   // ------------------------------------------------------------------------ mobile
   const mobile = await context.newPage();
   await mobile.setViewportSize({ width: 393, height: 851 });
-  await mobile.goto(url, { waitUntil: "networkidle" });
+  await mobile.goto(url, { waitUntil: "load" });
+  await mobile.waitForTimeout(1200);
   await mobile.waitForTimeout(1800);
   await mobile.screenshot({ path: `${OUT}/${name}-mobile.png`, fullPage: true });
 
@@ -215,10 +234,17 @@ for (const path of paths) {
         const floor = isTextLink ? 24 : 44;
         return r.height < floor;
       })
-      .map((el) => `${el.tagName}#${el.id || "?"}:${Math.round(el.getBoundingClientRect().height)}px`)
+      .map(
+        (el) => `${el.tagName}#${el.id || "?"}:${Math.round(el.getBoundingClientRect().height)}px`,
+      )
       .slice(0, 6),
   );
-  check(path, "touch targets meet their size floor", smallTargets.length === 0, smallTargets.join(", "));
+  check(
+    path,
+    "touch targets meet their size floor",
+    smallTargets.length === 0,
+    smallTargets.join(", "),
+  );
   await mobile.close();
 }
 

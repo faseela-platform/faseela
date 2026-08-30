@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { updateTierAction, type ActionState } from "../admin-actions";
+import { buttonClass } from "../../components/ui";
 
 /**
  * Edit one tier's threshold and name (§46, admin-only). Threshold and name save in
@@ -21,13 +22,19 @@ export function TierRow({ tier }: { tier: { key: string; name: string; minPoints
   }
 
   const input =
-    "text-body-sm rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[var(--ink)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+    "min-h-11 text-body-sm rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[var(--ink)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
 
   return (
     <li className="flex flex-wrap items-end gap-3 border-b border-[var(--hairline)] py-4">
       <label className="text-caption text-[var(--ink-muted)]">
         الاسم
-        <input dir="rtl" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} className={`${input} mt-1 block w-40`} />
+        <input
+          dir="rtl"
+          value={name}
+          disabled={pending}
+          onChange={(e) => setName(e.target.value)}
+          className={`${input} mt-1 block w-40`}
+        />
       </label>
       <label className="text-caption text-[var(--ink-muted)]">
         الحد الأدنى للنقاط
@@ -46,7 +53,7 @@ export function TierRow({ tier }: { tier: { key: string; name: string; minPoints
         type="button"
         disabled={pending}
         onClick={save}
-        className="text-body-sm rounded-md border border-[var(--border)] px-4 py-1.5 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)] disabled:opacity-50"
+        className={buttonClass("secondary", "sm")}
       >
         {pending ? "…" : "احفظ"}
       </button>

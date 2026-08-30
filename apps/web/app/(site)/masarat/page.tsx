@@ -6,6 +6,7 @@ import { publishedTracks } from "@faseela/db";
 import { db } from "@/lib/db";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
+import { buttonClass, Card, EmptyState, Ordinal, PageHeader, Points } from "../components/ui";
 
 /**
  * The Tracks index — the first page in this codebase built from real database
@@ -16,9 +17,8 @@ import { Num } from "../components/num";
  * same reason `track.slug` is Latin-only: an Arabic path segment percent-encodes
  * into something unshareable.
  *
- * A server component with no client boundary, like the landing page. Nothing here
- * needs interactivity: the reveals are CSS scroll timelines (ADR 0011) and the
- * data is fetched on the server.
+ * A server component with no client boundary of its own: the data is fetched on
+ * the server and the reveals are the layout's observer (ADR 0011 revised).
  */
 
 export const metadata: Metadata = {
@@ -41,23 +41,12 @@ export default async function TracksIndexPage() {
     <>
       <Nav current="/masarat" />
       <main>
-        {/*
-         * Bottom padding is deliberately smaller than top. The section originally
-         * used the same generous value on both edges, which on a three-Track index
-         * left roughly 470px of dead space below the last cell — enough that the
-         * final Track sat in an empty region the reader had no reason to scroll to.
-         */}
-        <section className="gutter pt-[var(--section-y-sm)] pb-16 md:pt-[var(--section-y)] md:pb-24">
-          <div className="reveal mb-16 max-w-3xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">المسارات</p>
-            <h1 className="font-display max-w-3xl text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-              اختر مسارك وابدأ
-            </h1>
-            <p className="text-lede mt-6 max-w-xl text-[var(--ink-muted)]">
-              كل مسار موضوع متكامل، مقسّم إلى مهام قصيرة يمكن إنجازها في وقتك. أنجز المهمة، واجمع
-              نقاطها في الموسم.
-            </p>
-          </div>
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="المسارات"
+            title="اختر مسارك وابدأ"
+            lede="كل مسار موضوع متكامل، مقسّم إلى مهام قصيرة يمكن إنجازها في وقتك. أنجز المهمة، واجمع نقاطها في الموسم."
+          />
 
           {/*
            * The empty state is a real state, not a defensive afterthought. Before an
@@ -65,54 +54,35 @@ export default async function TracksIndexPage() {
            * that renders a bare grid in that case looks broken rather than early.
            */}
           {tracks.length === 0 ? (
-            <div className="border-t border-[var(--hairline)] py-16">
-              <p className="text-body-lg text-[var(--ink-muted)]">
-                لا توجد مسارات منشورة بعد. عُد قريباً.
-              </p>
+            <div className="mt-12 border-t border-[var(--hairline)]">
+              <EmptyState
+                title="لا توجد مسارات منشورة بعد."
+                body="عُد قريباً — أول مسار في طريقه."
+              />
             </div>
           ) : (
-            /*
-             * `lattice-auto` lets each cell size to its content. The default 22rem
-             * floor is right for the landing page, where cells hold comparable copy;
-             * here a Track with no Tasks yet sits beside one with two, and the floor
-             * inflated the short cell into a 440px void mid-page.
-             *
-             * `gap-y` restores the breathing room the floor used to provide, without
-             * tying it to a height the content does not need.
-             */
-            <ol className="reveal-stagger lattice lattice-2 lattice-auto gap-y-4">
+            <ol className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {tracks.map((track, i) => (
-                <li key={track.slug} style={{ ["--i" as string]: i }}>
+                <Card
+                  key={track.slug}
+                  as="li"
+                  reveal={(i % 3) * 80}
+                  className="flex min-h-[15rem] flex-col justify-between"
+                >
                   {/*
-                   * The ordinal, large but dim — the same hierarchy the landing page
-                   * uses. Latin digits inside an Arabic document need both the
-                   * `.num` isolation and `dir="ltr"`, or a two-digit number reorders.
-                   *
-                   * `aria-hidden` because it is decoration, not content: the list order
-                   * and the Track's own name already say which this is, and a reader
-                   * announcing "zero one" before every title is noise.
-                   *
-                   * `--ink-muted`, not `--ink-faint`: hiding it from a screen reader
-                   * does nothing for a sighted reader with low vision, who still has to
-                   * see it — and faint failed the 3:1 floor at 2.21:1. Muted clears it
-                   * while staying well dimmer than the title beside it, which is all the
-                   * hierarchy asked for.
+                   * The ordinal in gold — the identity's voice for the things it counts
+                   * (ADR 0029). `aria-hidden` because it is decoration: the list order and
+                   * the Track's own name already say which this is.
                    */}
-                  <span
-                    aria-hidden="true"
-                    className="num font-display text-page-title leading-[1.45] font-medium text-[var(--ink-muted)]"
-                    dir="ltr"
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
+                  <Ordinal>
+                    <span aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                  </Ordinal>
 
-                  <div>
-                    <h2 className="font-display text-card-title mb-3 leading-[1.5] font-medium">
+                  <div className="mt-6">
+                    <h2 className="font-display text-card-title mb-2 leading-[1.5] font-bold">
                       {/*
-                       * The whole cell is not the link. A link wrapping a grid cell
-                       * makes the accessible name the entire block of text, which
-                       * reads as one enormous unlabelled link in a screen reader.
-                       * The heading is the link; the cell is layout.
+                       * The whole card is not the link. A link wrapping a card makes the
+                       * accessible name the entire block of text; the heading is the link.
                        */}
                       <Link
                         href={`/masarat/${track.slug}`}
@@ -121,31 +91,30 @@ export default async function TracksIndexPage() {
                         {track.title}
                       </Link>
                     </h2>
-                    <p className="text-body-sm mb-6 max-w-sm text-[var(--ink-muted)]">
-                      {track.summary}
-                    </p>
+                    <p className="text-body-sm mb-5 text-[var(--ink-muted)]">{track.summary}</p>
 
                     {/*
-                     * Task count and Points as a hairline fact strip. Both are real
-                     * aggregates from the database, so a Track with no Tasks yet
-                     * honestly reports zero rather than being hidden.
+                     * Task count and Points as a fact strip. Both are real aggregates from
+                     * the database, so a Track with no Tasks yet honestly reports zero.
                      */}
-                    <dl className="text-body-sm flex items-center gap-6 text-[var(--ink-faint)]">
+                    <dl className="text-body-sm flex items-center gap-6 border-t border-[var(--hairline)] pt-4 text-[var(--ink-muted)]">
                       <div className="flex items-baseline gap-2">
                         <dt>المهام</dt>
-                        <dd className="font-medium text-[var(--ink-muted)]">
+                        <dd className="font-semibold text-[var(--ink)]">
                           <Num value={String(track.taskCount)} />
                         </dd>
                       </div>
                       <div className="flex items-baseline gap-2">
                         <dt>النقاط</dt>
-                        <dd className="font-medium text-[var(--ink-muted)]">
-                          <Num value={String(track.totalPoints)} />
+                        <dd>
+                          <Points unit="">
+                            <Num value={String(track.totalPoints)} />
+                          </Points>
                         </dd>
                       </div>
                     </dl>
                   </div>
-                </li>
+                </Card>
               ))}
             </ol>
           )}
@@ -153,27 +122,21 @@ export default async function TracksIndexPage() {
 
         {/*
          * A closing invitation, so the page ends rather than merely stopping. The
-         * landing page closes with a call to action for the same reason: a list
-         * that runs out reads as truncated, and the Member who has just read the
-         * Tracks is exactly the person to ask.
+         * Member who has just read the Tracks is exactly the person to ask — and since
+         * Slice 1 an account is one e-mail away, so the invitation leads to sign-in.
          */}
         {tracks.length > 0 && (
-          <section className="gutter border-t border-[var(--hairline)] py-16 md:py-24">
-            <div className="reveal max-w-xl">
-              <h2 className="font-display text-[clamp(1.4rem,2.4vw,1.953rem)] leading-[1.45] font-medium text-[var(--ink)]">
+          <section className="gutter mx-auto max-w-[1440px] border-t border-[var(--hairline)] py-16 md:py-24">
+            <div data-reveal="0" className="max-w-xl">
+              <h2 className="font-display text-[clamp(1.4rem,2.4vw,1.953rem)] leading-[1.45] font-bold text-[var(--ink)]">
                 جاهز تبدأ؟
               </h2>
               <p className="text-body-lg mt-4 text-[var(--ink-muted)]">
                 انضم إلى فسيلة، واختر المهمة الأولى في المسار الذي يناسبك.
               </p>
-              <a
-                href="https://linktr.ee/faseela_24"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-body-sm mt-8 inline-block rounded-md bg-[var(--brand)] px-6 py-3 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90"
-              >
+              <Link href="/dukhul" className={buttonClass("primary", "md", "mt-8")}>
                 انضم إلينا
-              </a>
+              </Link>
             </div>
           </section>
         )}

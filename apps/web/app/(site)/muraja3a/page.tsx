@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
+import { EmptyState, PageHeader, Pill } from "../components/ui";
 
 /**
  * The Editor's review queue (spec §16, §23): everything a Member has submitted and
@@ -30,7 +31,10 @@ const dateFmt = new Intl.DateTimeFormat("ar", { day: "numeric", month: "long" })
 export default async function ReviewQueuePage() {
   const staff = await requireStaff();
   /** §35: a supervisor sees only their Tracks' submissions; an admin sees all. */
-  const queue = await reviewQueue(db, staff.role === "admin" ? undefined : staff.supervisedTrackIds);
+  const queue = await reviewQueue(
+    db,
+    staff.role === "admin" ? undefined : staff.supervisedTrackIds,
+  );
   /** An Editor is a Member too, so their own tier shows in the nav as everywhere. */
   const tier = (await memberProgress(db, staff.id)).tier.name;
 
@@ -38,33 +42,34 @@ export default async function ReviewQueuePage() {
     <>
       <Nav current="/muraja3a" signedIn memberName={staff.name} tier={tier} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <div className="reveal max-w-3xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">المراجعة</p>
-            <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
-              قائمة المراجعة
-            </h1>
-            <p className="text-lede mt-6 max-w-xl text-[var(--ink-muted)]">
-              الأعمال المُرسَلة بانتظار قرارك، الأقدم أولاً. اقبل العمل فتُحتسب نقاطه، أو أعِده
-              للتحسين، أو ارفضه.
-            </p>
-          </div>
-
-          <div className="hairline rule-draw mt-12" />
+        <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
+          <PageHeader
+            eyebrow="المراجعة"
+            title="قائمة المراجعة"
+            lede="الأعمال المُرسَلة بانتظار قرارك، الأقدم أولاً. اقبل العمل فتُحتسب نقاطه، أو أعِده للتحسين، أو ارفضه."
+            aside={
+              queue.length > 0 ? (
+                <Pill tone="brand">
+                  <Num value={queue.length} /> بانتظار قرارك
+                </Pill>
+              ) : null
+            }
+          />
 
           {queue.length === 0 ? (
-            <div className="py-16">
-              <p className="text-body-lg max-w-lg text-[var(--ink-muted)]">
-                لا أعمال بانتظار المراجعة الآن.
-              </p>
+            <div className="mt-8 border-t border-[var(--hairline)]">
+              <EmptyState
+                title="لا أعمال بانتظار المراجعة الآن."
+                body="حين يُرسل عضو عملاً يظهر هنا فوراً."
+              />
             </div>
           ) : (
-            <ol className="reveal-stagger mt-8">
+            <ol className="mt-8 max-w-3xl">
               {queue.map((item, i) => (
-                <li key={item.submissionId} style={{ ["--i" as string]: i }}>
+                <li key={item.submissionId} data-reveal={String(Math.min(i, 4) * 60)}>
                   <Link
                     href={`/muraja3a/${item.submissionId}`}
-                    className="group flex items-baseline justify-between gap-4 border-b border-[var(--hairline)] py-5 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
+                    className="group flex min-h-14 items-center justify-between gap-4 border-b border-[var(--hairline)] px-3 py-4 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
                   >
                     <div>
                       <p className="text-body-lg font-medium text-[var(--ink)] group-hover:text-[var(--brand)]">
@@ -80,7 +85,7 @@ export default async function ReviewQueuePage() {
                         ) : null}
                       </p>
                     </div>
-                    <span className="text-caption shrink-0 text-[var(--ink-faint)]">
+                    <span className="text-caption shrink-0 text-[var(--ink-muted)]">
                       {dateFmt.format(item.submittedAt)}
                     </span>
                   </Link>

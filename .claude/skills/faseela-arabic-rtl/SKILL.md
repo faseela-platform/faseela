@@ -4,7 +4,7 @@ description: "Arabic script and RTL rules for this repo. Use when writing layout
 
 # Arabic and RTL
 
-The imported craft skills — `typography`, `interface-animations`, `marketing-pages`, `color-systems` — assume Latin script. Where they disagree with this file, this file wins. Grounded in [W3C Arabic & Persian Layout Requirements](https://www.w3.org/TR/alreq/) (Group Draft Note, 2 Oct 2025) and [UAX #9](http://www.unicode.org/reports/tr9/).
+The imported craft skills — `typography`, `animations`, `marketing-pages`, `color` — assume Latin script. Where they disagree with this file, this file wins. Grounded in [W3C Arabic & Persian Layout Requirements](https://www.w3.org/TR/alreq/) (Group Draft Note, 2 Oct 2025) and [UAX #9](http://www.unicode.org/reports/tr9/).
 
 ## Stretch Arabic with a font axis, never with letter-spacing
 

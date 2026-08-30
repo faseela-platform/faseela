@@ -13,6 +13,7 @@ import {
   unpublishNotificationAction,
   type NotifyState,
 } from "./actions";
+import { buttonClass } from "../../components/ui";
 
 const TYPE_LABEL: Record<BroadcastType, string> = {
   announcement: "إعلان أو فعالية",
@@ -21,7 +22,7 @@ const TYPE_LABEL: Record<BroadcastType, string> = {
 const TYPES = Object.keys(TYPE_LABEL) as BroadcastType[];
 
 const input =
-  "text-body-sm min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+  "text-body-sm min-h-11 w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
 const label = "text-caption mb-1.5 block font-medium text-[var(--ink-muted)]";
 
 /** Compose a broadcast. It is saved as a draft — sending is a separate, deliberate act. */
@@ -47,7 +48,7 @@ export function NotifyComposer() {
 
   return (
     <form
-      className="grid max-w-xl gap-4 rounded-lg border border-[var(--hairline)] p-5"
+      className="grid max-w-xl gap-4 rounded-[var(--radius-card)] bg-[var(--surface-raised)] p-5 shadow-[var(--card-shadow)]"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -111,7 +112,7 @@ export function NotifyComposer() {
           type="submit"
           disabled={pending || title.trim() === "" || body.trim() === ""}
           aria-busy={pending}
-          className="text-body-sm min-h-11 rounded-md bg-[var(--brand)] px-5 py-2 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50"
+          className={buttonClass("primary", "sm")}
         >
           {pending ? "…" : "احفظ كمسودة"}
         </button>
@@ -155,8 +156,7 @@ export function NotifyRow({
     });
   }
 
-  const btn =
-    "text-caption min-h-11 rounded-md border border-[var(--border)] px-3 py-1.5 font-semibold text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+  const btn = buttonClass("ghost", "sm");
 
   const STATE_LABEL = { draft: "مسودة", published: "مُرسَل", archived: "مؤرشف" } as const;
 
@@ -165,7 +165,7 @@ export function NotifyRow({
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div className="min-w-0">
           <p className="text-body-sm font-medium text-[var(--ink)]">{item.title}</p>
-          <p className="text-caption mt-1 text-[var(--ink-faint)]">
+          <p className="text-caption mt-1 text-[var(--ink-muted)]">
             {STATE_LABEL[state]} · {item.isBroadcast ? "للجميع" : "لعضو"} · {item.when}
           </p>
         </div>

@@ -17,6 +17,7 @@ import { presignGetUrl, r2IsConfigured } from "@/lib/r2";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
 import { CONTENT_TYPE_LABEL } from "../components/content-types";
+import { buttonClass, Card, EmptyState, Pill, Points, ProgressBar } from "../components/ui";
 
 /**
  * الصفحة الرئيسة (§3, §43) — a personalized read, not authored sections. Signed in,
@@ -55,8 +56,24 @@ export default async function MustajaddatPage() {
     }
   }
 
-  const open = tasks.filter((t) => t.submissionState === "draft" || t.submissionState === "returned");
+  const open = tasks.filter(
+    (t) => t.submissionState === "draft" || t.submissionState === "returned",
+  );
   const awaiting = tasks.filter((t) => t.submissionState === "pending");
+
+  /** How far through the tier's band the Member is — the same sum `/hisabi` shows. */
+  const fill = progress
+    ? progress.nextTier
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            (progress.points - progress.tier.minPoints) /
+              (progress.nextTier.minPoints - progress.tier.minPoints || 1),
+          ),
+        )
+      : 1
+    : 0;
 
   return (
     <>
@@ -68,38 +85,44 @@ export default async function MustajaddatPage() {
         unreadCount={unreadCount}
       />
       <main>
-        <section className="gutter pt-10 pb-16 md:pb-24">
+        <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           {/* Zone 1 — the signed-in Member's own state (§3.1), or a visitor prompt (§43). */}
           {userId && progress ? (
-            <div className="reveal mb-14 max-w-3xl rounded-lg border border-[var(--hairline)] bg-[color-mix(in_oklch,var(--brand)_4%,transparent)] p-6">
+            <Card tone="brand" reveal={0} className="mb-14 max-w-3xl">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <p className="text-body-lg font-medium text-[var(--ink)]">
+                <p className="font-display text-card-title font-bold text-[var(--ink)]">
                   {session?.user?.name?.trim() || "أهلاً بك"}
                 </p>
-                <p className="text-body-sm text-[var(--ink-muted)]">
-                  <span className="font-semibold text-[var(--brand)]">{progress.tier.name}</span>
-                  {" · "}
-                  <Num value={progress.points} /> نقطة
+                <p className="text-body-sm flex items-center gap-2 text-[var(--ink-muted)]">
+                  <Pill tone="gold">{progress.tier.name}</Pill>
+                  <Points>
+                    <Num value={progress.points} />
+                  </Points>
                 </p>
               </div>
+              <div className="mt-4">
+                <ProgressBar fill={fill} tone="gold" />
+              </div>
               {progress.nextTier ? (
-                <p className="text-caption mt-1 text-[var(--ink-faint)]">
+                <p className="text-caption mt-2 text-[var(--ink-muted)]">
                   <Num value={progress.pointsToNext ?? 0} /> نقطة حتى «{progress.nextTier.name}»
                 </p>
               ) : null}
 
               {open.length > 0 ? (
-                <div className="mt-5">
-                  <p className="text-caption mb-2 font-semibold text-[var(--ink-muted)]">مهمة مفتوحة</p>
+                <div className="mt-5 border-t border-[var(--hairline)] pt-4">
+                  <p className="text-caption mb-2 font-semibold text-[var(--brand)]">مهمة مفتوحة</p>
                   <ul className="space-y-1">
                     {open.map((t) => (
                       <li key={t.taskId}>
                         <Link
                           href={`/masarat/${t.trackSlug}`}
-                          className="text-body-sm font-medium text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
+                          className="text-body-sm inline-flex min-h-11 items-center font-medium text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
                         >
                           {t.taskTitle}
-                          <span className="text-caption text-[var(--ink-faint)]"> — {t.trackTitle}</span>
+                          <span className="text-caption text-[var(--ink-muted)]">
+                            &nbsp;— {t.trackTitle}
+                          </span>
                         </Link>
                       </li>
                     ))}
@@ -112,34 +135,34 @@ export default async function MustajaddatPage() {
                   <Num value={awaiting.length} /> بانتظار المراجعة
                 </p>
               ) : null}
-            </div>
+            </Card>
           ) : (
-            <div className="reveal mb-14 max-w-2xl rounded-lg border border-[var(--hairline)] p-6">
-              <p className="text-body-lg text-[var(--ink)]">تابِع جديد مبادرة فسيلة.</p>
+            <Card reveal={0} className="mb-14 max-w-2xl">
+              <p className="font-display text-card-title font-bold text-[var(--ink)]">
+                تابِع جديد مبادرة فسيلة.
+              </p>
               <p className="text-body-sm mt-2 text-[var(--ink-muted)]">
                 سجّل دخولك لمتابعة مهامك ونقاطك وتقدّمك.
               </p>
-              <Link
-                href="/dukhul"
-                className="text-body-sm mt-4 inline-block rounded-md bg-[var(--brand)] px-5 py-2 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90"
-              >
+              <Link href="/dukhul" className={buttonClass("primary", "sm", "mt-5")}>
                 دخول
               </Link>
-            </div>
+            </Card>
           )}
 
           {/* Zone 3 + 4 — the merged content stream, newest first (§3.3/§3.4). */}
-          <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+          <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]">
             المستجدّات
           </h1>
-          <div className="hairline rule-draw mt-8" />
 
           {feed.length === 0 ? (
-            <p className="text-body-sm mt-10 text-[var(--ink-muted)]">لا مستجدّات بعد.</p>
+            <div className="mt-6 border-t border-[var(--hairline)]">
+              <EmptyState title="لا مستجدّات بعد." body="أول خبر أو فعالية تُنشر تظهر هنا." />
+            </div>
           ) : (
-            <ol className="reveal-stagger mt-8 grid gap-8 md:grid-cols-2">
+            <ol className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {feed.map((item, i) => (
-                <li key={item.id} style={{ ["--i" as string]: i }}>
+                <li key={item.id} data-reveal={String((i % 3) * 80)}>
                   <FeedCard item={item} mediaUrl={mediaUrls.get(item.id) ?? null} />
                 </li>
               ))}
@@ -158,7 +181,10 @@ function FeedCard({ item, mediaUrl }: { item: FeedItem; mediaUrl: string | null 
   const external = !item.trackSlug && Boolean(item.linkUrl);
 
   const inner = (
-    <article className="flex h-full flex-col rounded-lg border border-[var(--hairline)] p-5 transition-colors duration-[130ms] ease-[var(--ease-hover)] group-hover:border-[var(--brand)]">
+    <article
+      className="flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface-raised)] transition-[transform,box-shadow] duration-[150ms] ease-[var(--ease-out-expo)] group-hover:-translate-y-0.5"
+      style={{ boxShadow: "var(--card-shadow)" }}
+    >
       {mediaUrl ? (
         <Image
           src={mediaUrl}
@@ -166,26 +192,42 @@ function FeedCard({ item, mediaUrl }: { item: FeedItem; mediaUrl: string | null 
           width={480}
           height={240}
           unoptimized
-          className="mb-4 h-40 w-full rounded-md object-cover"
+          className="h-40 w-full object-cover"
         />
-      ) : null}
-      <p className="text-caption mb-2 font-semibold text-[var(--brand)]">
-        {CONTENT_TYPE_LABEL[item.type]}
-        {item.trackTitle ? ` · ${item.trackTitle}` : ""}
-      </p>
-      <h2 className="text-body-lg font-medium text-[var(--ink)] group-hover:text-[var(--brand)]">
-        {item.title}
-      </h2>
-      <p className="text-body-sm mt-2 line-clamp-3 text-[var(--ink-muted)]">{item.body}</p>
-      {item.type === "event" && item.eventAt ? (
-        <p className="text-caption mt-3 text-[var(--ink-muted)]">
-          {dateTimeFmt.format(item.eventAt)}
-          {item.eventPlace ? ` — ${item.eventPlace}` : ""}
+      ) : (
+        /* No image: a quiet band in the type's colour, so the grid keeps its rhythm. */
+        <div
+          aria-hidden="true"
+          className="h-3"
+          style={{
+            background:
+              item.type === "event"
+                ? "linear-gradient(90deg, var(--gold-lo), var(--gold-hi))"
+                : "linear-gradient(90deg, var(--teal-lo), var(--teal-hi))",
+          }}
+        />
+      )}
+      <div className="flex flex-1 flex-col p-5">
+        <p className="text-caption mb-2 flex flex-wrap items-center gap-2 text-[var(--ink-muted)]">
+          <Pill tone={item.type === "event" ? "gold" : "brand"}>
+            {CONTENT_TYPE_LABEL[item.type]}
+          </Pill>
+          {item.trackTitle ? <span>{item.trackTitle}</span> : null}
         </p>
-      ) : null}
-      <p className="text-caption mt-auto pt-4 text-[var(--ink-faint)]">
-        {dateFmt.format(item.publishedAt)}
-      </p>
+        <h2 className="text-body-lg font-bold text-[var(--ink)] group-hover:text-[var(--brand)]">
+          {item.title}
+        </h2>
+        <p className="text-body-sm mt-2 line-clamp-3 text-[var(--ink-muted)]">{item.body}</p>
+        {item.type === "event" && item.eventAt ? (
+          <p className="text-caption mt-3 font-semibold text-[var(--accent)]">
+            {dateTimeFmt.format(item.eventAt)}
+            {item.eventPlace ? ` — ${item.eventPlace}` : ""}
+          </p>
+        ) : null}
+        <p className="text-caption mt-auto pt-4 text-[var(--ink-muted)]">
+          {dateFmt.format(item.publishedAt)}
+        </p>
+      </div>
     </article>
   );
 

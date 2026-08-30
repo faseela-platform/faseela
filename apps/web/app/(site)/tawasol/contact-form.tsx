@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { ServiceRequestType } from "@faseela/db";
 
 import { KINDS, KIND_LABEL } from "../components/service-request-types";
+import { buttonClass } from "../components/ui";
 import { submitServiceRequestAction, type ContactState } from "./actions";
 
 /**
@@ -47,17 +48,17 @@ export function ContactForm({ max }: { max: FieldMax }) {
   /** `min-h-11` = 44px: the floor for a touch target, which `py-2.5` alone misses by a
    * pixel on the select at mobile widths. */
   const input =
-    "text-body-sm min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
+    "text-body-sm min-h-11 w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2.5 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none disabled:opacity-50";
   const label = "text-caption mb-1.5 block font-medium text-[var(--ink-muted)]";
 
   if (result?.status === "sent") {
     return (
-      <div className="max-w-xl rounded-lg border border-[var(--hairline)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] p-6">
-        <p className="text-body-lg font-medium text-[var(--ink)]">{result.message}</p>
+      <div className="max-w-xl rounded-[var(--radius-card)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] p-6">
+        <p className="text-body-lg font-bold text-[var(--ink)]">{result.message}</p>
         <button
           type="button"
           onClick={() => setResult(null)}
-          className="text-body-sm mt-4 font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+          className={buttonClass("ghost", "sm", "-ms-4 mt-3")}
         >
           أرسِل رسالة أخرى
         </button>
@@ -148,7 +149,7 @@ export function ContactForm({ max }: { max: FieldMax }) {
           />
         </div>
       </div>
-      <p className="text-caption -mt-3 text-[var(--ink-faint)]">
+      <p className="text-caption -mt-3 text-[var(--ink-muted)]">
         اترك بريداً أو رقماً واحداً على الأقل لنتمكّن من الرد.
       </p>
 
@@ -190,9 +191,9 @@ export function ContactForm({ max }: { max: FieldMax }) {
           type="submit"
           disabled={pending}
           aria-busy={pending}
-          className="text-body-sm min-h-11 rounded-md bg-[var(--brand)] px-6 py-2.5 font-semibold text-[var(--surface)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          className={buttonClass("primary", "sm")}
         >
-          {pending ? "…" : "أرسِل"}
+          {pending ? "جارٍ الإرسال…" : "أرسِل"}
         </button>
         <span
           aria-live="polite"

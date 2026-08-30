@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { r2IsConfigured } from "@/lib/r2";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
+import { BackLink, Card, EmptyState, Ordinal, Pill, Points } from "../../components/ui";
 import { AttestButton } from "../attest-button";
 import { ReviewPanel } from "../review-panel";
 
@@ -23,10 +24,8 @@ import { ReviewPanel } from "../review-panel";
  * A single Track with its Tasks — the vertical slice's deepest page, and the
  * first in the codebase where the database's own vocabulary reaches the reader.
  *
- * A Server Component that now mounts one Client Component. Until the attest
- * button existed this page shipped no JavaScript at all; it now ships the button
- * and nothing else — the reveals are still CSS scroll timelines, and the Task
- * list, the totals and the session read all stay on the server.
+ * A Server Component that mounts the completion controls as its only client code;
+ * the Task list, the totals and the session read all stay on the server.
  */
 
 /**
@@ -129,159 +128,141 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
         tier={tier}
       />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
+        <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           {/*
            * A back link, not a breadcrumb trail. One level up is the only ancestor
-           * this page has, and a two-item breadcrumb is more chrome than
-           * information. The arrow points right, the direction "back" travels in RTL.
+           * this page has, and a two-item breadcrumb is more chrome than information.
            */}
-          <Link
-            href="/masarat"
-            className="text-body-sm mb-12 inline-block font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
-          >
-            {/*
-             * The arrow points RIGHT. Under RTL the reader travels leftward, so “back” is rightward
-             * — the opposite of the LTR convention. A left arrow here, which is what this first
-             * read as, points the reader deeper into the page rather than out of it.
-             *
-             * `aria-hidden` because the arrow is decoration: the link already says كل المسارات, and
-             * a screen reader announcing “right arrow” adds nothing.
-             */}
-            <span aria-hidden="true">→</span> كل المسارات
-          </Link>
+          <BackLink href="/masarat">كل المسارات</BackLink>
 
-          <div className="reveal grid gap-8 md:grid-cols-[1.2fr_1fr] md:gap-16">
+          <div data-reveal="0" className="grid gap-8 md:grid-cols-[1.2fr_1fr] md:gap-16">
             <div>
-              <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-medium text-[var(--ink)]">
+              <p className="text-body-sm mb-3 font-bold text-[var(--brand)]">مسار</p>
+              <h1 className="font-display text-[clamp(1.9rem,4.2vw,3.052rem)] leading-[1.42] font-extrabold text-[var(--ink)]">
                 {track.title}
               </h1>
-              <p className="text-lede mt-6 max-w-xl text-[var(--ink-muted)]">{track.summary}</p>
+              <p className="lede text-lede mt-5 max-w-xl text-[var(--ink-muted)]">
+                {track.summary}
+              </p>
             </div>
 
             {/*
-             * The Track's totals, pinned to the end column. Both are computed from
-             * the Task rows rather than stored on the Track, so they cannot drift
-             * from the Tasks actually published.
+             * The Track's totals, pinned to the end column — the Points in gold, the
+             * count in ink. Both are computed from the Task rows rather than stored on
+             * the Track, so they cannot drift from the Tasks actually published.
              */}
             <dl className="flex items-start gap-10 md:justify-end">
               <div>
                 <dt className="text-body-sm mb-2 text-[var(--ink-muted)]">عدد المهام</dt>
-                <dd className="font-display text-[clamp(1.6rem,3vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+                <dd className="font-display text-[clamp(1.6rem,3vw,2.441rem)] leading-[1.42] font-bold text-[var(--ink)]">
                   <Num value={track.tasks.length} />
                 </dd>
               </div>
               <div>
                 <dt className="text-body-sm mb-2 text-[var(--ink-muted)]">مجموع النقاط</dt>
-                <dd className="font-display text-[clamp(1.6rem,3vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+                <dd className="font-display text-[clamp(1.6rem,3vw,2.441rem)] leading-[1.42] font-bold text-[var(--accent)]">
                   <Num value={track.totalPoints} />
                 </dd>
               </div>
             </dl>
           </div>
 
-          <div className="hairline rule-draw mt-16" />
-
           {/*
            * The empty Task list is a designed state, not an error. حتى يسمع كلام الله
            * has no Tasks today because neither source document describes any
            * (ADR 0019), and this Track is genuinely published — so the page says so
-           * plainly rather than rendering an empty lattice that reads as a bug.
+           * plainly rather than rendering an empty grid that reads as a bug.
            */}
           {track.tasks.length === 0 ? (
-            <div className="py-16">
-              <p className="text-body-lg max-w-lg text-[var(--ink-muted)]">
-                مهام هذا المسار قيد الإعداد. المسار منشور، وستُضاف مهامه قريباً.
-              </p>
+            <div className="mt-12 border-t border-[var(--hairline)]">
+              <EmptyState
+                title="مهام هذا المسار قيد الإعداد."
+                body="المسار منشور، وستُضاف مهامه قريباً."
+              />
             </div>
           ) : (
             <>
-              <h2 className="text-caption mt-16 mb-8 font-semibold text-[var(--ink-muted)]">
-                المهام
-              </h2>
+              <h2 className="text-body-sm mt-14 mb-6 font-bold text-[var(--brand)]">المهام</h2>
 
-              <ol className="reveal-stagger lattice lattice-2">
+              <ol className="grid gap-4 md:grid-cols-2">
                 {track.tasks.map((task, i) => (
-                  <li key={task.id} style={{ ["--i" as string]: i }}>
+                  <Card key={task.id} as="li" reveal={(i % 2) * 80} className="flex flex-col">
                     <div className="flex items-start justify-between gap-4">
-                      <span
-                        className="num font-display text-page-title leading-[1.45] font-medium text-[var(--ink-faint)]"
-                        dir="ltr"
-                      >
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-
-                      {/*
-                       * The Points value. Prominent, because it is the reason a Member
-                       * reads this cell at all — but still not brighter than the Task
-                       * title, which is what the ordinal's dimness protects.
-                       */}
-                      <p className="text-body-sm shrink-0 font-semibold text-[var(--brand)]">
-                        <Num value={task.points} /> نقطة
+                      <Ordinal>
+                        <span aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                      </Ordinal>
+                      {/* The Points value — the reason a Member reads this card at all. */}
+                      <p className="text-body-sm shrink-0 pt-2">
+                        <Points>
+                          <Num value={task.points} />
+                        </Points>
                       </p>
                     </div>
 
-                    <div>
-                      <h3 className="font-display text-card-title mb-3 leading-[1.5] font-medium text-[var(--ink)]">
+                    <div className="mt-4 flex flex-1 flex-col">
+                      <h3 className="font-display text-card-title mb-2 leading-[1.5] font-bold text-[var(--ink)]">
                         {task.title}
                       </h3>
-                      <p className="text-body-sm mb-5 max-w-sm text-[var(--ink-muted)]">
+                      <p className="text-body-sm mb-4 text-[var(--ink-muted)]">
                         {task.instructions}
                       </p>
 
                       {/*
-                       * How completion works, stated on the Task rather than explained
-                       * once at the top. A Member deciding whether to start this Task
-                       * needs to know now whether it waits on an Editor.
+                       * How completion works, stated on the Task rather than explained once
+                       * at the top. A Member deciding whether to start this Task needs to
+                       * know now whether it waits on an Editor.
                        */}
-                      <p className="text-caption mb-4 text-[var(--ink-faint)]">
-                        <span className="font-semibold">{MODE_LABEL[task.mode]}</span>
-                        {" — "}
-                        {MODE_HINT[task.mode]}
+                      <p className="text-caption mb-5 flex flex-wrap items-center gap-2 text-[var(--ink-muted)]">
+                        <Pill tone={task.mode === "review" ? "gold" : "brand"}>
+                          {MODE_LABEL[task.mode]}
+                        </Pill>
+                        <span>{MODE_HINT[task.mode]}</span>
                       </p>
 
                       {/*
-                       * `attest` Tasks get a button; `review` Tasks get the
-                       * submission panel — the two completion paths, each rendered
-                       * in the Member's own state. Signed-out readers get a sign-in
-                       * link either way, its `callbackURL` returning them to this
-                       * exact Track so completing a Task never costs two navigations.
+                       * `attest` Tasks get a button; `review` Tasks get the submission panel —
+                       * the two completion paths, each rendered in the Member's own state.
+                       * Signed-out readers get a sign-in link either way, its `callbackURL`
+                       * returning them to this exact Track.
                        */}
-                      {task.mode === "attest" ? (
-                        session?.user ? (
-                          <AttestButton
+                      <div className="mt-auto border-t border-[var(--hairline)] pt-4">
+                        {task.mode === "attest" ? (
+                          session?.user ? (
+                            <AttestButton
+                              taskId={task.id}
+                              trackSlug={track.slug}
+                              points={task.points}
+                              alreadyDone={done.has(task.id)}
+                            />
+                          ) : (
+                            <Link
+                              href={`/dukhul?callbackURL=/masarat/${track.slug}`}
+                              className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
+                            >
+                              سجّل دخولك لتأكيد الإنجاز
+                            </Link>
+                          )
+                        ) : session?.user ? (
+                          <ReviewPanel
                             taskId={task.id}
                             trackSlug={track.slug}
-                            points={task.points}
-                            alreadyDone={done.has(task.id)}
+                            state={submissionByTask.get(task.id)?.state ?? null}
+                            initialBody={submissionByTask.get(task.id)?.body ?? ""}
+                            initialMediaKey={submissionByTask.get(task.id)?.mediaKey ?? null}
+                            reviewNote={submissionByTask.get(task.id)?.reviewNote ?? null}
+                            r2Enabled={r2IsConfigured}
                           />
                         ) : (
                           <Link
                             href={`/dukhul?callbackURL=/masarat/${track.slug}`}
-                            className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                            className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
                           >
-                            سجّل دخولك لتأكيد الإنجاز
+                            سجّل دخولك لإرسال عملك
                           </Link>
-                        )
-                      ) : session?.user ? (
-                        <ReviewPanel
-                          taskId={task.id}
-                          trackSlug={track.slug}
-                          state={submissionByTask.get(task.id)?.state ?? null}
-                          initialBody={submissionByTask.get(task.id)?.body ?? ""}
-                          initialMediaKey={submissionByTask.get(task.id)?.mediaKey ?? null}
-                          reviewNote={submissionByTask.get(task.id)?.reviewNote ?? null}
-                          r2Enabled={r2IsConfigured}
-                        />
-                      ) : (
-                        <Link
-                          href={`/dukhul?callbackURL=/masarat/${track.slug}`}
-                          className="text-body-sm font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
-                        >
-                          سجّل دخولك لإرسال عملك
-                        </Link>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </li>
+                  </Card>
                 ))}
               </ol>
             </>
@@ -292,12 +273,15 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
          * A way onward, so a Track that runs out of Tasks does not dead-end the
          * reader. The obvious next move from the end of one Track is another Track.
          */}
-        <section className="gutter border-t border-[var(--hairline)] py-16">
+        <section className="gutter mx-auto max-w-[1440px] border-t border-[var(--hairline)] py-16">
           <Link
             href="/masarat"
-            className="text-body-lg font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
+            className="text-body-lg inline-flex min-h-11 items-center gap-1.5 font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
           >
-            <span aria-hidden="true">→</span> تصفّح باقي المسارات
+            <span aria-hidden="true" className="inline-block ltr:rotate-180">
+              →
+            </span>{" "}
+            تصفّح باقي المسارات
           </Link>
         </section>
       </main>

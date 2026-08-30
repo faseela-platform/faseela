@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { canManageTrackScope, memberProgress, submissionForReview, submissionTrackId } from "@faseela/db";
+import {
+  canManageTrackScope,
+  memberProgress,
+  submissionForReview,
+  submissionTrackId,
+} from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { presignGetUrl, r2IsConfigured } from "@/lib/r2";
 import { requireStaff } from "@/lib/require-track-access";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
+import { BackLink, Card, Points } from "../../components/ui";
 import { ReviewDecision } from "../review-decision";
 
 /**
@@ -84,47 +89,43 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
     <>
       <Nav current="/muraja3a" signedIn memberName={staff.name} tier={tier} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <Link
-            href="/muraja3a"
-            className="text-body-sm mb-12 inline-block font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
-          >
-            <span aria-hidden="true">→</span> قائمة المراجعة
-          </Link>
+        <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
+          <BackLink href="/muraja3a">قائمة المراجعة</BackLink>
 
-          <div className="reveal max-w-2xl">
-            <p className="text-caption mb-4 font-semibold text-[var(--ink-muted)]">
+          <div data-reveal="0" className="max-w-2xl">
+            <p className="text-body-sm mb-3 font-bold text-[var(--brand)]">
               {detail.memberName || "عضو"}
             </p>
-            <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+            <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]">
               {detail.taskTitle}
             </h1>
             <p className="text-body-sm mt-4 text-[var(--ink-muted)]">{detail.taskInstructions}</p>
-            <p className="text-caption mt-3 font-semibold text-[var(--brand)]">
-              الحدّ الأقصى: <Num value={detail.taskPoints} /> نقطة
+            <p className="text-caption mt-3">
+              الحدّ الأقصى:{" "}
+              <Points>
+                <Num value={detail.taskPoints} />
+              </Points>
             </p>
           </div>
 
-          <div className="hairline rule-draw mt-12" />
-
           {/* The attempt history, oldest first (§24, §26 — nothing here is overwritten). */}
-          <ol className="mt-10 space-y-8">
-            {detail.attempts.map((a) => (
-              <li key={a.attemptNo} className="max-w-2xl">
-                <div className="flex items-baseline justify-between gap-4">
+          <ol className="mt-10 max-w-2xl space-y-6">
+            {detail.attempts.map((a, i) => (
+              <li key={a.attemptNo} data-reveal={String(Math.min(i, 3) * 80)}>
+                <div className="mb-2 flex items-baseline justify-between gap-4">
                   <p className="text-caption font-semibold text-[var(--ink-muted)]">
                     المحاولة <Num value={a.attemptNo} />
                   </p>
-                  <p className="text-caption text-[var(--ink-faint)]">
+                  <p className="text-caption text-[var(--ink-muted)]">
                     {dateFmt.format(a.submittedAt)}
                   </p>
                 </div>
 
-                <div className="mt-3 rounded-md border border-[var(--border)] px-4 py-3">
+                <Card padding="sm">
                   {a.body ? (
                     <p className="text-body-sm whitespace-pre-wrap text-[var(--ink)]">{a.body}</p>
                   ) : (
-                    <p className="text-body-sm text-[var(--ink-faint)]">لا نص، ملف فقط.</p>
+                    <p className="text-body-sm text-[var(--ink-muted)]">لا نص، ملف فقط.</p>
                   )}
 
                   {a.mediaKey ? (
@@ -133,17 +134,17 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
                         href={mediaUrls.get(a.attemptNo)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-caption mt-3 inline-block font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70"
+                        className="text-caption mt-3 inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
                       >
-                        <span aria-hidden="true">📎</span> افتح الملف المرفق
+                        <span aria-hidden="true">📎</span>&nbsp;افتح الملف المرفق
                       </a>
                     ) : (
-                      <p className="text-caption mt-3 text-[var(--ink-faint)]">
+                      <p className="text-caption mt-3 text-[var(--ink-muted)]">
                         ملف مرفق (المعاينة غير متاحة).
                       </p>
                     )
                   ) : null}
-                </div>
+                </Card>
 
                 {/* An earlier verdict on this attempt, kept beside it. */}
                 {a.decision ? (
@@ -152,7 +153,9 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
                     {a.decision === "accepted" && a.earnedPoints !== null ? (
                       <>
                         {" — "}
-                        <Num value={a.earnedPoints} /> نقطة
+                        <Points>
+                          <Num value={a.earnedPoints} />
+                        </Points>
                       </>
                     ) : null}
                     {a.reviewNote ? ` — ${a.reviewNote}` : null}
@@ -162,13 +165,11 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
             ))}
           </ol>
 
-          <div className="hairline rule-draw mt-12" />
-
           {/* The verdict, taken only while the work is actually pending. */}
           {detail.state === "pending" ? (
-            <div className="mt-10 max-w-2xl">
+            <Card reveal={120} className="mt-10 max-w-2xl">
               <ReviewDecision submissionId={detail.submissionId} maxPoints={detail.taskPoints} />
-            </div>
+            </Card>
           ) : (
             <p className="text-body-sm mt-10 max-w-2xl text-[var(--ink-muted)]">
               {STATE_LABEL[detail.state] ?? "لا إجراء متاح."}

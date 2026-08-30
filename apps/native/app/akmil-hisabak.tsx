@@ -1,18 +1,13 @@
 import type { ProfileResponse } from "@faseela/api-types";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { Mark } from "../components/mark";
+import { ScalePressable } from "../components/pressable";
 import { authedFetch } from "../lib/authed-api";
-import { colors, radius, space, text } from "../lib/theme";
+import { useTheme, useThemeStyles } from "../lib/theme-context";
+import { radius, space, text } from "../lib/theme";
 
 /**
  * Complete the §5 account (name + phone) — the mobile counterpart to the web
@@ -22,6 +17,8 @@ import { colors, radius, space, text } from "../lib/theme";
  */
 export default function CompleteAccountScreen() {
   const router = useRouter();
+  const { colors, scheme } = useTheme();
+  const styles = useThemeStyles(makeStyles);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,10 +46,11 @@ export default function CompleteAccountScreen() {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        <Text style={text.cardTitle}>أكمِل حسابك</Text>
-        <Text style={[text.body, styles.lede]}>
-          نحتاج اسمك ورقم هاتفك لتُحتسب نقاطك عند إنجاز المهام.
-        </Text>
+        <View style={styles.markRow}>
+          <Mark size={56} night={scheme === "dark"} />
+        </View>
+        <Text style={styles.title}>أكمِل حسابك</Text>
+        <Text style={styles.lede}>نحتاج اسمك ورقم هاتفك لتُحتسب نقاطك عند إنجاز المهام.</Text>
 
         <View>
           <Text style={styles.label}>الاسم الكامل</Text>
@@ -84,49 +82,54 @@ export default function CompleteAccountScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={save} disabled={busy}>
-          {busy ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.btnText}>احفظ</Text>
-          )}
-        </Pressable>
+        <ScalePressable
+          style={[styles.btn, busy && styles.btnBusy]}
+          onPress={save}
+          disabled={busy}
+          accessibilityRole="button"
+        >
+          {busy ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.btnText}>احفظ</Text>}
+        </ScalePressable>
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  content: { padding: space.lg, flexGrow: 1 },
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    padding: space.xl,
-    gap: space.md,
-  },
-  lede: { color: colors.inkMuted },
-  label: { ...text.caption, color: colors.inkMuted, marginBottom: space.xs },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-    fontSize: 18,
-    color: colors.ink,
-    fontFamily: "IBMPlexSansArabic_400Regular",
-  },
-  error: { ...text.caption, color: "#b4443a" },
-  btn: {
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingVertical: space.md,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 48,
-  },
-  btnBusy: { opacity: 0.7 },
-  btnText: { ...text.bodyStrong, color: colors.surface },
-});
+const makeStyles = ({ colors, shadow }: ReturnType<typeof useTheme>) =>
+  StyleSheet.create({
+    content: { padding: space.lg, flexGrow: 1 },
+    card: {
+      backgroundColor: colors.surfaceRaised,
+      borderRadius: radius.card,
+      padding: space.xl,
+      gap: space.md,
+      ...shadow(2),
+    },
+    markRow: { alignItems: "flex-start" },
+    title: { ...text.section, color: colors.ink },
+    lede: { ...text.body, color: colors.inkMuted },
+    label: { ...text.captionStrong, color: colors.inkMuted, marginBottom: space.xs },
+    input: {
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.btn,
+      backgroundColor: colors.surface,
+      paddingHorizontal: space.md,
+      paddingVertical: space.md,
+      fontSize: 18,
+      color: colors.ink,
+      fontFamily: "IBMPlexSansArabic_400Regular",
+    },
+    error: { ...text.caption, color: colors.danger },
+    btn: {
+      backgroundColor: colors.brand,
+      borderRadius: radius.btn,
+      paddingVertical: space.md,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 48,
+    },
+    btnBusy: { opacity: 0.7 },
+    btnText: { ...text.bodyStrong, color: "#ffffff" },
+  });

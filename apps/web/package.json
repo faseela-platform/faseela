@@ -17,19 +17,22 @@
     "@faseela/api-types": "workspace:*",
     "@faseela/db": "workspace:*",
     "@faseela/tokens": "workspace:*",
+    "@react-three/fiber": "^9.7.0",
     "aws4fetch": "^1.0.20",
     "better-auth": "^1.6.26",
     "dotenv": "^17.4.2",
     "motion": "^12.0.1",
     "next": "16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "three": "0.185.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "0.185.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",

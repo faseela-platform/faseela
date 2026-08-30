@@ -1,34 +1,28 @@
 import { Hero } from "./components/hero";
 import { Nav } from "./components/nav";
-import { About, Channels, Cta, Rail, Stations, Stats, Tracks } from "./components/sections";
+import { About, App, Join, Steps } from "./components/sections";
 
 /**
- * The landing page. Fully scroll-driven (round 3, B7 = C), built entirely on native CSS scroll
- * timelines so it holds up on a mid-range Android (ADR 0011).
+ * The landing page — the owner's design (assets/design/faseela-landing.dc.html), ADR 0028/0029.
  *
- * Deliberately a server component with no client boundary: there is no JavaScript on this page at
- * all. The hero is a one-shot CSS animation and every reveal is a CSS scroll timeline, so nothing
- * here needs React on the client. That is the cheapest possible route to the performance floor —
- * a JS scroll library would have shipped a runtime and put the work back on the main thread.
+ * Order follows the owner's page: the hero states the offer with the mark and the real numbers;
+ * من نحن explains the initiative and keeps the profile document's wings and stations; المنصّة
+ * shows the product; كيف تعمل keeps the four steps; the invitation closes with the channels.
  *
- * Section order follows the page's purpose: legitimacy first, then recruitment, then explanation
- * (round 3, B4 = D). The hadith now opens the hero as its eyebrow rather than occupying a section of
- * its own, and the real numbers follow immediately — evidence before argument.
+ * Still a server page. The client code is three small islands — the reveal observer, the
+ * counters and the hero's tilt/pause — each additive: the HTML is complete without them
+ * (ADR 0011, revised). T5 adds the gated WebGL scene on top of the hero.
  */
 export default function Page() {
   return (
     <>
       <Nav />
-      {/* Page-level, so the position indicator persists for the whole scroll rather than one section. */}
-      <Rail />
       <main>
         <Hero />
-        <Stats />
         <About />
-        <Tracks />
-        <Stations />
-        <Channels />
-        <Cta />
+        <App />
+        <Steps />
+        <Join />
       </main>
     </>
   );

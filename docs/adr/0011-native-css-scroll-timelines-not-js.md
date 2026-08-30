@@ -4,13 +4,32 @@ Date: 2026-08-07
 
 ## Status
 
-Accepted.
+Accepted; **revised 2026-08-29 (Slice 9, owner decision D3)**.
+
+The revision narrows the rule from "no scroll-triggered motion" to **"no repeating or parallax
+scroll theatrics"**, and permits three specific things the owner's landing design relies on:
+
+1. **One-shot reveals** on section entry, driven by `IntersectionObserver` in a ~1 KB island
+   (`reveal-observer.tsx`), once per session (`sessionStorage`), off under reduced motion. The
+   markup carries the final state; elements are hidden only _after_ the observer has proven it
+   delivers entries, so no-JS, a dead observer and a repeat visit all see finished content.
+   Reveals move `opacity` and `translate` only, never `transform` (so the phone tilts survive).
+2. **Count-up numbers** in the hero, once, when half on screen; the final value is the server HTML.
+3. **One JavaScript/WebGL island in the hero**, behind a capability gate — ADR 0028.
+
+`animation-timeline: view()` remains the tool for anything scroll-_linked_ (the product pages'
+`.reveal*` until T6 migrates them). No scroll listener may drive layout; the reveal and counter islands observe intersection,
+not scroll position. The one exception is the hero island's passive scroll read, which feeds
+a target the WebGL mark eases toward (ADR 0028) — compositor work, never layout. The performance floor (a
+mid-range Android on Lebanese mobile data), the compositor-only rule and the 10-layer budget
+stand unchanged. The landing's zero-JS guarantee is replaced by a budget: **≤ 15 KB gzipped of
+client JavaScript before the gated WebGL chunk**.
 
 ## Context
 
 The landing page is fully scroll-driven — the page is a timeline (round 3, B7 = C). The performance
 floor is a mid-range Android on Lebanese mobile data (B9 = B). Those two decisions are in tension,
-and the tension is resolved by *how* the scroll motion is implemented rather than by reducing it.
+and the tension is resolved by _how_ the scroll motion is implemented rather than by reducing it.
 
 The conventional approach is a JS scroll library — GSAP ScrollTrigger, Locomotive, or Motion's
 `useScroll`. All of them compute animation progress on the main thread in response to scroll events.

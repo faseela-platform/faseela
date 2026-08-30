@@ -11,12 +11,14 @@ export {
   seedling,
   stem,
   paper,
+  logo,
   lightRoles,
   darkRoles,
   type ColorScale,
+  type LogoStop,
   type ScaleStep,
-} from './lib/colors.js';
+} from "./lib/colors.js";
 
-export { duration, easing, travel, stagger } from './lib/motion.js';
+export { duration, easing, travel, stagger } from "./lib/motion.js";
 
-export { fontSize, lineHeight, type TypeRole } from './lib/type.js';
+export { fontSize, lineHeight, type TypeRole } from "./lib/type.js";

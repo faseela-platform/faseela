@@ -1,4 +1,4 @@
-import { Cairo_400Regular, Cairo_700Bold } from "@expo-google-fonts/cairo";
+import { Cairo_400Regular, Cairo_700Bold, Cairo_800ExtraBold } from "@expo-google-fonts/cairo";
 import {
   IBMPlexSansArabic_400Regular,
   IBMPlexSansArabic_600SemiBold,
@@ -7,10 +7,11 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { AnimatedSplash } from "../components/animated-splash";
 import { shouldHideSplash } from "../lib/startup";
-import { colors } from "../lib/theme";
+import { ThemeProvider, useTheme } from "../lib/theme-context";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -18,6 +19,7 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_700Bold,
+    Cairo_800ExtraBold,
     IBMPlexSansArabic_400Regular,
     IBMPlexSansArabic_600SemiBold,
   });
@@ -40,8 +42,21 @@ export default function RootLayout() {
   }
 
   return (
+    <ThemeProvider>
+      <Shell />
+    </ThemeProvider>
+  );
+}
+
+/** Inside the provider so the navigator's chrome follows the scheme. */
+function Shell() {
+  const { colors, scheme } = useTheme();
+  const [intro, setIntro] = useState(true);
+  const onIntroDone = useCallback(() => setIntro(false), []);
+
+  return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
@@ -53,9 +68,13 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="masarat/[slug]" options={{ title: "المسار" }} />
-        <Stack.Screen name="akmil-hisabak" options={{ title: "أكمِل حسابك", presentation: "modal" }} />
+        <Stack.Screen
+          name="akmil-hisabak"
+          options={{ title: "أكمِل حسابك", presentation: "modal" }}
+        />
         <Stack.Screen name="ishaarat" options={{ title: "الإشعارات" }} />
       </Stack>
+      {intro ? <AnimatedSplash onDone={onIntroDone} /> : null}
     </>
   );
 }

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { adminContentItem, adminTracks, canManageTrackScope } from "@faseela/db";
@@ -8,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
 import { presignGetUrl, r2IsConfigured } from "@/lib/r2";
 import { Nav } from "../../../components/nav";
+import { BackLink } from "../../../components/ui";
 import { ContentEditor } from "./content-editor";
 
 /**
@@ -44,15 +44,13 @@ export default async function IdaraContentPage({ params }: { params: Promise<{ i
     <>
       <Nav current="/idara" signedIn memberName={staff.name} />
       <main>
-        <section className="gutter pt-12 pb-16 md:pb-24">
-          <Link
-            href="/idara/muhtawa"
-            className="text-body-sm mb-10 inline-block font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
-          >
-            <span aria-hidden="true">→</span> كل المحتوى
-          </Link>
+        <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
+          <BackLink href="/idara/muhtawa">كل المحتوى</BackLink>
 
-          <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-medium text-[var(--ink)]">
+          <h1
+            data-reveal="0"
+            className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]"
+          >
             {item.title}
           </h1>
 

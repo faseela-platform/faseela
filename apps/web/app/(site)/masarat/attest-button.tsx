@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { Num } from "../components/num";
+import { buttonClass } from "../components/ui";
 import { attest, type AttestActionState } from "./actions";
 
 /**
@@ -45,7 +46,7 @@ export function AttestButton({
 
   if (done) {
     return (
-      <p className="text-caption font-semibold text-[var(--brand)]">
+      <p className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--accent)]">
         {/*
          * A checkmark, marked decorative. The Arabic beside it already says the
          * Task is complete, and a screen reader announcing "heavy check mark"
@@ -73,7 +74,7 @@ export function AttestButton({
             setResult(await attest(taskId, trackSlug));
           })
         }
-        className="text-body-sm rounded-md border border-[var(--border)] px-4 py-2 font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)] hover:text-[var(--brand)] disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("primary", "sm")}
       >
         {pending ? "جارٍ التأكيد…" : "أكّدت إنجازها"}
       </button>
