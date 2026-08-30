@@ -10,7 +10,9 @@ The revision narrows the rule from "no scroll-triggered motion" to **"no repeati
 scroll theatrics"**, and permits three specific things the owner's landing design relies on:
 
 1. **One-shot reveals** on section entry, driven by `IntersectionObserver` in a ~1 KB island
-   (`reveal-observer.tsx`), once per session (`sessionStorage`), off under reduced motion. The
+   (`reveal-observer.tsx`), on every load (the owner dropped the once-per-session gate on
+   2026-08-30: a page that looks different on its second visit is less consistent, not
+   more polite), off under reduced motion. The
    markup carries the final state; elements are hidden only _after_ the observer has proven it
    delivers entries, so no-JS, a dead observer and a repeat visit all see finished content.
    Reveals move `opacity` and `translate` only, never `transform` (so the phone tilts survive).

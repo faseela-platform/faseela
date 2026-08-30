@@ -74,7 +74,10 @@ function stemTube(): BufferGeometry {
   const sub = paths[0]?.subPaths[0];
   if (!sub) throw new Error("stem path did not parse");
   const points = sub.getSpacedPoints(48).map((p) => new Vector3(p.x, p.y, 0));
-  return new TubeGeometry(new CatmullRomCurve3(points), 48, MARK_STROKES.stem / 2, 10, false);
+  // Radius a fifth over the stroke's half-width: a lit tube's sides fall into shadow, so its
+  // visible face reads narrower than a flat stroke of the same width. Measured against the
+  // SVG stem, not assumed.
+  return new TubeGeometry(new CatmullRomCurve3(points), 48, MARK_STROKES.stem * 0.6, 10, false);
 }
 
 /**

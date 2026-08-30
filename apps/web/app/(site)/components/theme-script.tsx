@@ -13,11 +13,10 @@
  * `suppressHydrationWarning` on `<html>` covers the attribute React did not render.
  */
 /*
- * The same script also stamps `data-grown` when the grow intro has already played this session
- * (T1b), so the CSS animation is skipped on internal navigation without a React island. It sets
- * the flag as it reads it: the first page of a session grows, every later one is grown.
+ * The grow intro (T1b) is NOT gated here: the owner chose to replay it on every load (2026-08-30)
+ * — one consistent first second, rather than a page that looks different on the second visit.
  */
-const script = `(function(){try{var m=document.cookie.match(/(?:^|; )faseela-theme=(light|dark)/);var t=m?m[1]:null;if(!t){try{t=localStorage.getItem("faseela-theme")}catch(e){}}if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark"){document.documentElement.dataset.theme="dark"}}catch(e){}try{if(sessionStorage.getItem("faseela:grown")==="1"){document.documentElement.dataset.grown="1"}else{sessionStorage.setItem("faseela:grown","1")}}catch(e){}})()`;
+const script = `(function(){try{var m=document.cookie.match(/(?:^|; )faseela-theme=(light|dark)/);var t=m?m[1]:null;if(!t){try{t=localStorage.getItem("faseela-theme")}catch(e){}}if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark"){document.documentElement.dataset.theme="dark"}}catch(e){}})()`;
 
 export function ThemeScript() {
   return <script dangerouslySetInnerHTML={{ __html: script }} />;

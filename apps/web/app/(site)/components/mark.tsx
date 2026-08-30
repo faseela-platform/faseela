@@ -58,8 +58,7 @@ export function Mark({
   layers?: readonly MarkLayer[];
   /**
    * Play the grow intro (T1b): the stem draws upward, the leaves unfurl, the covers settle.
-   * CSS-only, once per session (`theme-script.tsx` stamps `data-grown` on <html>), final
-   * frame under reduced motion. Only the hero's front layer asks for it.
+   * CSS-only, on every load; final frame under reduced motion. Only the hero's layers ask for it.
    */
   grow?: boolean;
   /** Rendered width in px; height follows the 240:230 viewBox. */

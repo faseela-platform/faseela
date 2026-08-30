@@ -2,13 +2,12 @@
 
 import { useEffect } from "react";
 
-const SESSION_KEY = "faseela:revealed";
-
 /**
  * Arms the one-shot reveals — ADR 0011 (revised).
  *
  * The markup ships in its final state. This island:
- *   1. does nothing under reduced motion, or on a repeat visit within the session;
+ *   1. does nothing under reduced motion (every load otherwise replays — the owner's call,
+ *      2026-08-30: the page should look the same on every refresh);
  *   2. observes every `[data-reveal]`; on the FIRST observer callback it marks the elements
  *      already on screen as revealed, then sets `data-reveal-armed` on <html>, which is what
  *      hides the still-offscreen ones (see landing.css). Nothing is hidden until the observer
@@ -22,13 +21,6 @@ export function RevealObserver() {
   useEffect(() => {
     const html = document.documentElement;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem(SESSION_KEY) === "1";
-    } catch {
-      /* storage blocked — treat as first visit */
-    }
-    if (seen) return;
 
     const els = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
     if (els.length === 0) return;
@@ -55,11 +47,6 @@ export function RevealObserver() {
         if (!armed) {
           armed = true;
           html.setAttribute("data-reveal-armed", "");
-          try {
-            sessionStorage.setItem(SESSION_KEY, "1");
-          } catch {
-            /* ignore */
-          }
         }
         if (pending.size === 0) io.disconnect();
       },

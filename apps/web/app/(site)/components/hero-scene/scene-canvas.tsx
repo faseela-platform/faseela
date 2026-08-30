@@ -216,7 +216,7 @@ function MarkMesh({
               <meshStandardMaterial vertexColors roughness={0.72} metalness={0} />
             </mesh>
             <mesh geometry={geometry.stem} position={[0, 0, MARK_Z.stem]}>
-              <meshStandardMaterial vertexColors roughness={0.3} metalness={0.55} />
+              <meshStandardMaterial vertexColors roughness={0.6} metalness={0.15} />
             </mesh>
             <mesh geometry={geometry.leafLower} position={[0, 0, MARK_Z.leaves]}>
               <meshStandardMaterial vertexColors roughness={0.7} metalness={0} />
