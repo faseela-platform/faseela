@@ -210,19 +210,22 @@ function MarkMesh({
               <meshStandardMaterial vertexColors roughness={0.85} metalness={0} />
             </mesh>
             <mesh geometry={geometry.coverRight}>
-              <meshStandardMaterial vertexColors roughness={0.72} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.92} metalness={0} />
             </mesh>
             <mesh geometry={geometry.coverLeft}>
-              <meshStandardMaterial vertexColors roughness={0.72} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.92} metalness={0} />
             </mesh>
+            {/* The stem is unlit: the SVG's gold gradient exactly, so the swap from the CSS mark
+                changes nothing the eye can catch. Its roundness comes from the tube's silhouette
+                under tilt, not from shading. */}
             <mesh geometry={geometry.stem} position={[0, 0, MARK_Z.stem]}>
-              <meshStandardMaterial vertexColors roughness={0.6} metalness={0.15} />
+              <meshBasicMaterial vertexColors />
             </mesh>
             <mesh geometry={geometry.leafLower} position={[0, 0, MARK_Z.leaves]}>
-              <meshStandardMaterial vertexColors roughness={0.7} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.9} metalness={0} />
             </mesh>
             <mesh geometry={geometry.leafUpper} position={[0, 0, MARK_Z.leaves]}>
-              <meshStandardMaterial vertexColors roughness={0.7} metalness={0} />
+              <meshStandardMaterial vertexColors roughness={0.9} metalness={0} />
             </mesh>
             {/* Page lines and veins: flat, unlit, translucent — the strokes the SVG draws. */}
             {geometry.lines.map((g, i) => (

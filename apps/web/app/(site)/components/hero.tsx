@@ -39,7 +39,7 @@ export function Hero() {
         ))}
       </div>
 
-      <div className="gutter relative mx-auto grid max-w-[1440px] items-center gap-8 pt-28 pb-16 md:min-h-[100svh] md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] md:gap-6 md:pt-32 md:pb-20">
+      <div className="gutter relative mx-auto grid max-w-[1440px] items-center gap-8 pt-28 pb-16 md:min-h-[100svh] md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] md:gap-12 md:pt-32 md:pb-20 lg:gap-20">
         {/* --- text column --- */}
         <div className="relative z-10 order-2 max-w-[640px] md:order-1">
           <p className="text-body-sm mb-5 font-semibold text-[var(--ink-muted)]">
