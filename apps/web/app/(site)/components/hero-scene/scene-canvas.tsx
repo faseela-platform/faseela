@@ -3,9 +3,10 @@
 import { MARK_COLORS } from "@faseela/tokens/brand";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Color, type Group, MathUtils } from "three";
+import { Color, type Group, MathUtils, NoToneMapping, PMREMGenerator } from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-import { buildMarkGeometry, MARK_FRAME, MARK_PIVOT } from "./mark-geometry";
+import { buildMarkGeometry, MARK_FRAME, MARK_PIVOT, MARK_Z, paintGradient } from "./mark-geometry";
 
 /**
  * The WebGL mark — ADR 0028. Mounted by `hero-scene/index.tsx` only after the gate says yes;
@@ -21,11 +22,33 @@ import { buildMarkGeometry, MARK_FRAME, MARK_PIVOT } from "./mark-geometry";
  *    scene and the CSS mark stays. The heuristics in the gate cannot know every GPU.
  *  - `webglcontextlost` → `onFail` too.
  *
+ * Rendering choices, so the lit mark still reads as the logo (the references are the
+ * Three.js Journey lessons on materials, lights, environment maps and realistic rendering):
+ *
+ *  - **No tone mapping.** R3F defaults to ACES filmic, which is right for a photographic scene
+ *    and wrong for a brand colour: it darkened and desaturated the teal into something that
+ *    was not the token. Colours here must survive to the screen as authored.
+ *  - **Brand gradients as vertex colours** (`paintGradient`), the material colour white.
+ *  - **An environment map instead of hard key lights.** `RoomEnvironment` through a PMREM
+ *    generator gives every surface soft, believable reflections — gold reads as metal, the
+ *    covers get a gentle sheen — without a directional light carving dark slabs.
+ *  - **Flat, unlit strokes** for the page lines and veins (`MeshBasicMaterial`), as the SVG draws
+ *    them. Lit tubes looked like plumbing.
+ *
  * Colours are the mark's own stops (`@faseela/tokens/brand`) and follow the theme attribute
  * live. Not `@faseela/tokens/native`: its `./lib/*.js` re-exports do not resolve in the
  * browser bundle, and the scene needs only the mark's colours anyway.
  */
 export type SceneTargets = { pointerX: number; pointerY: number; scroll: number };
+
+/**
+ * Exposure. With no tone mapping, a face straight to the camera shows the vertex colour times
+ * (hemisphere fill + environment irradiance). Both were tuned by sampling the rendered cover
+ * against the CSS mark (`.scratch/webgl-sample.mjs`) until the two matched. The environment
+ * is scaled on the scene (`environmentIntensity`) — a material's `envMapIntensity` does not
+ * apply to a scene-level environment, which was measured, not assumed.
+ */
+const LIGHT = { hemi: 0.85, env: 0.36 } as const;
 
 export function SceneCanvas({
   targets,
@@ -57,13 +80,28 @@ export function SceneCanvas({
         far: 500,
         position: [0, 0, 100],
       }}
-      gl={{ antialias: fine, stencil: false, alpha: true, powerPreference: "low-power" }}
+      gl={{
+        antialias: fine,
+        stencil: false,
+        alpha: true,
+        powerPreference: "low-power",
+        toneMapping: NoToneMapping,
+      }}
       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene, camera }) => {
         gl.domElement.addEventListener("webglcontextlost", (e) => {
           e.preventDefault();
           onFail("context-lost");
         });
+        // The room: a neutral studio environment, prefiltered once, shared by every material.
+        const pmrem = new PMREMGenerator(gl);
+        scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environmentIntensity = LIGHT.env;
+        pmrem.dispose();
+        // Verification hook (`#webgl` only): lets the smoke script inspect the scene graph.
+        if (window.location.hash === "#webgl") {
+          (window as Window & { __heroScene?: unknown }).__heroScene = { scene, gl, camera };
+        }
       }}
     >
       <MarkMesh targets={targets} onReady={onReady} onFail={onFail} skipCheck={skipCheck} />
@@ -75,11 +113,13 @@ function themeColors() {
   const night =
     typeof document !== "undefined" && document.documentElement.dataset.theme === "dark";
   return {
-    teal: new Color(night ? MARK_COLORS.tealLoNight : MARK_COLORS.tealLo),
     tealHi: new Color(night ? MARK_COLORS.tealHiNight : MARK_COLORS.tealHi),
-    gold: new Color(night ? MARK_COLORS.goldHiNight : MARK_COLORS.goldHi),
-    paper: new Color(MARK_COLORS.paperLo),
-    paperLine: new Color(MARK_COLORS.pageLine),
+    tealLo: new Color(night ? MARK_COLORS.tealLoNight : MARK_COLORS.tealLo),
+    goldHi: new Color(night ? MARK_COLORS.goldHiNight : MARK_COLORS.goldHi),
+    goldLo: new Color(night ? MARK_COLORS.goldLoNight : MARK_COLORS.goldLo),
+    paperHi: new Color(MARK_COLORS.paperHi),
+    paperLo: new Color(MARK_COLORS.paperLo),
+    pageLine: new Color(MARK_COLORS.pageLine),
     vein: new Color(MARK_COLORS.vein),
   };
 }
@@ -110,6 +150,17 @@ function MarkMesh({
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => obs.disconnect();
   }, [invalidate]);
+
+  // The gradients, painted per part over its own bounding box — the SVG's, in 3D.
+  useEffect(() => {
+    paintGradient(geometry.coverRight, colors.tealHi, colors.tealLo);
+    paintGradient(geometry.coverLeft, colors.tealHi, colors.tealLo);
+    paintGradient(geometry.leafLower, colors.tealHi, colors.tealLo);
+    paintGradient(geometry.leafUpper, colors.tealHi, colors.tealLo);
+    paintGradient(geometry.paper, colors.paperHi, colors.paperLo);
+    paintGradient(geometry.stem, colors.goldHi, colors.goldLo);
+    invalidate();
+  }, [geometry, colors, invalidate]);
 
   useEffect(() => {
     onReady();
@@ -150,46 +201,38 @@ function MarkMesh({
   // Geometry is y-up (see mark-geometry.ts). The rotating group pivots on the spine's base.
   return (
     <>
-      <ambientLight intensity={0.45} />
-      <hemisphereLight args={["#ffffff", "#7a8a86", 1.0]} />
-      <directionalLight position={[-120, 160, 220]} intensity={1.6} />
-      <directionalLight position={[180, -40, 120]} intensity={0.4} color={colors.gold} />
+      {/* Soft fill only; the environment map does the shaping. */}
+      <hemisphereLight args={["#ffffff", "#9fb8b2", LIGHT.hemi]} />
       <group position={[MARK_PIVOT.x, MARK_PIVOT.y, 0]}>
         <group ref={group}>
           <group position={[-MARK_PIVOT.x, -MARK_PIVOT.y, 0]}>
-            <mesh geometry={geometry.paper} position={[0, 0, -2]}>
-              <meshStandardMaterial color={colors.paper} roughness={0.9} metalness={0} />
+            <mesh geometry={geometry.paper} position={[0, 0, MARK_Z.paper]}>
+              <meshStandardMaterial vertexColors roughness={0.85} metalness={0} />
             </mesh>
             <mesh geometry={geometry.coverRight}>
-              <meshStandardMaterial color={colors.teal} roughness={0.55} metalness={0.1} />
+              <meshStandardMaterial vertexColors roughness={0.72} metalness={0} />
             </mesh>
             <mesh geometry={geometry.coverLeft}>
-              <meshStandardMaterial color={colors.teal} roughness={0.55} metalness={0.1} />
+              <meshStandardMaterial vertexColors roughness={0.72} metalness={0} />
             </mesh>
-            <mesh geometry={geometry.stem}>
-              <meshStandardMaterial color={colors.gold} roughness={0.35} metalness={0.6} />
+            <mesh geometry={geometry.stem} position={[0, 0, MARK_Z.stem]}>
+              <meshStandardMaterial vertexColors roughness={0.3} metalness={0.55} />
             </mesh>
-            <mesh geometry={geometry.leafLower} position={[0, 0, 6]}>
-              <meshStandardMaterial color={colors.tealHi} roughness={0.5} metalness={0.05} />
+            <mesh geometry={geometry.leafLower} position={[0, 0, MARK_Z.leaves]}>
+              <meshStandardMaterial vertexColors roughness={0.7} metalness={0} />
             </mesh>
-            <mesh geometry={geometry.leafUpper} position={[0, 0, 6]}>
-              <meshStandardMaterial color={colors.tealHi} roughness={0.5} metalness={0.05} />
+            <mesh geometry={geometry.leafUpper} position={[0, 0, MARK_Z.leaves]}>
+              <meshStandardMaterial vertexColors roughness={0.7} metalness={0} />
             </mesh>
-            {/* Page lines and veins: the strokes the SVG draws, so the cross-fade drops nothing. */}
+            {/* Page lines and veins: flat, unlit, translucent — the strokes the SVG draws. */}
             {geometry.lines.map((g, i) => (
-              <mesh key={`line-${i}`} geometry={g}>
-                <meshStandardMaterial
-                  color={colors.paperLine}
-                  roughness={0.8}
-                  metalness={0}
-                  transparent
-                  opacity={0.75}
-                />
+              <mesh key={`line-${i}`} geometry={g} position={[0, 0, MARK_Z.lines]}>
+                <meshBasicMaterial color={colors.pageLine} transparent opacity={0.7} />
               </mesh>
             ))}
             {geometry.veins.map((g, i) => (
-              <mesh key={`vein-${i}`} geometry={g}>
-                <meshStandardMaterial color={colors.vein} roughness={0.6} metalness={0} />
+              <mesh key={`vein-${i}`} geometry={g} position={[0, 0, MARK_Z.veins]}>
+                <meshBasicMaterial color={colors.vein} transparent opacity={0.95} />
               </mesh>
             ))}
           </group>

@@ -61,6 +61,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       dir="rtl"
       className={`${cairo.variable} ${rubik.variable} h-full antialiased`}
       suppressHydrationWarning
+      // Tells Next the smooth scroll in globals.css is intentional, so it can disable it
+      // during route transitions (otherwise every navigation animates to the top).
+      data-scroll-behavior="smooth"
     >
       <head>
         <ThemeScript />

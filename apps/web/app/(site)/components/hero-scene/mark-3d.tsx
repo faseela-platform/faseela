@@ -1,12 +1,11 @@
 import { hero } from "../../content";
-import { Mark } from "../mark";
-import { Land, STAGE } from "./land";
+import { Mark, type MarkLayer } from "../mark";
 
 /**
  * The owner's layered CSS-3D mark — the hero's SSR state and the fallback for every device
  * the WebGL gate declines (ADR 0028).
  *
- * A 460×500 stage holding, back to front: the glow disc, the land, the dashed orbit ring, the
+ * A 460×500 stage holding, back to front: the glow disc, the dashed orbit ring, the
  * mark at three depths (`translateZ` 0/34/72 — the parallax the pointer tilt makes visible), the
  * ground shadow, and the three loop chips. The whole stage floats; `hero-scene/index.tsx` tilts
  * it toward the pointer by writing two custom properties.
@@ -14,6 +13,9 @@ import { Land, STAGE } from "./land";
  * Everything here is decorative for assistive tech: the mark's name is in the nav, and the loop
  * the chips depict is repeated as real text for screen readers.
  */
+/** The 460×500 stage the mark is laid out in (must match `index.tsx`, which sizes the WebGL box from it). */
+export const STAGE = { width: 460, height: 500, markX: 30, markY: 60, markWidth: 400 } as const;
+
 const CHIP_POSITIONS: React.CSSProperties[] = [
   { top: "6%", insetInlineEnd: "-8%" },
   { top: "40%", insetInlineStart: "-22%" },
@@ -22,12 +24,71 @@ const CHIP_POSITIONS: React.CSSProperties[] = [
 
 const CHIP_DELAYS = ["-1.5s", "-3.5s", "-5s"] as const;
 
+/** Back to front. The ground shadow belongs with the book; the drop shadow with the plant. */
+const MARK_DEPTHS: { z: number; layers: readonly MarkLayer[]; front?: boolean }[] = [
+  { z: 0, layers: ["shadow", "paper", "covers"] },
+  { z: 34, layers: ["lines"] },
+  { z: 72, layers: ["stem", "leaves", "veins"], front: true },
+];
+
 export function Mark3D() {
   return (
     <div
       className="relative mx-auto w-full max-w-[460px]"
       style={{ aspectRatio: `${STAGE.width} / ${STAGE.height}`, perspective: "1200px" }}
     >
+      {/*
+       * The sun by day, a crescent moon by night — inside the mark's own stage, centred on it,
+       * so it sits above the book at every viewport width instead of drifting across the hero.
+       *
+       * The moon is one masked disc (a second circle cut out of the first), and its glow is the
+       * same masked shape blurred behind it — so the halo follows the crescent evenly instead of
+       * ringing a full disc that is mostly dark.
+       */}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 200 200"
+        className="hero-orb absolute top-[-24%] left-1/2 hidden w-[38%] -translate-x-1/2 md:block"
+      >
+        <defs>
+          <radialGradient id="hero-sun" cx="0.4" cy="0.4" r="0.6">
+            <stop offset="0" stopColor="#fff9e3" />
+            <stop offset="0.6" stopColor="var(--gold-hi)" />
+            <stop offset="1" stopColor="var(--gold-lo)" />
+          </radialGradient>
+          <radialGradient id="hero-moon" cx="0.35" cy="0.35" r="0.7">
+            <stop offset="0" stopColor="#fffbea" />
+            <stop offset="1" stopColor="#e8d9a6" />
+          </radialGradient>
+          <mask id="hero-crescent">
+            <rect width="200" height="200" fill="white" />
+            {/* The cut: a slightly smaller disc offset toward the upper-start side. */}
+            <circle cx="82" cy="84" r="54" fill="black" />
+          </mask>
+          <filter id="hero-glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="9" />
+          </filter>
+        </defs>
+        <g className="hero-sun">
+          <circle cx="100" cy="100" r="56" fill="url(#hero-sun)" />
+        </g>
+        <g className="hero-moon">
+          <g mask="url(#hero-crescent)">
+            <circle
+              cx="100"
+              cy="100"
+              r="60"
+              fill="var(--gold-hi)"
+              filter="url(#hero-glow)"
+              opacity="0.7"
+            />
+          </g>
+          <g mask="url(#hero-crescent)">
+            <circle cx="100" cy="100" r="60" fill="url(#hero-moon)" />
+          </g>
+        </g>
+      </svg>
+
       {/* Tilt and float are two elements: both animate `transform`, and on one element the
           float loop would win the cascade and the pointer tilt would never show. */}
       <div className="hero-tilt absolute inset-0">
@@ -42,8 +103,6 @@ export function Mark3D() {
               transform: "translateZ(-90px)",
             }}
           />
-
-          <Land />
 
           {/* The orbit ring. */}
           <div
@@ -64,27 +123,30 @@ export function Mark3D() {
             </svg>
           </div>
 
-          {/* The mark, three layers deep. The back two carry no shadow — one ground shadow is enough. */}
-          {[0, 34, 72].map((z, i) => (
+          {/*
+           * One mark, three depths (the owner's construction): the book at the back, the page
+           * lines a step forward, the plant in front. Each depth draws only its own parts, so
+           * the tilt shows real depth between them rather than a ghost copy of the whole mark.
+           */}
+          {MARK_DEPTHS.map(({ z, layers, front }, i) => (
             <div
               key={z}
-              className={`absolute ${i === 2 ? "" : "hero-mark-back"}`}
+              className="hero-mark-layer absolute"
               style={{
                 left: `${(STAGE.markX / STAGE.width) * 100}%`,
                 top: `${(STAGE.markY / STAGE.height) * 100}%`,
                 width: `${(STAGE.markWidth / STAGE.width) * 100}%`,
                 transform: `translateZ(${z}px)`,
-                opacity: i === 2 ? 1 : 0.35,
-                filter:
-                  i === 2
-                    ? "drop-shadow(0 18px 24px color-mix(in oklch, var(--ink) 18%, transparent))"
-                    : undefined,
+                filter: front
+                  ? "drop-shadow(0 18px 24px color-mix(in oklch, var(--ink) 18%, transparent))"
+                  : undefined,
               }}
             >
               <Mark
                 size={STAGE.markWidth}
-                shadow={i === 2}
-                grow={i === 2}
+                shadow={i === 0}
+                grow
+                layers={layers}
                 idPrefix={`hero-mark-${i}`}
                 className="h-auto w-full"
               />

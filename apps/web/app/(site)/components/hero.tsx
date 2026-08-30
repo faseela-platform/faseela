@@ -21,11 +21,7 @@ import { Ornament } from "./ornament";
 export function Hero() {
   return (
     <section className="hero-sky relative overflow-hidden">
-      {/* Sky furniture: orb and stars sit behind everything, clipped by the section. */}
-      <div
-        aria-hidden="true"
-        className="hero-orb absolute start-[42%] top-[7%] hidden h-[150px] w-[150px] rounded-full md:block"
-      />
+      {/* Stars — behind everything, clipped by the section. The sun/moon live in the mark's stage. */}
       <div aria-hidden="true" className="hero-stars absolute inset-0">
         {STARS.map((s, i) => (
           <span
@@ -43,7 +39,7 @@ export function Hero() {
         ))}
       </div>
 
-      <div className="gutter relative mx-auto grid max-w-[1440px] items-center gap-8 pt-28 pb-16 md:min-h-[calc(100svh-4.5rem)] md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] md:gap-6 md:pt-32 md:pb-20">
+      <div className="gutter relative mx-auto grid max-w-[1440px] items-center gap-8 pt-28 pb-16 md:min-h-[100svh] md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] md:gap-6 md:pt-32 md:pb-20">
         {/* --- text column --- */}
         <div className="relative z-10 order-2 max-w-[640px] md:order-1">
           <p className="text-body-sm mb-5 font-semibold text-[var(--ink-muted)]">

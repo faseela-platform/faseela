@@ -62,7 +62,27 @@ does not tree-shake meaningfully; its parse cost alone stalls a 2 GB phone.
    only and behind the gate, with one known reduction on the follow-up list: replace
    `SVGLoader` (~40 KB) with the repo's own cubic-path → `Shape` converter (the Lottie generator
    already parses the same M/L/C/Z grammar).
-8. **Lighthouse, mobile profile, 4× CPU throttle, production build (2026-08-30):** the fallback
+8. **The scene must read as the logo, not as a cut-out (2026-08-30, after the owner's review of
+   the first render).** What changed and why, each measured on the production page:
+   - _Framing_: the canvas box is a percentage of the mark's **stage** (460 px), not of the hero
+     column — measured against the column it rendered a third larger and sat on the third chip.
+   - _No tone mapping_: R3F's default ACES filmic darkened and desaturated the teal into a colour
+     that was not the token. Brand colours must reach the screen as authored.
+   - _Gradients as vertex colours_ (`paintGradient`): the SVG's per-element vertical gradient,
+     painted over each part's own bounding box; the material colour is white.
+   - _Environment map, not key lights_: `RoomEnvironment` through PMREM; exposure is set with
+     `scene.environmentIntensity` (a material's `envMapIntensity` does not scale a scene-level
+     environment — measured, not assumed) plus a hemisphere fill, tuned by sampling the rendered
+     cover against the CSS mark until they matched (`#36b59a` vs `#16b598`; night `#3ecaad` vs
+     `#26cdae`).
+   - _Flat unlit strokes_ (`SVGLoader.pointsToStroke`, `MeshBasicMaterial`) for page lines and
+     veins; as lit tubes they read as plumbing.
+   - _The land (terraces) was removed_ by the owner: eye-straining, took the hero's vertical
+     space, and never cohered with the mark. The stage is the glow, the ring, the mark with its
+     ground shadow, the chips, and the sun/moon centred above the book.
+   - `window.__heroScene` is exposed under `#webgl` only, so the smoke script can inspect the
+     graph (lights, materials, environment) instead of guessing from pixels.
+9. **Lighthouse, mobile profile, 4× CPU throttle, production build (2026-08-30):** the fallback
    path (`/#noscene`) scores **92 performance** (TBT 150 ms, CLS 0, LCP 3.1 s, accessibility
    100); the WebGL path (`/#webgl`) scores 66 (TBT 1.3 s) on that same profile — which is the
    measurement the gate exists for: a device that throttled is never offered the scene. The

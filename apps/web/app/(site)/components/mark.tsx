@@ -27,15 +27,35 @@ import {
  * Android's monochrome icon, stamps and loading states — where gradients would only
  * smear.
  */
+export type MarkLayer = "shadow" | "paper" | "covers" | "lines" | "stem" | "leaves" | "veins";
+
+const ALL_LAYERS: readonly MarkLayer[] = [
+  "shadow",
+  "paper",
+  "covers",
+  "lines",
+  "stem",
+  "leaves",
+  "veins",
+];
+
 export function Mark({
   size = 48,
   mono = false,
   shadow = true,
   grow = false,
+  layers = ALL_LAYERS,
   idPrefix = "mark",
   title,
   className,
 }: {
+  /**
+   * Which parts to draw. The CSS-3D hero splits one mark across three depths — the book
+   * at the back, the page lines in the middle, the plant in front — by rendering three
+   * instances that each own a subset. Drawing the whole mark at every depth instead
+   * shows through as a ghost copy of the book the moment the stage tilts.
+   */
+  layers?: readonly MarkLayer[];
   /**
    * Play the grow intro (T1b): the stem draws upward, the leaves unfurl, the covers settle.
    * CSS-only, once per session (`theme-script.tsx` stamps `data-grown` on <html>), final
@@ -60,13 +80,14 @@ export function Mark({
   const paper = `url(#${idPrefix}-paper)`;
   const fillTeal = mono ? "currentColor" : teal;
   const fillGold = mono ? "currentColor" : gold;
+  const has = (layer: MarkLayer) => layers.includes(layer);
 
   return (
     <svg
       viewBox={`0 0 ${MARK_VIEWBOX.width} ${MARK_VIEWBOX.height}`}
       width={size}
       height={height}
-      className={`${grow ? "mark-grow" : ""}${className ?? ""}`.trim() || undefined}
+      className={[grow ? "mark-grow" : "", className ?? ""].join(" ").trim() || undefined}
       role={title ? "img" : undefined}
       aria-label={title}
       aria-hidden={title ? undefined : true}
@@ -103,7 +124,7 @@ export function Mark({
         </defs>
       ) : null}
 
-      {shadow && !mono ? (
+      {shadow && !mono && has("shadow") ? (
         <g data-layer="shadow">
           <ellipse
             cx={MARK_GROUND.cx}
@@ -116,71 +137,81 @@ export function Mark({
       ) : null}
 
       <g filter={shadow && !mono ? `url(#${idPrefix}-soft)` : undefined}>
-        <g data-layer="paper">
-          <path
-            d={MARK_PATHS.paperEdge}
-            fill={mono ? "currentColor" : paper}
-            opacity={mono ? 0.55 : 1}
-          />
-          {!mono ? (
+        {has("paper") ? (
+          <g data-layer="paper">
             <path
-              d={MARK_PATHS.paperLine}
-              stroke={MARK_COLORS.paperLine}
-              strokeWidth={MARK_STROKES.paperLine}
-              fill="none"
-              opacity="0.9"
+              d={MARK_PATHS.paperEdge}
+              fill={mono ? "currentColor" : paper}
+              opacity={mono ? 0.55 : 1}
             />
-          ) : null}
-        </g>
+            {!mono ? (
+              <path
+                d={MARK_PATHS.paperLine}
+                stroke={MARK_COLORS.paperLine}
+                strokeWidth={MARK_STROKES.paperLine}
+                fill="none"
+                opacity="0.9"
+              />
+            ) : null}
+          </g>
+        ) : null}
 
-        <g data-layer="covers">
-          <path d={MARK_PATHS.coverRight} fill={fillTeal} />
-          <path d={MARK_PATHS.coverLeft} fill={fillTeal} />
-          {!mono ? (
-            <>
-              <path d={MARK_PATHS.sheenRight} fill="#ffffff" opacity="0.2" />
-              <path d={MARK_PATHS.sheenLeft} fill="#ffffff" opacity="0.2" />
-            </>
-          ) : null}
-        </g>
+        {has("covers") ? (
+          <g data-layer="covers">
+            <path d={MARK_PATHS.coverRight} fill={fillTeal} />
+            <path d={MARK_PATHS.coverLeft} fill={fillTeal} />
+            {!mono ? (
+              <>
+                <path d={MARK_PATHS.sheenRight} fill="#ffffff" opacity="0.2" />
+                <path d={MARK_PATHS.sheenLeft} fill="#ffffff" opacity="0.2" />
+              </>
+            ) : null}
+          </g>
+        ) : null}
 
-        <g data-layer="lines">
-          <path
-            d={MARK_PATHS.linesRight}
-            stroke={mono ? "var(--surface, #f7fbfa)" : MARK_COLORS.pageLine}
-            strokeWidth={MARK_STROKES.lines}
-            fill="none"
-            strokeLinecap="round"
-            opacity="0.7"
-          />
-          <path
-            d={MARK_PATHS.linesLeft}
-            stroke={mono ? "var(--surface, #f7fbfa)" : MARK_COLORS.pageLine}
-            strokeWidth={MARK_STROKES.lines}
-            fill="none"
-            strokeLinecap="round"
-            opacity="0.7"
-          />
-        </g>
+        {has("lines") ? (
+          <g data-layer="lines">
+            <path
+              d={MARK_PATHS.linesRight}
+              stroke={mono ? "var(--surface, #f7fbfa)" : MARK_COLORS.pageLine}
+              strokeWidth={MARK_STROKES.lines}
+              fill="none"
+              strokeLinecap="round"
+              opacity="0.7"
+            />
+            <path
+              d={MARK_PATHS.linesLeft}
+              stroke={mono ? "var(--surface, #f7fbfa)" : MARK_COLORS.pageLine}
+              strokeWidth={MARK_STROKES.lines}
+              fill="none"
+              strokeLinecap="round"
+              opacity="0.7"
+            />
+          </g>
+        ) : null}
 
-        <g data-layer="stem">
-          {/* pathLength=1 so the grow intro can draw it with a unit dash, whatever its true length. */}
-          <path
-            d={MARK_PATHS.stem}
-            pathLength={1}
-            stroke={fillGold}
-            strokeWidth={MARK_STROKES.stem}
-            fill="none"
-            strokeLinecap="round"
-          />
-        </g>
+        {has("stem") ? (
+          <g data-layer="stem">
+            {/* pathLength=1 so the grow intro can draw it with a unit dash, whatever its true length. */}
+            <path
+              d={MARK_PATHS.stem}
+              pathLength={1}
+              stroke={fillGold}
+              strokeWidth={MARK_STROKES.stem}
+              fill="none"
+              strokeLinecap="round"
+            />
+          </g>
+        ) : null}
 
-        <g data-layer="leaves">
-          <path d={MARK_PATHS.leafLower} fill={fillTeal} />
-          <path d={MARK_PATHS.leafUpper} fill={fillTeal} />
-        </g>
+        {has("leaves") ? (
+          <g data-layer="leaves">
+            <path d={MARK_PATHS.leafLower} fill={fillTeal} />
+            <path d={MARK_PATHS.leafUpper} fill={fillTeal} />
+          </g>
+        ) : null}
 
-        {!mono ? (
+        {!mono && has("veins") ? (
           <g data-layer="veins">
             <path
               d={MARK_PATHS.veinLower}

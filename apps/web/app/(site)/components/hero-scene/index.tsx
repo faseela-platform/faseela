@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { canRender3D, readGateInput } from "../../../../lib/hero-gate";
 import type { SceneTargets } from "./scene-canvas";
-import { STAGE } from "./land";
+import { STAGE } from "./mark-3d";
 
 /**
  * The scene is a separate chunk (~190 KB gzipped of three.js) that only devices passing the
@@ -38,6 +38,12 @@ const SceneCanvas = dynamic(() => import("./scene-canvas").then((m) => m.SceneCa
  * Importing `<Mark3D>` here would make that whole subtree client code — measured as most
  * of the landing's hydration cost on a throttled phone.
  */
+/** Milliseconds since the document's animations started — the CSS float's current phase. */
+function floatPhase() {
+  const t = typeof document !== "undefined" ? document.timeline?.currentTime : 0;
+  return typeof t === "number" ? Math.round(t) : 0;
+}
+
 export function HeroScene({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const targets = useRef<SceneTargets>({ pointerX: 0, pointerY: 0, scroll: 0 });
@@ -132,9 +138,9 @@ export function HeroScene({ children }: { children: React.ReactNode }) {
       if (idle) idle(go, { timeout: 4000 });
       else window.setTimeout(go, 800);
     };
-    // Not before the grow intro has finished (1.6 s) and the document has loaded.
+    // Not before the grow intro has finished (≈2.2 s) and the document has loaded.
     const afterLoad = () =>
-      window.setTimeout(decide, document.documentElement.dataset.grown ? 300 : 2000);
+      window.setTimeout(decide, document.documentElement.dataset.grown ? 300 : 2600);
     if (document.readyState === "complete") afterLoad();
     else window.addEventListener("load", afterLoad, { once: true });
 
@@ -160,19 +166,33 @@ export function HeroScene({ children }: { children: React.ReactNode }) {
 
   return (
     /* `data-scene-reason` is diagnostic only — why the scene is off or failed, for verification. */
-    <div ref={ref} className="relative" data-scene={scene} data-scene-reason={reason || undefined}>
+    /*
+     * This wrapper is the SAME box as the CSS stage (`mark-3d.tsx`: 460 wide, centred), so the
+     * canvas's percentages resolve against the stage and not the hero column — measured
+     * against the column the WebGL mark rendered a third larger than the CSS one and sat on
+     * the third chip.
+     */
+    <div
+      ref={ref}
+      className="relative mx-auto w-full max-w-[460px]"
+      data-scene={scene}
+      data-scene-reason={reason || undefined}
+    >
       {children}
       {active ? (
         /* Same box as the CSS mark's layers, so the two overlay exactly; fades in on ready. */
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute transition-opacity duration-700 ease-[var(--ease-enter)]"
+          className="hero-float pointer-events-none absolute transition-opacity duration-700 ease-[var(--ease-enter)]"
           style={{
             left: `${(STAGE.markX / STAGE.width) * 100}%`,
             top: `${(STAGE.markY / STAGE.height) * 100}%`,
             width: `${(STAGE.markWidth / STAGE.width) * 100}%`,
             aspectRatio: "240 / 230",
             opacity: scene === "on" ? 1 : 0,
+            // The CSS stage has been floating since first paint; start this loop at the same
+            // phase so the WebGL mark does not bob against the ring, chips and land.
+            animationDelay: `-${floatPhase()}ms`,
           }}
         >
           <SceneCanvas

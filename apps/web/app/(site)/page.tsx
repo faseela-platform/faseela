@@ -16,7 +16,7 @@ import { About, App, Join, Steps } from "./components/sections";
 export default function Page() {
   return (
     <>
-      <Nav />
+      <Nav overlay />
       <main>
         <Hero />
         <About />

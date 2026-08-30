@@ -56,45 +56,24 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   }
 
   const dark = theme === "dark";
+  /* The label names the mode the press leads to — the owner's pill. */
+  const label = dark ? "الوضع النهاري" : "الوضع الليلي";
 
   return (
     <button
       type="button"
       onClick={toggle}
       aria-pressed={dark}
-      aria-label={dark ? "الوضع النهاري" : "الوضع الليلي"}
-      title={dark ? "الوضع النهاري" : "الوضع الليلي"}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--ink)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none active:scale-[0.97] ${className}`}
+      aria-label={label}
+      className={`flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-4 text-[0.8125rem] font-semibold text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--ink-faint)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none active:scale-[0.97] ${className}`}
     >
-      {dark ? (
-        // sun
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          className="h-5 w-5"
-        >
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-        </svg>
-      ) : (
-        // moon
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5"
-        >
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-        </svg>
-      )}
+      <span
+        aria-hidden="true"
+        className="h-2.5 w-2.5 shrink-0 rounded-full"
+        style={{ background: "linear-gradient(135deg, var(--teal-hi), var(--gold-hi))" }}
+      />
+      {/* On a phone the dot alone is the toggle; the name is still there for assistive tech. */}
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
