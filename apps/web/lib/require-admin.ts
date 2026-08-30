@@ -13,9 +13,9 @@ export type Admin = { id: string; name: string };
 /**
  * The central-admin gate (spec §34/§36). Global authority — roles, tiers,
  * supervisor assignment, creating Tracks — is admin-only. Same shape as
- * `requireEditor`: not signed in → sign-in; signed in but not `admin` → 404, so an
- * editor probing `/idara/aada` learns nothing. Role is read from the DB every
- * request, so revoking admin takes effect at once.
+ * `requireStaff` (`require-track-access.ts`): not signed in → sign-in; signed in
+ * but not `admin` → 404, so an editor probing `/idara/aada` learns nothing. Role
+ * is read from the DB every request, so revoking admin takes effect at once.
  */
 export async function requireAdmin(): Promise<Admin> {
   const session = await auth.api.getSession({ headers: await headers() });

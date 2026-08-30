@@ -46,8 +46,12 @@ export async function POST(req: Request): Promise<Response> {
         status: result.status,
         points: result.points,
       });
+    case "not-found":
+      /** A stale link: the Task was removed. A 404, not a 500 — nothing went wrong on our side. */
+      return err("not_found", "هذه المهمة لم تعد متاحة.", 404);
     case "no-season":
-      return err("conflict", "لا يوجد موسم مفتوح حالياً، ولا تُحتسب النقاط خارج المواسم.", 409);
+      /** Its own code, not `conflict`: the app shows "wait for a Season" for this one. */
+      return err("no-season", "لا يوجد موسم مفتوح حالياً، ولا تُحتسب النقاط خارج المواسم.", 409);
     default:
       /** not-attestable | not-published — the app offered something it should not have. */
       return err("conflict", "لا يمكن تأكيد هذه المهمة.", 409);

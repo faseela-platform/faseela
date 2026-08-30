@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { completeAccount } from "./actions";
+import { completeAccount, type CompleteAccountState } from "./actions";
 import { buttonClass } from "../components/ui";
 
 /**
@@ -17,18 +17,21 @@ import { buttonClass } from "../components/ui";
 export function CompleteAccountForm({ next }: { next: string }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<CompleteAccountState>(null);
   const [pending, startTransition] = useTransition();
+  const error = state?.error ?? null;
+  /** Which input is at fault — only that one is marked invalid and described by the message. */
+  const invalid = (field: "name" | "phone") => state?.field === field;
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        setError(null);
+        setState(null);
         startTransition(async () => {
           // On success the action redirects (throws), so control does not return.
           const result = await completeAccount({ name, phone, next });
-          if (result?.error) setError(result.error);
+          if (result?.error) setState(result);
         });
       }}
     >
@@ -45,8 +48,8 @@ export function CompleteAccountForm({ next }: { next: string }) {
         value={name}
         onChange={(event) => setName(event.target.value)}
         disabled={pending}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? "profile-error" : undefined}
+        aria-invalid={invalid("name")}
+        aria-describedby={invalid("name") ? "profile-error" : undefined}
         className="text-body-lg min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-transparent px-4 py-3 text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-muted)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
       />
 
@@ -70,8 +73,8 @@ export function CompleteAccountForm({ next }: { next: string }) {
         value={phone}
         onChange={(event) => setPhone(event.target.value)}
         disabled={pending}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? "profile-error" : undefined}
+        aria-invalid={invalid("phone")}
+        aria-describedby={invalid("phone") ? "profile-error" : undefined}
         className="text-body-lg min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border)] bg-transparent px-4 py-3 text-left text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] placeholder:text-[var(--ink-muted)] focus:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] focus-visible:outline-none disabled:opacity-50"
       />
       <p className="text-body-sm mt-2 text-[var(--ink-muted)]">

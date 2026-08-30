@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { unreadNotificationCount } from "@faseela/db";
+
+import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
 import { Nav } from "../components/nav";
 import { PageHeader } from "../components/ui";
@@ -18,6 +21,7 @@ export const dynamic = "force-dynamic";
 
 export default async function IdaraHome() {
   const staff = await requireStaff();
+  const unreadCount = await unreadNotificationCount(db, staff.id);
   const isAdmin = staff.role === "admin";
 
   const sections = [
@@ -62,7 +66,7 @@ export default async function IdaraHome() {
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={staff.name} />
+      <Nav current="/idara" signedIn memberName={staff.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
           <PageHeader

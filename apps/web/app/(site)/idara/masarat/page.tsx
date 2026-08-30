@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { adminTracks } from "@faseela/db";
+import { adminTracks, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
@@ -24,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 export default async function IdaraMasarat() {
   const staff = await requireStaff();
+  const unreadCount = await unreadNotificationCount(db, staff.id);
   const tracks = await adminTracks(
     db,
     staff.role === "admin" ? undefined : { supervisorId: staff.id },
@@ -31,7 +32,7 @@ export default async function IdaraMasarat() {
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={staff.name} />
+      <Nav current="/idara" signedIn memberName={staff.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara">لوحة التحكم</BackLink>

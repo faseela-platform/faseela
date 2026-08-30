@@ -62,6 +62,8 @@ export async function acceptReview(submissionId: string, points: number): Promis
       return { status: "refused", message: "النقاط يجب أن تكون بين ١ والحدّ الأقصى للمهمة." };
     case "not-pending":
       return { status: "refused", message: "لم تعد هذه المشاركة بانتظار المراجعة." };
+    case "not-found":
+      return { status: "refused", message: "هذه المشاركة لم تعد متاحة." };
     case "no-season":
       return { status: "refused", message: "لا يوجد موسم مفتوح لاحتساب النقاط." };
     default:
@@ -82,6 +84,8 @@ export async function returnReview(submissionId: string, note: string): Promise<
       return { status: "refused", message: "اكتب ملاحظة توضّح المطلوب قبل الإعادة." };
     case "not-pending":
       return { status: "refused", message: "لم تعد هذه المشاركة بانتظار المراجعة." };
+    case "not-found":
+      return { status: "refused", message: "هذه المشاركة لم تعد متاحة." };
     default:
       return { status: "refused", message: "تعذّرت الإعادة. حدّث الصفحة وحاول مجدداً." };
   }
@@ -100,6 +104,8 @@ export async function rejectReview(submissionId: string, note: string): Promise<
       return { status: "refused", message: "اكتب سبب الرفض قبل تأكيده." };
     case "not-pending":
       return { status: "refused", message: "لم تعد هذه المشاركة بانتظار المراجعة." };
+    case "not-found":
+      return { status: "refused", message: "هذه المشاركة لم تعد متاحة." };
     default:
       return { status: "refused", message: "تعذّر الرفض. حدّث الصفحة وحاول مجدداً." };
   }

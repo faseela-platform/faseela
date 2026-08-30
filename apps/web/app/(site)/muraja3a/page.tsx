@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { memberProgress, reviewQueue } from "@faseela/db";
+import { memberProgress, reviewQueue, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
@@ -14,9 +14,9 @@ import { EmptyState, PageHeader, Pill } from "../components/ui";
  * that a human has not yet judged, oldest first.
  *
  * This is the surface that replaces Payload's admin for review (ADR 0023). It is
- * an ordinary page of ours, gated by `requireEditor` rather than a separate auth
- * system — a signed-in Member without a staff role gets a 404, never a hint that
- * the queue is here.
+ * an ordinary page of ours, gated by `requireStaff` (`lib/require-track-access.ts`)
+ * rather than a separate auth system — a signed-in Member without a staff role gets
+ * a 404, never a hint that the queue is here.
  */
 export const metadata: Metadata = {
   title: "قائمة المراجعة — مبادرة فسيلة",
@@ -35,12 +35,21 @@ export default async function ReviewQueuePage() {
     db,
     staff.role === "admin" ? undefined : staff.supervisedTrackIds,
   );
-  /** An Editor is a Member too, so their own tier shows in the nav as everywhere. */
-  const tier = (await memberProgress(db, staff.id)).tier.name;
+  /** An Editor is a Member too, so their own tier and bell show in the nav as everywhere. */
+  const [tier, unreadCount] = await Promise.all([
+    memberProgress(db, staff.id).then((p) => p.tier.name),
+    unreadNotificationCount(db, staff.id),
+  ]);
 
   return (
     <>
-      <Nav current="/muraja3a" signedIn memberName={staff.name} tier={tier} />
+      <Nav
+        current="/muraja3a"
+        signedIn
+        memberName={staff.name}
+        tier={tier}
+        unreadCount={unreadCount}
+      />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">
           <PageHeader

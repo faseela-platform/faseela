@@ -12,7 +12,9 @@
 import { config } from "dotenv";
 import pg from "pg";
 
-config({ path: new URL("../.env.local", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1") });
+config({
+  path: new URL("../.env.local", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
+});
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) {
@@ -32,6 +34,7 @@ const fail = (m) => {
 const EXPECTED_TABLES = [
   "account",
   "point_award",
+  "rate_limit",
   "season",
   "session",
   "submission",
@@ -90,9 +93,7 @@ try {
   for (const t of EXPECTED_TABLES) {
     names.includes(t) ? ok(t) : fail(`missing table: ${t}`);
   }
-  const extra = names.filter(
-    (n) => !EXPECTED_TABLES.includes(n) && n !== "__drizzle_migrations",
-  );
+  const extra = names.filter((n) => !EXPECTED_TABLES.includes(n) && n !== "__drizzle_migrations");
   if (extra.length) console.log(`  note  also present: ${extra.join(", ")}`);
 
   console.log("\ncolumns");
@@ -113,9 +114,7 @@ try {
   );
   for (const c of EXPECTED_CHECKS) {
     const found = checks.find((r) => r.conname === c);
-    found
-      ? ok(`${c}  ${found.def.replace(/\s+/g, " ")}`)
-      : fail(`missing CHECK: ${c}`);
+    found ? ok(`${c}  ${found.def.replace(/\s+/g, " ")}`) : fail(`missing CHECK: ${c}`);
   }
   const extraChecks = checks.filter((r) => !EXPECTED_CHECKS.includes(r.conname));
   /**
@@ -211,7 +210,9 @@ try {
      */
     const labels = Array.isArray(e.labels)
       ? e.labels
-      : String(e.labels).replace(/^\{|\}$/g, "").split(",");
+      : String(e.labels)
+          .replace(/^\{|\}$/g, "")
+          .split(",");
     ok(`${e.typname}: ${labels.join(" | ")}`);
   }
 

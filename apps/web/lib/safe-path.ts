@@ -11,9 +11,15 @@
  * single `/` and not `//` (which excludes absolute and protocol-relative URLs),
  * and contain no `\` (some clients normalise it to `/`).
  *
+ * The fallback is `/mustajaddat`, the personalised home: it is the one page
+ * that reads the session live, so a Member who has just signed in with no
+ * particular destination lands somewhere that already knows them. `/masarat`
+ * was the earlier choice and is cached (ISR) — it greeted a fresh sign-in with
+ * a signed-out header, which read as the sign-in having failed.
+ *
  * Guarded by safe-path.test.ts.
  */
-export function safeInternalPath(raw: string | undefined, fallback = "/masarat"): string {
+export function safeInternalPath(raw: string | undefined, fallback = "/mustajaddat"): string {
   if (!raw) return fallback;
   if (!raw.startsWith("/")) return fallback;
   if (raw.startsWith("//") || raw.startsWith("/\\")) return fallback;

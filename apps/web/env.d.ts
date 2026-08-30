@@ -16,9 +16,12 @@ declare namespace NodeJS {
     /** Signs Member (and Editor) session cookies and magic-link tokens. */
     BETTER_AUTH_SECRET: string;
     /**
-     * Where the app is reachable. Magic-link URLs are built from it, so in
-     * production this must be the public origin — a stale value produces links
-     * that fail verification, which reads as a token bug rather than config.
+     * Where the app is reachable. Magic-link URLs are built from it and the
+     * session cookie's Secure attribute follows it, so in production this must
+     * be the canonical public origin, `https://www.faseela24.com` — a stale
+     * value produces links that fail verification, which reads as a token bug
+     * rather than config. `lib/auth.ts` throws at load in production when it is
+     * unset or not https; development falls back to http://localhost:3000.
      */
     BETTER_AUTH_URL: string;
 

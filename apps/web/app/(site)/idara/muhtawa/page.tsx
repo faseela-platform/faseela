@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { adminContentItems, adminTracks } from "@faseela/db";
+import { adminContentItems, adminTracks, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
@@ -27,11 +27,15 @@ export default async function IdaraMuhtawa() {
   const isAdmin = staff.role === "admin";
   const scope = isAdmin ? undefined : { supervisorId: staff.id };
 
-  const [items, tracks] = await Promise.all([adminContentItems(db, scope), adminTracks(db, scope)]);
+  const [items, tracks, unreadCount] = await Promise.all([
+    adminContentItems(db, scope),
+    adminTracks(db, scope),
+    unreadNotificationCount(db, staff.id),
+  ]);
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={staff.name} />
+      <Nav current="/idara" signedIn memberName={staff.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara">لوحة التحكم</BackLink>

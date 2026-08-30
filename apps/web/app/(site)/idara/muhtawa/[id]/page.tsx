@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { adminContentItem, adminTracks, canManageTrackScope } from "@faseela/db";
+import {
+  adminContentItem,
+  adminTracks,
+  canManageTrackScope,
+  unreadNotificationCount,
+} from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
@@ -24,6 +29,7 @@ export const dynamic = "force-dynamic";
 export default async function IdaraContentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const staff = await requireStaff();
+  const unreadCount = await unreadNotificationCount(db, staff.id);
 
   const item = await adminContentItem(db, id);
   if (!item) notFound();
@@ -42,7 +48,7 @@ export default async function IdaraContentPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={staff.name} />
+      <Nav current="/idara" signedIn memberName={staff.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara/muhtawa">كل المحتوى</BackLink>

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import {
   completedTaskIds,
   memberProgress,
+  unreadNotificationCount,
   memberSubmissions,
   publishedTracks,
   trackBySlug,
@@ -116,8 +117,13 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
   const mySubmissions = session?.user ? await memberSubmissions(db, session.user.id, taskIds) : [];
   const submissionByTask = new Map(mySubmissions.map((s) => [s.taskId, s]));
 
-  /** The Member's tier (lifetime), for the nav badge. */
-  const tier = session?.user ? (await memberProgress(db, session.user.id)).tier.name : null;
+  /** The Member's tier (lifetime) and unread notifications, for the nav badge and bell. */
+  const [tier, unreadCount] = session?.user
+    ? await Promise.all([
+        memberProgress(db, session.user.id).then((p) => p.tier.name),
+        unreadNotificationCount(db, session.user.id),
+      ])
+    : [null, 0];
 
   return (
     <>
@@ -126,6 +132,7 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
         signedIn={Boolean(session?.user)}
         memberName={session?.user?.name}
         tier={tier}
+        unreadCount={unreadCount}
       />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">

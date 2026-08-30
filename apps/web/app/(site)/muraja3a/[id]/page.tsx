@@ -6,6 +6,7 @@ import {
   memberProgress,
   submissionForReview,
   submissionTrackId,
+  unreadNotificationCount,
 } from "@faseela/db";
 
 import { db } from "@/lib/db";
@@ -70,8 +71,11 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
   const detail = await submissionForReview(db, id);
   if (!detail) notFound();
 
-  /** An Editor is a Member too, so their own tier shows in the nav as everywhere. */
-  const tier = (await memberProgress(db, staff.id)).tier.name;
+  /** An Editor is a Member too, so their own tier and bell show in the nav as everywhere. */
+  const [tier, unreadCount] = await Promise.all([
+    memberProgress(db, staff.id).then((p) => p.tier.name),
+    unreadNotificationCount(db, staff.id),
+  ]);
 
   /**
    * Presigned read URLs for any attached files, minted now and short-lived, so an
@@ -87,7 +91,13 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <Nav current="/muraja3a" signedIn memberName={staff.name} tier={tier} />
+      <Nav
+        current="/muraja3a"
+        signedIn
+        memberName={staff.name}
+        tier={tier}
+        unreadCount={unreadCount}
+      />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/muraja3a">قائمة المراجعة</BackLink>

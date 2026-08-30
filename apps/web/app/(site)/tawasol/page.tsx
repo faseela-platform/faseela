@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 
-import { SERVICE_REQUEST_MAX } from "@faseela/db";
+import { SERVICE_REQUEST_MAX, unreadNotificationCount } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { Nav } from "../components/nav";
 import { Card, PageHeader } from "../components/ui";
 import { ContactForm } from "./contact-form";
@@ -28,6 +29,8 @@ export const dynamic = "force-dynamic";
 
 export default async function TawasolPage() {
   const session = await auth.api.getSession({ headers: await headers() });
+  /** For the nav bell (§38); a visitor has nothing unread. */
+  const unreadCount = session?.user ? await unreadNotificationCount(db, session.user.id) : 0;
 
   return (
     <>
@@ -35,6 +38,7 @@ export default async function TawasolPage() {
         current="/tawasol"
         signedIn={Boolean(session?.user)}
         memberName={session?.user?.name ?? null}
+        unreadCount={unreadCount}
       />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">

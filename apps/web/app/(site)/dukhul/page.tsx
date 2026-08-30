@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
+import { signInErrorMessage } from "@/lib/auth-errors";
 import { emailIsDeliverable } from "@/lib/email";
 import { safeInternalPath } from "@/lib/safe-path";
 import { Mark } from "../components/mark";
@@ -35,9 +36,9 @@ export const metadata: Metadata = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackURL?: string }>;
+  searchParams: Promise<{ callbackURL?: string; error?: string }>;
 }) {
-  const { callbackURL } = await searchParams;
+  const { callbackURL, error } = await searchParams;
 
   /**
    * An already-signed-in Member has nothing to do here, so they are sent onward
@@ -46,9 +47,18 @@ export default async function SignInPage({
   const session = await auth.api.getSession({ headers: await headers() });
   if (session?.user) redirect(safeInternalPath(callbackURL));
 
+  /**
+   * A magic link that failed to verify lands back here with `?error=` (the form
+   * asks for that via `errorCallbackURL`). Without this notice the failure is a
+   * silent dead end: the Member clicked the link, got the sign-in page again,
+   * and has no idea whether to wait, retry, or give up.
+   */
+  const notice = signInErrorMessage(error);
+
   return (
     <>
-      <Nav />
+      {/* Server truth: a session here would already have redirected, so the nav need not ask the client. */}
+      <Nav signedIn={false} />
       <main>
         <section className="gutter mx-auto flex min-h-[70vh] max-w-[1440px] items-center py-16">
           <Card reveal={0} className="w-full max-w-md p-8">
@@ -59,6 +69,20 @@ export default async function SignInPage({
             <p className="lede text-body mt-3 text-[var(--ink-muted)]">
               أدخل بريدك الإلكتروني، ونرسل إليك رابطاً تدخل به مباشرة. لا كلمة سرّ، ولا حساب جديد.
             </p>
+
+            {notice ? (
+              /*
+               * `role="alert"` so it is announced on arrival; a bordered block rather
+               * than muted text because this is the answer to "why am I back here",
+               * and it must read before the form does.
+               */
+              <p
+                role="alert"
+                className="text-body-sm mt-6 rounded-[var(--radius-card)] border border-[var(--border)] bg-[color-mix(in_oklch,var(--brand)_6%,transparent)] px-4 py-3 leading-[1.7] font-medium text-[var(--ink)]"
+              >
+                {notice}
+              </p>
+            ) : null}
 
             <div className="mt-8">
               {emailIsDeliverable ? (

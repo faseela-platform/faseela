@@ -39,6 +39,8 @@ let db: Database;
 
 const SEASON_ID = "22222222-2222-2222-2222-222222222222";
 const inSeason = new Date("2026-03-15T12:00:00Z");
+/** A well-formed id that matches nothing — what a stale link carries. */
+const UNKNOWN_ID = "00000000-0000-0000-0000-000000000000";
 
 async function seedMember(id: string, name = "عضو") {
   await db.insert(schema.user).values({ id, name, email: `${id}@example.test` });
@@ -160,6 +162,16 @@ describe("submitWork", () => {
     expect(await db.select().from(schema.submission)).toHaveLength(0);
   });
 
+  it("refuses an unknown Task with not-found rather than throwing, so a stale link is not a 500", async () => {
+    await seedMember("m1");
+
+    const result = await submitWork(db, UNKNOWN_ID, "m1", { body: "نص" }, inSeason);
+
+    expect(result).toEqual({ status: "not-found" });
+    expect(await db.select().from(schema.submission)).toHaveLength(0);
+    expect(await db.select().from(schema.submissionAttempt)).toHaveLength(0);
+  });
+
   it("refuses a second submission while the first is still under review", async () => {
     await seedMember("m1");
     const task = await seedTask({ mode: "review", points: 50 });
@@ -202,6 +214,15 @@ describe("saveDraft", () => {
     const [sub] = await db.select().from(schema.submission);
     expect(sub!.body).toBe("second");
     expect(await db.select().from(schema.submission)).toHaveLength(1);
+  });
+
+  it("refuses an unknown Task with not-found rather than throwing", async () => {
+    await seedMember("m1");
+
+    const result = await saveDraft(db, UNKNOWN_ID, "m1", { body: "مسودة" }, inSeason);
+
+    expect(result).toEqual({ status: "not-found" });
+    expect(await db.select().from(schema.submission)).toHaveLength(0);
   });
 
   it("promotes to pending when the draft is submitted", async () => {
@@ -318,6 +339,15 @@ describe("acceptSubmission", () => {
     expect(awards[0]!.points).toBe(40);
   });
 
+  it("refuses an unknown Submission with not-found rather than throwing", async () => {
+    await seedEditor("e1");
+
+    const result = await acceptSubmission(db, UNKNOWN_ID, "e1", 10, inSeason);
+
+    expect(result).toEqual({ status: "not-found" });
+    expect(await db.select().from(schema.pointAward)).toHaveLength(0);
+  });
+
   it("refuses to accept anything that is not pending", async () => {
     await seedMember("m1");
     await seedEditor("e1");
@@ -364,6 +394,17 @@ describe("returnSubmission then resubmit (§24, §26)", () => {
     expect(attempts[0]!.reviewNote).toBe("وسّع الخاتمة");
     expect(attempts[1]!.body).toBe("المحاولة الثانية");
     expect(attempts[1]!.decision).toBeNull();
+  });
+
+  it("refuses an unknown Submission with not-found rather than throwing, for return and reject alike", async () => {
+    await seedEditor("e1");
+
+    expect(await returnSubmission(db, UNKNOWN_ID, "e1", "أعد المحاولة", inSeason)).toEqual({
+      status: "not-found",
+    });
+    expect(await rejectSubmission(db, UNKNOWN_ID, "e1", "غير مقبول", inSeason)).toEqual({
+      status: "not-found",
+    });
   });
 
   it("requires a note, because a return the Member cannot act on is not a return", async () => {

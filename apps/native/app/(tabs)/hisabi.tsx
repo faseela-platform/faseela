@@ -1,12 +1,14 @@
 import type { MeResponse } from "@faseela/api-types";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { LoadingView } from "../../components/feedback";
+import { ErrorView, LoadingView } from "../../components/feedback";
 import { ScalePressable } from "../../components/pressable";
 import { SignInForm } from "../../components/sign-in-form";
 import { signOut, useSession } from "../../lib/auth-client";
 import { authedFetch } from "../../lib/authed-api";
+import { INITIAL_ME_STATE, meReducer, type MeState } from "../../lib/me-state";
 import { arabicDigits, row } from "../../lib/rtl";
 import { useTheme, useThemeStyles, type Preference } from "../../lib/theme-context";
 import { radius, space, text } from "../../lib/theme";
@@ -28,20 +30,48 @@ export default function AccountScreen() {
   const { preference, setPreference } = useTheme();
   const styles = useThemeStyles(makeStyles);
   const isRTL = I18nManager.isRTL;
-  /** Loaded when signed in; signed-out short-circuits to the sign-in form before `me`
-   * is read, so the effect never writes state synchronously (react-hooks rule). */
-  const [me, setMe] = useState<MeResponse | null>(null);
+  const userId = session?.user.id ?? null;
 
-  useEffect(() => {
-    if (!session) return;
+  /**
+   * `/me` lifecycle (`lib/me-state.ts`). The session event is applied adjust-during-
+   * render so a sign-out clears the card in the same render the form appears, and a
+   * different Member never sees the previous one's standing — no setState in an effect.
+   */
+  const [state, setState] = useState<MeState>(() =>
+    meReducer(INITIAL_ME_STATE, { type: "session", userId }),
+  );
+  const [lastUserId, setLastUserId] = useState(userId);
+  if (lastUserId !== userId) {
+    setLastUserId(userId);
+    setState(meReducer(state, { type: "session", userId }));
+  }
+
+  /** Refetched on every focus (like the bell): an attest on a Track or a profile
+   * completion changes the Points, tier and the «أكمِل حسابك» notice shown here. */
+  const load = useCallback(() => {
+    if (!userId) return;
     let cancelled = false;
     authedFetch<MeResponse>("/me").then((r) => {
-      if (!cancelled) setMe(r.ok ? r.data : null);
+      if (cancelled) return;
+      /** A stored token the server no longer honours: sign out locally, so the
+       * sign-in form appears instead of a "connection" error that cannot be retried. */
+      if (!r.ok && r.code === "unauthenticated") {
+        void signOut();
+        return;
+      }
+      setState((s) =>
+        meReducer(s, r.ok ? { type: "loaded", me: r.data } : { type: "failed", code: r.code }),
+      );
     });
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [userId]);
+  useFocusEffect(load);
+  const retry = useCallback(() => {
+    setState((s) => meReducer(s, { type: "fetch" }));
+    load();
+  }, [load]);
 
   if (isPending) return <LoadingView />;
 
@@ -76,6 +106,7 @@ export default function AccountScreen() {
     );
   }
 
+  const me = state.status === "signed-out" ? null : state.me;
   const fill =
     me && me.progress.nextTier && me.progress.pointsToNext !== null
       ? Math.min(
@@ -91,7 +122,11 @@ export default function AccountScreen() {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       {!me ? (
-        <LoadingView />
+        state.status === "error" ? (
+          <ErrorView code={state.code} onRetry={retry} />
+        ) : (
+          <LoadingView />
+        )
       ) : (
         <View style={[styles.card, styles.cardGold]}>
           <Text style={styles.name}>{me.user.name?.trim() || "حسابي"}</Text>

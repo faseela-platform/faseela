@@ -11,7 +11,9 @@ export type AttestResult =
   | { status: "already-completed"; submissionId: string; awardId: string; points: number }
   | { status: "not-attestable" }
   | { status: "not-published" }
-  | { status: "no-season" };
+  | { status: "no-season" }
+  /** No such Task — a stale link, or a Task since removed. A refusal, not a 500. */
+  | { status: "not-found" };
 
 /**
  * Complete an `attest` Task on the Member's own declaration, minting Points at
@@ -71,7 +73,11 @@ export async function attestTask(
       .limit(1);
 
     const found = rows[0];
-    if (!found) throw new Error(`No task ${taskId}`);
+    /**
+     * Unknown id: refused in the result, not thrown. A Member who follows a stale
+     * link to a removed Task did nothing wrong, and a 500 would tell them we did.
+     */
+    if (!found) return { status: "not-found" };
 
     /**
      * Order matters for the caller's sake: a Member asking to attest a `review`
@@ -166,11 +172,7 @@ export async function attestTask(
      * carried them over a threshold). Inside the transaction on purpose — Points and
      * the notice about them commit together.
      */
-    await emitPointsAwarded(
-      tx,
-      { userId, points: insertedAward[0]!.points, taskId: found.id },
-      at,
-    );
+    await emitPointsAwarded(tx, { userId, points: insertedAward[0]!.points, taskId: found.id }, at);
 
     return {
       status: "completed",

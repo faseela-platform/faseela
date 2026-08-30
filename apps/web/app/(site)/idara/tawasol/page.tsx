@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { adminServiceRequests, type ServiceRequestStatus } from "@faseela/db";
+import {
+  adminServiceRequests,
+  type ServiceRequestStatus,
+  unreadNotificationCount,
+} from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
@@ -42,6 +46,7 @@ export default async function IdaraTawasol({
   searchParams: Promise<{ status?: string }>;
 }) {
   const admin = await requireAdmin();
+  const unreadCount = await unreadNotificationCount(db, admin.id);
   const { status } = await searchParams;
 
   const active = FILTERS.some((f) => f.value === status)
@@ -54,7 +59,7 @@ export default async function IdaraTawasol({
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={admin.name} />
+      <Nav current="/idara" signedIn memberName={admin.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara">لوحة التحكم</BackLink>

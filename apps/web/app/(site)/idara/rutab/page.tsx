@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { tierThresholds } from "@faseela/db";
+import { tierThresholds, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
@@ -21,11 +21,14 @@ export const dynamic = "force-dynamic";
 
 export default async function IdaraRutab() {
   const admin = await requireAdmin();
-  const tiers = await tierThresholds(db);
+  const [tiers, unreadCount] = await Promise.all([
+    tierThresholds(db),
+    unreadNotificationCount(db, admin.id),
+  ]);
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={admin.name} />
+      <Nav current="/idara" signedIn memberName={admin.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara">لوحة التحكم</BackLink>

@@ -114,7 +114,22 @@ export async function memberProfile(db: Database, userId: string): Promise<Membe
   return rows[0] ?? null;
 }
 
-export type SetMemberProfileResult = { status: "updated" } | { status: "no-such-member" };
+export type SetMemberProfileResult =
+  | { status: "updated" }
+  | { status: "no-such-member" }
+  /** Another Member already holds this phone (`user_phone_number_unique`). */
+  | { status: "phone-taken" };
+
+/**
+ * Whether a thrown error is Postgres refusing the phone because another row
+ * already has it. Drizzle wraps the driver error, so the cause is unwrapped
+ * first; the constraint is matched in the message rather than as a field
+ * because PGlite and node-postgres name that field differently.
+ */
+function isPhoneTaken(err: unknown): boolean {
+  const cause = ((err as { cause?: unknown }).cause ?? err) as { code?: string; message?: string };
+  return cause.code === "23505" && (cause.message ?? "").includes("user_phone_number_unique");
+}
 
 /**
  * Record the §5 account data a Member entered on the "complete your account"
@@ -124,6 +139,10 @@ export type SetMemberProfileResult = { status: "updated" } | { status: "no-such-
  * `phone_number_verified` is deliberately left untouched (false): the number is
  * stored, not verified, per §5. The caller is responsible for having validated
  * that the fields are non-empty; this writes what it is given, trimmed.
+ *
+ * A phone another Member already registered comes back as `phone-taken` rather
+ * than escaping as a 23505: the unique index is the invariant, and this is the
+ * seam where its refusal becomes something a form can say in Arabic.
  */
 export async function setMemberProfile(
   db: Database,
@@ -131,11 +150,17 @@ export async function setMemberProfile(
   input: { name: string; phoneNumber: string },
   at: Date = new Date(),
 ): Promise<SetMemberProfileResult> {
-  const updated = await db
-    .update(user)
-    .set({ name: input.name.trim(), phoneNumber: input.phoneNumber.trim(), updatedAt: at })
-    .where(eq(user.id, userId))
-    .returning({ id: user.id });
+  let updated: { id: string }[];
+  try {
+    updated = await db
+      .update(user)
+      .set({ name: input.name.trim(), phoneNumber: input.phoneNumber.trim(), updatedAt: at })
+      .where(eq(user.id, userId))
+      .returning({ id: user.id });
+  } catch (err) {
+    if (isPhoneTaken(err)) return { status: "phone-taken" };
+    throw err;
+  }
   if (updated.length === 0) return { status: "no-such-member" };
   return { status: "updated" };
 }

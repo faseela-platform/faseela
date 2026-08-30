@@ -58,7 +58,22 @@ export function SignInForm({ callbackURL }: { callbackURL: string }) {
         setState("sending");
         setError(null);
 
-        const { error: authError } = await signIn.magicLink({ email, callbackURL });
+        /**
+         * Three destinations ride inside the link. `callbackURL` is where the
+         * Member was going. `errorCallbackURL` brings a used or expired link
+         * back here with `?error=`, keeping the same return path so a retry
+         * still lands where they meant to go — without it Better Auth bounces
+         * to `callbackURL?error=…`, which shows nothing. `newUserCallbackURL`
+         * sends a first-time account to the §5 step (name + phone) first, and
+         * that step forwards to the original destination via `next`.
+         */
+        const returnTo = encodeURIComponent(callbackURL);
+        const { error: authError } = await signIn.magicLink({
+          email,
+          callbackURL,
+          errorCallbackURL: `/dukhul?callbackURL=${returnTo}`,
+          newUserCallbackURL: `/akmil-hisabak?next=${returnTo}`,
+        });
 
         if (authError) {
           setState("error");
@@ -67,7 +82,11 @@ export function SignInForm({ callbackURL }: { callbackURL: string }) {
            * read Arabic, and a raw error string in a second script is worse than
            * no detail at all.
            */
-          setError("تعذّر إرسال الرابط. تأكّد من البريد وحاول مرة أخرى.");
+          setError(
+            authError.status === 429
+              ? "طلبات كثيرة لهذا البريد. انتظر قليلاً ثم حاول مجدداً."
+              : "تعذّر إرسال الرابط. تأكّد من البريد وحاول مرة أخرى.",
+          );
           return;
         }
 

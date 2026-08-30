@@ -193,7 +193,9 @@ export type ApiErr = {
       /** The request body failed validation (missing/blank field). */
       | "validation"
       /** The write conflicts with current state (e.g. Task not attestable). */
-      | "conflict";
+      | "conflict"
+      /** No open Season to count Points toward — a matter of waiting, not of the Task. */
+      | "no-season";
     message: string;
   };
 };

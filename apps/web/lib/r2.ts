@@ -97,6 +97,14 @@ export function contentMediaKey(contentId: string, filename: string): string {
  * seconds. Content-type is deliberately never bound into the signature: it would
  * force the client to send a byte-exact match, a common source of opaque 403s, for
  * no security we need on a key we already control.
+ *
+ * Nor is size. A SigV4 *query* signature (which is what a browser-usable URL
+ * is) can only bind a header by listing it in `SignedHeaders`, and S3-style
+ * PUTs have no POST-policy `content-length-range` condition; aws4fetch exposes
+ * neither for R2. So the bound is enforced after the fact: `objectSize` HEADs
+ * the object when the Member submits and the action refuses anything over
+ * `UPLOAD_MAX_BYTES` (submission-key.ts). A Member can PUT a large object, but
+ * cannot submit it, and the URL dies in five minutes.
  */
 async function presign(key: string, method: "PUT" | "GET", expiresIn: number): Promise<string> {
   const url = new URL(objectUrl(key));
@@ -112,6 +120,19 @@ async function presign(key: string, method: "PUT" | "GET", expiresIn: number): P
  */
 export function presignPutUrl(key: string, expiresIn = 300): Promise<string> {
   return presign(key, "PUT", expiresIn);
+}
+
+/**
+ * The size in bytes of an object, or null when it does not exist (or R2 answers
+ * anything but 200). Signed HEAD from the server; used at submit time to bound
+ * what a presigned PUT could not (see `presign`) and to confirm the key the
+ * browser handed back actually holds a file.
+ */
+export async function objectSize(key: string): Promise<number | null> {
+  const response = await client().fetch(objectUrl(key), { method: "HEAD" });
+  if (!response.ok) return null;
+  const length = Number(response.headers.get("content-length"));
+  return Number.isFinite(length) ? length : null;
 }
 
 /**

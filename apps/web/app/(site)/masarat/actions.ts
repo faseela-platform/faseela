@@ -83,15 +83,18 @@ export async function attest(taskId: string, trackSlug: string): Promise<AttestA
   }
 
   /**
-   * The remaining three statuses are collapsed into one Arabic message on
-   * purpose, but each is given its own sentence, because they need different
-   * actions from the reader: a closed Season is a matter of waiting, while the
-   * other two mean the page offered something it should not have.
+   * The remaining statuses all read as `refused` to the button, but each is given
+   * its own sentence, because they need different actions from the reader: a closed
+   * Season is a matter of waiting; a Task that no longer exists (a stale link, or
+   * one an Editor removed after this page was opened) is a matter of moving on; and
+   * the other two mean the page offered something it should not have.
    */
   const message =
     result.status === "no-season"
       ? "لا يوجد موسم مفتوح حالياً، ولا تُحتسب النقاط خارج المواسم."
-      : "لا يمكن تأكيد هذه المهمة. حدّث الصفحة وحاول مرة أخرى.";
+      : result.status === "not-found"
+        ? "هذه المهمة لم تعد متاحة."
+        : "لا يمكن تأكيد هذه المهمة. حدّث الصفحة وحاول مرة أخرى.";
 
   return { taskId, status: "refused", message };
 }

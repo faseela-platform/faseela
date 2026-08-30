@@ -4,7 +4,13 @@
  * what they read from `Constants` and `__DEV__`.
  */
 
-export const PROD_FALLBACK = "https://faseela.vercel.app";
+/**
+ * The canonical host — the one `BETTER_AUTH_URL` names, whose cookies and
+ * magic links are valid. `faseela.vercel.app` still answers but is not it. The
+ * EAS profiles set `EXPO_PUBLIC_API_URL` explicitly (eas.json), so this is the
+ * safety net for a build that somehow shipped without it.
+ */
+export const PROD_FALLBACK = "https://www.faseela24.com";
 
 /**
  * Where the API lives, in precedence order: an explicit `EXPO_PUBLIC_API_URL`

@@ -127,6 +127,12 @@ function ComposeForm({
   const [savedNote, setSavedNote] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  /**
+   * The §5 gate, when it fires from the autosave or the file picker: shown as a
+   * link rather than acted on, because neither of those is a moment a Member
+   * chose to leave the page (see review-actions.ts).
+   */
+  const [gate, setGate] = useState<{ message: string; href: string } | null>(null);
 
   const fieldId = `review-body-${taskId}`;
   const isRevision = state === "returned";
@@ -144,23 +150,26 @@ function ComposeForm({
     }
     if (body.trim() === "" && !mediaKey) return;
     const id = setTimeout(() => {
-      void saveReviewDraft(taskId, { body, mediaKey }).then((r) => {
+      void saveReviewDraft(taskId, trackSlug, { body, mediaKey }).then((r) => {
         if (r.status === "draft-saved") {
           setSavedNote(true);
           setTimeout(() => setSavedNote(false), 2000);
+        } else if (r.status === "profile-incomplete" && r.href) {
+          setGate({ message: r.message, href: r.href });
         }
       });
     }, AUTOSAVE_IDLE_MS);
     return () => clearTimeout(id);
-  }, [body, mediaKey, taskId]);
+  }, [body, mediaKey, taskId, trackSlug]);
 
   async function onFile(file: File) {
     setUploadError(null);
     setUploading(true);
     try {
-      const ticket = await requestUploadUrl(taskId, file.name);
+      const ticket = await requestUploadUrl(taskId, trackSlug, file.name);
       if (!ticket.ok) {
-        setUploadError(ticket.message);
+        if (ticket.href) setGate({ message: ticket.message, href: ticket.href });
+        else setUploadError(ticket.message);
         return;
       }
       const put = await fetch(ticket.url, { method: "PUT", body: file });
@@ -200,6 +209,21 @@ function ComposeForm({
           <p className="text-caption font-semibold text-[var(--ink)]">أُعيد عملك للتحسين</p>
           <p className="text-body-sm mt-1 text-[var(--ink-muted)]">{reviewNote}</p>
         </div>
+      ) : null}
+
+      {gate ? (
+        <p
+          role="alert"
+          className="text-body-sm mb-4 rounded-[var(--radius-btn)] bg-[color-mix(in_oklch,var(--gold-hi)_14%,transparent)] px-4 py-3 text-[var(--ink)]"
+        >
+          {gate.message}{" "}
+          <a
+            href={gate.href}
+            className="font-semibold text-[var(--brand)] underline underline-offset-4"
+          >
+            أكمل حسابك
+          </a>
+        </p>
       ) : null}
 
       <label

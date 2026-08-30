@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { adminNotifications } from "@faseela/db";
+import { adminNotifications, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
@@ -28,11 +28,14 @@ const dateFmt = new Intl.DateTimeFormat("ar", {
 
 export default async function IdaraIshaarat() {
   const admin = await requireAdmin();
-  const items = await adminNotifications(db);
+  const [items, unreadCount] = await Promise.all([
+    adminNotifications(db),
+    unreadNotificationCount(db, admin.id),
+  ]);
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={admin.name} />
+      <Nav current="/idara" signedIn memberName={admin.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara">لوحة التحكم</BackLink>

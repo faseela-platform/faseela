@@ -34,7 +34,9 @@ export type SubmitResult =
   | { status: "not-published" }
   | { status: "already-pending" }
   | { status: "already-accepted" }
-  | { status: "rejected" };
+  | { status: "rejected" }
+  /** No such Task — a stale link, or a Task since removed. A refusal, not a 500. */
+  | { status: "not-found" };
 
 /**
  * Submit work for review, or resubmit after a return.
@@ -123,7 +125,8 @@ export type SaveDraftResult =
   | { status: "saved"; submissionId: string }
   | { status: "not-reviewable" }
   | { status: "not-published" }
-  | { status: "locked" };
+  | { status: "locked" }
+  | { status: "not-found" };
 
 /**
  * Auto-save a draft (§21). Writes only the working copy on the `submission` row;
@@ -206,7 +209,9 @@ export type AcceptResult =
   | { status: "not-pending" }
   | { status: "invalid-points" }
   | { status: "not-an-editor" }
-  | { status: "no-season" };
+  | { status: "no-season" }
+  /** No such Submission — a stale queue link. A refusal, not a 500. */
+  | { status: "not-found" };
 
 /**
  * Accept a pending Submission and mint its Points (§25).
@@ -246,7 +251,8 @@ export async function acceptSubmission(
       .innerJoin(task, eq(task.id, submission.taskId))
       .where(eq(submission.id, submissionId))
       .limit(1);
-    if (!row) throw new Error(`No submission ${submissionId}`);
+    /** Unknown id: a stale queue link, refused rather than thrown (as `attestTask` does). */
+    if (!row) return { status: "not-found" };
     if (row.state !== "pending") return { status: "not-pending" };
 
     if (!Number.isInteger(earnedPoints) || earnedPoints < 1 || earnedPoints > row.maxPoints) {
@@ -338,7 +344,8 @@ export type ReturnResult =
   | { status: "returned"; attemptNo: number }
   | { status: "not-pending" }
   | { status: "not-an-editor" }
-  | { status: "note-required" };
+  | { status: "note-required" }
+  | { status: "not-found" };
 
 /**
  * Return a pending Submission for revision (§24). Carries a note, because a return
@@ -364,7 +371,8 @@ export type RejectResult =
   | { status: "rejected"; attemptNo: number }
   | { status: "not-pending" }
   | { status: "not-an-editor" }
-  | { status: "note-required" };
+  | { status: "note-required" }
+  | { status: "not-found" };
 
 /**
  * Reject a pending Submission for good (§25) — terminal, so no resubmission
@@ -400,7 +408,7 @@ async function recordNoteVerdict(
   at: Date,
 ): Promise<
   | { ok: true; attemptNo: number }
-  | { ok: false; status: "not-pending" | "not-an-editor" | "note-required" }
+  | { ok: false; status: "not-pending" | "not-an-editor" | "note-required" | "not-found" }
 > {
   const trimmed = note.trim();
   return db.transaction(async (tx) => {
@@ -418,7 +426,7 @@ async function recordNoteVerdict(
       .innerJoin(task, eq(task.id, submission.taskId))
       .where(eq(submission.id, submissionId))
       .limit(1);
-    if (!row) throw new Error(`No submission ${submissionId}`);
+    if (!row) return { ok: false, status: "not-found" };
     if (row.state !== "pending") return { ok: false, status: "not-pending" };
 
     const attempt = await stampCurrentAttempt(tx, submissionId, {
@@ -526,7 +534,10 @@ export async function reviewQueue(
  * supervisor's own Tracks (§35). Null if the Submission does not exist. Used by the
  * review gates so a supervisor cannot open or decide another Track's Submission.
  */
-export async function submissionTrackId(db: Database, submissionId: string): Promise<string | null> {
+export async function submissionTrackId(
+  db: Database,
+  submissionId: string,
+): Promise<string | null> {
   const [row] = await db
     .select({ trackId: task.trackId })
     .from(submission)
@@ -692,19 +703,21 @@ async function isStaff(tx: Queryable, userId: string): Promise<boolean> {
 }
 
 /**
- * The two gates every review submission shares: the Task must be `review`-mode and
- * published. Returns the refusal status, or null when the Task is open to work.
+ * The gates every review submission shares: the Task must exist, be `review`-mode
+ * and be published. Returns the refusal status, or null when the Task is open to
+ * work. An unknown id is a refusal like the others rather than a throw — a stale
+ * link is an everyday event for a Member, not a fault on our side.
  */
 async function reviewableTaskError(
   tx: Queryable,
   taskId: string,
-): Promise<"not-reviewable" | "not-published" | null> {
+): Promise<"not-reviewable" | "not-published" | "not-found" | null> {
   const [t] = await tx
     .select({ mode: task.mode, state: task.state })
     .from(task)
     .where(eq(task.id, taskId))
     .limit(1);
-  if (!t) throw new Error(`No task ${taskId}`);
+  if (!t) return "not-found";
   if (t.mode !== "review") return "not-reviewable";
   if (t.state !== "published") return "not-published";
   return null;

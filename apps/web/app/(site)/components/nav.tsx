@@ -2,8 +2,8 @@ import Link from "next/link";
 
 import { hero } from "../content";
 import { Mark } from "./mark";
-import { Num } from "./num";
-import { SignOutButton } from "./sign-out-button";
+import { NavSession } from "./nav-session";
+import { JoinLink, SignedInSlot } from "./nav-slots";
 import { ThemeToggle } from "./theme-toggle";
 
 /**
@@ -33,10 +33,13 @@ type NavLink = (typeof productLinks)[number] | (typeof initiativeLinks)[number];
 /**
  * Top navigation.
  *
- * Deliberately not a client component. A scroll-aware nav that changes appearance on scroll is
- * the usual reason a marketing page ships its first JavaScript bundle; here the header is either
- * a plain overlay (the landing, `overlay`) or a sticky blurred bar (every product page), and
- * neither needs script.
+ * A server component. A scroll-aware nav that changes appearance on scroll is the usual reason
+ * a marketing page ships its first JavaScript bundle; here the header is either a plain overlay
+ * (the landing, `overlay`) or a sticky blurred bar (every product page), and neither needs
+ * script. The one client piece is the end slot on pages that cannot read the session on the
+ * server (`signedIn` undefined → `nav-session.tsx`, ~1 KB): it server-renders the signed-out
+ * link and swaps to the member's slot once `useSession` resolves, so `/` and `/masarat` stay
+ * static without ever showing a signed-in member the door.
  *
  * `overlay` lays the header over the hero's own sky — no border, no backdrop — so the top of
  * the landing reads as one piece, as the owner drew it. Product pages keep the sticky bar: a
@@ -51,6 +54,13 @@ type NavLink = (typeof productLinks)[number] | (typeof initiativeLinks)[number];
  * calls `getSession` makes every page mounting it dynamic, and the landing page has no reason
  * to become uncacheable because its header could theoretically show a sign-out link.
  *
+ * It is three-valued. `true`/`false` is server truth from a page that read the session, and
+ * renders without a flash. `undefined` — the page did not say — hands the end slot to the
+ * `NavSession` island, which renders the signed-out action on the server and swaps to the
+ * signed-in slot in the browser once `useSession` resolves. That is what lets the cached
+ * pages (`/`, `/masarat`) recognise a Member without becoming dynamic; a page that knows
+ * the answer should always pass it.
+ *
  * `memberName` is the signed-in Member's name, also passed from the page's session read.
  * Present → shown as the Member's identity; empty (a magic-link account that hasn't completed
  * §5 yet) → replaced by an "أكمل حسابك" prompt, so a nameless Member always has a visible route
@@ -62,7 +72,7 @@ type NavLink = (typeof productLinks)[number] | (typeof initiativeLinks)[number];
 export function Nav({
   current,
   overlay = false,
-  signedIn = false,
+  signedIn,
   memberName = null,
   tier = null,
   unreadCount = 0,
@@ -70,13 +80,14 @@ export function Nav({
   current?: string;
   /** Lay the header over the page's first section instead of a sticky bar. */
   overlay?: boolean;
+  /** Server truth when the page read the session; leave undefined to let the client resolve it. */
   signedIn?: boolean;
   memberName?: string | null;
   tier?: string | null;
   /**
    * How many notifications are new for this Member (§38). Passed in like `tier` and
-   * `memberName`, never read here — the bell renders only inside the signed-in branch,
-   * so the landing page's nav stays static and JavaScript-free.
+   * `memberName`, never read here — the bell renders only inside the signed-in slot, and
+   * on the static pages (client island) it shows without a count.
    */
   unreadCount?: number;
 }) {
@@ -94,6 +105,14 @@ export function Nav({
       }`,
     };
   };
+
+  /**
+   * Where sign-in returns to. A visitor who pressed «انضم إلينا» on the Tracks page wants
+   * the Tracks page back, not a generic home, so the current path rides along as
+   * `callbackURL`; /dukhul validates it with `safeInternalPath` and falls back to the
+   * personalised home when there is none.
+   */
+  const signInHref = current ? `/dukhul?callbackURL=${encodeURIComponent(current)}` : "/dukhul";
 
   const renderLink = (link: NavLink) => {
     const { isCurrent, className } = linkClass(link);
@@ -158,85 +177,12 @@ export function Nav({
            * and it is the same door for the Member who already belongs. Signed in, it is
            * pointless: the slot becomes the bell, the name and sign-out.
            */}
-          {signedIn ? (
-            /*
-             * On a phone this slot cannot hold the pill, the bell, a name, a tier badge and
-             * sign-out beside the wordmark. The name and tier are hidden below `sm` — they
-             * live on /hisabi, one tap away — and the actions stay.
-             */
-            <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-              {/*
-               * The bell (§38). A link, not a menu: a dropdown would need client JavaScript
-               * on every signed-in page to show what the list page shows better. The count
-               * is capped at a glyph, because the difference between "twelve" and "many"
-               * changes nothing about what you do next.
-               */}
-              <Link
-                href="/ishaarat"
-                aria-label={unreadCount > 0 ? `الإشعارات، ${unreadCount} جديدة` : "الإشعارات"}
-                className="relative flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:outline-none"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-                </svg>
-                {unreadCount > 0 ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute end-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-[0.625rem] leading-none font-semibold text-[var(--surface)]"
-                  >
-                    {unreadCount > 9 ? <Num value={9} suffix="+" /> : <Num value={unreadCount} />}
-                  </span>
-                ) : null}
-              </Link>
-
-              {/*
-               * The Member's name, a link to their profile (`/hisabi`). A tier badge sits
-               * beside it when the page passed one. A nameless account instead gets the
-               * prompt that leads to the §5 completion step.
-               */}
-              {memberName && memberName.trim() ? (
-                <Link
-                  href="/hisabi"
-                  className="hidden min-h-11 items-center gap-2 transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70 sm:flex"
-                >
-                  <span className="text-body-sm max-w-[9rem] truncate font-medium text-[var(--ink)]">
-                    {memberName}
-                  </span>
-                  {tier ? (
-                    /* The tier in gold — the identity's colour for standing (ADR 0029). */
-                    <span className="text-caption rounded-full bg-[color-mix(in_oklch,var(--gold-hi)_18%,transparent)] px-2 py-0.5 font-semibold text-[var(--accent-ink)]">
-                      {tier}
-                    </span>
-                  ) : null}
-                </Link>
-              ) : (
-                <Link
-                  href="/akmil-hisabak"
-                  className="text-body-sm hidden min-h-11 items-center font-semibold text-[var(--brand)] transition-opacity duration-[130ms] ease-[var(--ease-hover)] hover:opacity-70 sm:flex"
-                >
-                  أكمل حسابك
-                </Link>
-              )}
-              <SignOutButton />
-            </div>
+          {signedIn === true ? (
+            <SignedInSlot memberName={memberName} tier={tier} unreadCount={unreadCount} />
+          ) : signedIn === false ? (
+            <JoinLink href={signInHref} />
           ) : (
-            <Link
-              href="/dukhul"
-              className="text-body-sm inline-flex min-h-11 shrink-0 items-center rounded-[var(--radius-btn)] bg-[var(--brand)] px-5 font-semibold text-[var(--surface)] transition-[background-color,transform] duration-[150ms] ease-[var(--ease-out-expo)] hover:bg-[var(--brand-deep)] active:scale-[0.97]"
-              style={{ boxShadow: "0 8px 20px var(--glow)" }}
-            >
-              انضم إلينا
-            </Link>
+            <NavSession signInHref={signInHref} />
           )}
         </div>
       </nav>

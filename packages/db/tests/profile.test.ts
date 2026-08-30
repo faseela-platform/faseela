@@ -114,3 +114,28 @@ describe("setMemberProfile", () => {
     expect(result.status).toBe("no-such-member");
   });
 });
+
+/**
+ * `user_phone_number_unique` (identity.ts) says a phone identifies at most one
+ * Member. Hitting it must come back as a result the form can show in Arabic —
+ * not a 23505 thrown through a Server Action as a 500.
+ */
+describe("setMemberProfile with a phone another member owns", () => {
+  it("returns phone-taken and leaves both members untouched", async () => {
+    await seedFreshMember("m1");
+    await seedFreshMember("m2");
+    await setMemberProfile(db, "m1", { name: "عبد الله", phoneNumber: "+96170123456" });
+
+    const result = await setMemberProfile(db, "m2", {
+      name: "ليلى",
+      phoneNumber: "  +96170123456 ",
+    });
+    expect(result.status).toBe("phone-taken");
+
+    expect(await memberProfile(db, "m1")).toEqual({
+      name: "عبد الله",
+      phoneNumber: "+96170123456",
+    });
+    expect(isProfileComplete(await memberProfile(db, "m2"))).toBe(false);
+  });
+});

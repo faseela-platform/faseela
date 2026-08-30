@@ -1,5 +1,15 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, index, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 /**
  * Better Auth owns these four tables and their column names. Better Auth's
@@ -140,6 +150,25 @@ export const account = pgTable(
   },
   (t) => [index("account_user_id_idx").on(t.userId)],
 );
+
+/**
+ * Better Auth's rate-limit counters, one row per `{ip}|{path}` bucket. Present
+ * because `auth.ts` sets `rateLimit.storage: "database"`: the default store is
+ * a `Map` inside one process, and on Vercel each lambda has its own, so a
+ * 5-per-minute cap on magic-link sends was really 5 per minute per instance —
+ * no cap at all. The row lives here rather than in a cache because there is no
+ * cache; Neon is the only shared state this deployment has.
+ *
+ * `lastRequest` is `Date.now()` in milliseconds, which needs a bigint. `key` is
+ * unique on purpose — the limiter's create-then-increment race is settled by
+ * that violation. Better Auth prunes rows past the widest window itself.
+ */
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
 
 export const verification = pgTable(
   "verification",

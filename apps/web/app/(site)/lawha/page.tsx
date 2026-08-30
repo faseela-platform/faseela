@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 
-import { currentSeason, memberProgress, memberSeasonPoints, seasonLeaderboard } from "@faseela/db";
+import {
+  currentSeason,
+  memberProgress,
+  memberSeasonPoints,
+  seasonLeaderboard,
+  unreadNotificationCount,
+} from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -42,7 +48,26 @@ export const dynamic = "force-dynamic";
 const ORDINAL: Record<number, string> = { 1: "الأول", 2: "الثاني", 3: "الثالث" };
 
 export default async function LeaderboardPage() {
-  const season = await currentSeason(db);
+  /**
+   * The Season and the reader, together: the session is needed on both branches
+   * below, because the nav greets a signed-in Member (name, tier, bell) whether or
+   * not there is anything to rank.
+   */
+  const [season, session] = await Promise.all([
+    currentSeason(db),
+    auth.api.getSession({ headers: await headers() }),
+  ]);
+
+  /**
+   * The reader's tier (lifetime) and unread notifications, for the nav — distinct
+   * from their season Points below.
+   */
+  const [tier, unreadCount] = session?.user
+    ? await Promise.all([
+        memberProgress(db, session.user.id).then((p) => p.tier.name),
+        unreadNotificationCount(db, session.user.id),
+      ])
+    : [null, 0];
 
   /**
    * No open Season. The honest page, not an empty table: Points cannot be earned
@@ -52,7 +77,13 @@ export default async function LeaderboardPage() {
   if (!season) {
     return (
       <>
-        <Nav current="/lawha" />
+        <Nav
+          current="/lawha"
+          signedIn={Boolean(session?.user)}
+          memberName={session?.user?.name}
+          tier={tier}
+          unreadCount={unreadCount}
+        />
         <main>
           <section className="gutter mx-auto flex min-h-[60vh] max-w-[1440px] items-center py-16">
             <div className="max-w-xl">
@@ -71,20 +102,17 @@ export default async function LeaderboardPage() {
     );
   }
 
-  const [rows, session] = await Promise.all([
-    seasonLeaderboard(db, season.id),
-    auth.api.getSession({ headers: await headers() }),
-  ]);
-
   /**
-   * The reader's own standing, read from the ledger rather than searched for in
-   * `rows`. A Member outside the top 50 is absent from that list entirely, and
-   * telling them "you have no points" because they are 51st would be a lie.
+   * The rows and the reader's own standing — the latter read from the ledger rather
+   * than searched for in `rows`. A Member outside the top 50 is absent from that
+   * list entirely, and telling them "you have no points" because they are 51st
+   * would be a lie.
    */
-  const myPoints = session?.user ? await memberSeasonPoints(db, session.user.id, season.id) : null;
+  const [rows, myPoints] = await Promise.all([
+    seasonLeaderboard(db, season.id),
+    session?.user ? memberSeasonPoints(db, session.user.id, season.id) : Promise.resolve(null),
+  ]);
   const myRow = session?.user ? rows.find((r) => r.userId === session.user.id) : undefined;
-  /** The reader's tier (lifetime), for the nav badge — distinct from their season Points above. */
-  const tier = session?.user ? (await memberProgress(db, session.user.id)).tier.name : null;
 
   return (
     <>
@@ -93,6 +121,7 @@ export default async function LeaderboardPage() {
         signedIn={Boolean(session?.user)}
         memberName={session?.user?.name}
         tier={tier}
+        unreadCount={unreadCount}
       />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-12 pb-16 md:pt-16 md:pb-24">

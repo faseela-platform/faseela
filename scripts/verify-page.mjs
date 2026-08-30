@@ -45,7 +45,8 @@ function check(page, name, ok, detail = "") {
   }
 }
 
-const slug = (p) => (p === "/" ? "home" : p.replace(/^\//, "").replace(/\//g, "-"));
+/** A filename for the path — `?` and `=` in a query string are not legal in a Windows filename. */
+const slug = (p) => (p === "/" ? "home" : p.replace(/^\//, "").replace(/[^\w.-]+/g, "-"));
 
 /**
  * A session cookie, when one is supplied, so gated pages (`/idara/*`, `/hisabi`,

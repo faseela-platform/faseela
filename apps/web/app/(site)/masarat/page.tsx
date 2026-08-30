@@ -134,7 +134,10 @@ export default async function TracksIndexPage() {
               <p className="text-body-lg mt-4 text-[var(--ink-muted)]">
                 انضم إلى فسيلة، واختر المهمة الأولى في المسار الذي يناسبك.
               </p>
-              <Link href="/dukhul" className={buttonClass("primary", "md", "mt-8")}>
+              <Link
+                href={`/dukhul?callbackURL=${encodeURIComponent("/masarat")}`}
+                className={buttonClass("primary", "md", "mt-8")}
+              >
                 انضم إلينا
               </Link>
             </div>

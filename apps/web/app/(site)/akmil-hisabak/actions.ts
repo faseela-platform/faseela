@@ -12,9 +12,11 @@ import { safeInternalPath } from "@/lib/safe-path";
 
 /**
  * The result the form renders. A validation error is returned so the Member can
- * fix it in place; on success the action redirects and never returns.
+ * fix it in place — `field` says which input to mark invalid, so the other one
+ * is not flagged for a mistake it did not make; on success the action redirects
+ * and never returns.
  */
-export type CompleteAccountState = { error: string } | null;
+export type CompleteAccountState = { error: string; field: "name" | "phone" } | null;
 
 /**
  * Record the §5 account data — full name and phone (the primary contact) — that
@@ -37,7 +39,7 @@ export async function completeAccount(input: {
   const phone = input.phone.trim();
 
   if (name === "") {
-    return { error: "أدخل اسمك الكامل." };
+    return { error: "أدخل اسمك الكامل.", field: "name" };
   }
   /**
    * A light check, not verification. §5 defers verifying the number; this only
@@ -48,10 +50,21 @@ export async function completeAccount(input: {
    */
   const digitCount = (phone.match(/\d/g) ?? []).length;
   if (digitCount < 6) {
-    return { error: "أدخل رقم هاتف صحيح." };
+    return { error: "أدخل رقم هاتف صحيح.", field: "phone" };
   }
 
-  await setMemberProfile(db, session.user.id, { name, phoneNumber: phone });
+  const result = await setMemberProfile(db, session.user.id, { name, phoneNumber: phone });
+  /**
+   * The phone is unique per Member (`user_phone_number_unique`). The data layer
+   * turns that refusal into a result rather than a thrown 23505, and here it
+   * becomes an inline sentence on the phone field — never a 500 page for typing
+   * a number a family member already registered.
+   */
+  if (result.status === "phone-taken") {
+    return { error: "هذا الرقم مسجّل لحساب آخر.", field: "phone" };
+  }
+  // The session named a user the table no longer has: there is no account to complete.
+  if (result.status === "no-such-member") redirect("/dukhul");
 
   /**
    * The Leaderboard shows the Member's name, so it must be re-rendered now that

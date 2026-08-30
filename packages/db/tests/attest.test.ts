@@ -166,6 +166,17 @@ describe("attestTask", () => {
     expect(await db.select().from(schema.submission)).toHaveLength(0);
   });
 
+  it("refuses an unknown Task with not-found rather than throwing, so a stale link is not a 500", async () => {
+    await seedMember("m1");
+
+    const result = await attestTask(db, "00000000-0000-0000-0000-000000000000", "m1", inSeason);
+
+    expect(result).toEqual({ status: "not-found" });
+    /** Refused outright: no Submission row and nothing on the ledger. */
+    expect(await db.select().from(schema.submission)).toHaveLength(0);
+    expect(await db.select().from(schema.pointAward)).toHaveLength(0);
+  });
+
   it("refuses to mint outside a Season rather than inventing one", async () => {
     await seedMember("m1");
     const task = await seedTask({ mode: "attest", points: 20 });

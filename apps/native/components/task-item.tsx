@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 
+import { attestOutcome, isTaskDone } from "../lib/attest";
 import { authedFetch } from "../lib/authed-api";
 import { arabicDigits, row } from "../lib/rtl";
 import { useTheme, useThemeStyles } from "../lib/theme-context";
@@ -17,6 +18,9 @@ type Task = TrackDetailResponse["tasks"][number];
  * on mobile (submission-with-files is a deferred follow-up). The Member id is never
  * sent — the server derives it from the token — and the §5 profile gate comes back
  * as a status that routes to the completion screen.
+ *
+ * Done-state is derived, never seeded: `done` (the Member's `completedTaskIds` from
+ * `/me`) can land after this item mounts, and a local attest must not wait for it.
  */
 export function TaskItem({
   task,
@@ -34,7 +38,8 @@ export function TaskItem({
   const router = useRouter();
   const styles = useThemeStyles(makeStyles);
   const [busy, setBusy] = useState(false);
-  const [localDone, setLocalDone] = useState(done);
+  const [localDone, setLocalDone] = useState(false);
+  const isDone = isTaskDone(done, localDone);
 
   async function attest() {
     if (!signedIn) {
@@ -48,20 +53,25 @@ export function TaskItem({
     });
     setBusy(false);
 
-    if (r.ok) {
-      setLocalDone(true);
-      return;
+    const outcome = attestOutcome(r);
+    switch (outcome.kind) {
+      case "done":
+        setLocalDone(true);
+        return;
+      case "complete-profile":
+        router.push("/akmil-hisabak");
+        return;
+      case "sign-in":
+        /** A stale token: the sign-in form lives on the حسابي tab, so offer the way there. */
+        Alert.alert("انتهت جلستك", "سجّل دخولك مجدداً من تبويب «حسابي» لتُحتسب نقاطك.", [
+          { text: "لاحقاً", style: "cancel" },
+          { text: "تسجيل الدخول", onPress: () => router.navigate("/hisabi") },
+        ]);
+        return;
+      case "error":
+        Alert.alert("تعذّر التأكيد", outcome.message);
+        return;
     }
-    if (r.code === "profile-incomplete") {
-      router.push("/akmil-hisabak");
-      return;
-    }
-    Alert.alert(
-      "تعذّر التأكيد",
-      r.code === "conflict"
-        ? "لا يمكن تأكيد هذه المهمة الآن."
-        : "حدث خطأ، حدّث الصفحة وحاول مجدداً.",
-    );
   }
 
   return (
@@ -81,7 +91,7 @@ export function TaskItem({
         </Text>
 
         {task.mode === "attest" ? (
-          localDone ? (
+          isDone ? (
             <Text style={styles.done}>✓ أُنجزت</Text>
           ) : (
             <ScalePressable

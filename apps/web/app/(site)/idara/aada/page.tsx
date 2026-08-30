@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { adminMemberList } from "@faseela/db";
+import { adminMemberList, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
@@ -20,11 +20,14 @@ export const dynamic = "force-dynamic";
 
 export default async function IdaraAada() {
   const admin = await requireAdmin();
-  const members = await adminMemberList(db);
+  const [members, unreadCount] = await Promise.all([
+    adminMemberList(db),
+    unreadNotificationCount(db, admin.id),
+  ]);
 
   return (
     <>
-      <Nav current="/idara" signedIn memberName={admin.name} />
+      <Nav current="/idara" signedIn memberName={admin.name} unreadCount={unreadCount} />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
           <BackLink href="/idara">لوحة التحكم</BackLink>

@@ -2,9 +2,18 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { expo } from "@better-auth/expo";
 import { createClient, schema } from "@faseela/db";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { bearer, emailOTP, magicLink } from "better-auth/plugins";
 
+import {
+  EMAIL_SEND_CAP,
+  EMAIL_SEND_PATHS,
+  resolveAuthBaseUrl,
+  sendCapDecision,
+  trustedOrigins,
+  IP_ADDRESS_HEADERS,
+} from "./auth-config";
 import { sendEmail } from "./email";
 import { magicLinkEmail } from "./magic-link-email";
 import { otpEmail } from "./otp-email";
@@ -33,20 +42,106 @@ const db = createClient(connectionString);
  * Where the app is reachable. Better Auth signs and validates magic-link URLs
  * against this, so a mismatch produces links that 404 or fail verification —
  * which reads like a broken token rather than a misconfigured base URL.
+ *
+ * Throws at load in production when unset (or not https), exactly as
+ * DATABASE_URL does above: a localhost fallback there would mail members links
+ * to nowhere and set a non-Secure cookie, and nothing would look broken from
+ * the inside. Development keeps the localhost fallback. See auth-config.ts.
  */
-const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+const baseURL = resolveAuthBaseUrl({
+  nodeEnv: process.env.NODE_ENV,
+  betterAuthUrl: process.env.BETTER_AUTH_URL,
+  buildPhase: process.env.NEXT_PHASE === "phase-production-build",
+});
 
 export const auth = betterAuth({
   baseURL,
 
   /**
-   * Native (Expo) clients sign in over a bearer token, not a cookie, and the
-   * magic-link verify redirects back into the app by URL scheme. The web app is the
-   * `baseURL` (trusted by default); the mobile app's `faseela://` scheme — and
-   * Expo Go's `exp://` dev origin — must be trusted explicitly, or Better Auth
-   * rejects the sign-in callback as an untrusted redirect. Web sign-in is unaffected.
+   * Production answers on two hosts — the canonical www.faseela24.com (which
+   * `baseURL` names, so it is trusted by default) and faseela.vercel.app — and
+   * both must be able to complete sign-in. Native (Expo) clients sign in over a
+   * bearer token and the magic-link/OTP verify redirects back into the app by
+   * URL scheme, so `faseela://` must be trusted too or Better Auth rejects the
+   * callback as an untrusted redirect. Expo Go's `exp://` is not listed here:
+   * the expo plugin below adds it itself, and only when NODE_ENV is
+   * development. The list is a constant in auth-config.ts, where it is tested.
    */
-  trustedOrigins: ["faseela://", "exp://"],
+  trustedOrigins: [...trustedOrigins],
+
+  /**
+   * Rate limiting, in the database.
+   *
+   * Better Auth's default store is a `Map` in the process — on Vercel that is
+   * one map per lambda, so the plugins' caps (magic link 5/min, OTP 3/min per
+   * IP) held per *instance* and an attacker fanned across instances was not
+   * capped at all. The `rate_limit` table (packages/db, migration 0008) is the
+   * only state every instance shares. Enabled explicitly rather than by
+   * `NODE_ENV`, so development exercises the same code path production runs.
+   *
+   * `/get-session` is exempt: it runs on effectively every authenticated
+   * request, it sends nothing and mints nothing, and a database round trip per
+   * call would be paid by every page for no protection the platform needs.
+   */
+  rateLimit: {
+    enabled: true,
+    storage: "database",
+    customRules: { "/get-session": false },
+  },
+
+  /** Which headers carry the client IP the limiter keys on — see auth-config.ts. */
+  advanced: {
+    ipAddress: { ipAddressHeaders: [...IP_ADDRESS_HEADERS] },
+  },
+
+  /**
+   * A second cap, keyed on the *email address* rather than the caller's IP:
+   * one inbox cannot be flooded with sign-in mail from many addresses. The
+   * counter is a row in Better Auth's own `verification` table (identifier
+   * `send-cap:<email>`), which Better Auth already prunes once expired, so no
+   * new table and no new cleanup. The window arithmetic lives in
+   * auth-config.ts and is tested there; this hook only reads and writes.
+   * Read-then-write is not atomic — two simultaneous requests may both count
+   * as the sixth — which is acceptable for a cap whose job is to stop floods,
+   * not to be exact.
+   */
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (!ctx.path || !EMAIL_SEND_PATHS.includes(ctx.path)) return;
+      const raw: unknown = ctx.body?.email;
+      if (typeof raw !== "string" || raw.trim() === "") return;
+      const identifier = `send-cap:${raw.trim().toLowerCase()}`;
+
+      const adapter = ctx.context.internalAdapter;
+      const existing = await adapter.findVerificationValue(identifier);
+      const now = Date.now();
+      const decision = sendCapDecision(
+        existing
+          ? { count: Number(existing.value), expiresAt: existing.expiresAt.getTime() }
+          : null,
+        now,
+        EMAIL_SEND_CAP,
+      );
+
+      if (!decision.allowed) {
+        throw new APIError("TOO_MANY_REQUESTS", {
+          message: "طلبات كثيرة لهذا البريد. انتظر قليلاً ثم حاول مجدداً.",
+        });
+      }
+      if (decision.reset) {
+        if (existing) await adapter.deleteVerificationByIdentifier(identifier);
+        await adapter.createVerificationValue({
+          identifier,
+          value: String(decision.count),
+          expiresAt: new Date(decision.expiresAt),
+        });
+      } else {
+        await adapter.updateVerificationByIdentifier(identifier, {
+          value: String(decision.count),
+        });
+      }
+    }),
+  },
 
   /**
    * Signs session cookies and magic-link tokens. Distinct from `PAYLOAD_SECRET`
