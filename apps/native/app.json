@@ -16,6 +16,7 @@
       }
     },
     "android": {
+      "package": "com.faseela24.app",
       "adaptiveIcon": {
         "backgroundColor": "#f7fbfa",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

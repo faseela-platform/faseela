@@ -37,7 +37,9 @@ export function attestErrorMessage(code: string): string {
 }
 
 export type AttestOutcome =
-  | { kind: "done" }
+  /** `points` is the fresh mint to celebrate; `null` when the Task was already
+   * done (a re-tap must not report a second award). */
+  | { kind: "done"; points: number | null }
   | { kind: "sign-in" }
   | { kind: "complete-profile" }
   | { kind: "error"; message: string };
@@ -52,10 +54,15 @@ export type AttestOutcome =
 export function attestOutcome(
   result: { ok: true; data: AttestResponse } | { ok: false; code: string },
 ): AttestOutcome {
-  if (result.ok) return { kind: "done" };
+  if (result.ok) {
+    return {
+      kind: "done",
+      points: result.data.status === "completed" ? result.data.points : null,
+    };
+  }
   switch (result.code) {
     case "already-completed":
-      return { kind: "done" };
+      return { kind: "done", points: null };
     case "unauthenticated":
       return { kind: "sign-in" };
     case "profile-incomplete":

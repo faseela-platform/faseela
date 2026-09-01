@@ -1,5 +1,6 @@
 import { hero } from "../../content";
 import { Mark, type MarkLayer } from "../mark";
+import { GrowIntro } from "./grow-intro";
 
 /**
  * The owner's layered CSS-3D mark — the hero's SSR state and the fallback for every device
@@ -13,8 +14,10 @@ import { Mark, type MarkLayer } from "../mark";
  * Everything here is decorative for assistive tech: the mark's name is in the nav, and the loop
  * the chips depict is repeated as real text for screen readers.
  */
-/** The 460×500 stage the mark is laid out in (must match `index.tsx`, which sizes the WebGL box from it). */
-export const STAGE = { width: 460, height: 500, markX: 30, markY: 60, markWidth: 400 } as const;
+/** The 460×500 stage the mark is laid out in — defined in `./stage` (shared with the
+ * WebGL box and the Lottie intro overlay), re-exported here for its existing importers. */
+export { STAGE } from "./stage";
+import { STAGE } from "./stage";
 
 const CHIP_POSITIONS: React.CSSProperties[] = [
   { top: "6%", insetInlineEnd: "-8%" },
@@ -39,7 +42,7 @@ const MARK_DEPTHS: { z: number; layers: readonly MarkLayer[]; front?: boolean; k
 export function Mark3D() {
   return (
     <div
-      className="relative mx-auto w-full max-w-[460px]"
+      className="mark-grow-stage relative mx-auto w-full max-w-[460px]"
       style={{ aspectRatio: `${STAGE.width} / ${STAGE.height}`, perspective: "1200px" }}
     >
       {/*
@@ -101,7 +104,7 @@ export function Mark3D() {
           {/* Glow disc — the ambient light the mark floats in. */}
           <div
             aria-hidden="true"
-            className="absolute rounded-full"
+            className="hero-glow-disc absolute rounded-full"
             style={{
               inset: "8%",
               background: "radial-gradient(circle, var(--glow) 0%, transparent 70%)",
@@ -158,25 +161,39 @@ export function Mark3D() {
             </div>
           ))}
 
-          {/* The loop chips. Decorative — the same loop is real text below for screen readers. */}
+          {/* The Lottie grow intro (R2-B) — rides inside the float so the growing mark
+              bobs and tilts with the ring and chips, exactly like the mark it becomes. */}
+          <GrowIntro />
+
+          {/* The loop chips. Decorative — the same loop is real text below for screen readers.
+              Two elements each: the outer carries position and the grow intro's entrance (the
+              props arrive AFTER the plant), the inner carries the ambient float — one element
+              cannot run both, the entrance would clobber the float's negative phase delay. */}
           {hero.chips.map((chip, i) => (
             <div
               key={chip.label}
               aria-hidden="true"
-              className="hero-chip absolute z-10 hidden items-center gap-3 px-4 py-3 md:flex"
-              style={{
-                ...CHIP_POSITIONS[i],
-                animationDelay: CHIP_DELAYS[i],
-                transform: "translateZ(90px)",
-              }}
+              className="hero-chip-enter absolute z-10 hidden md:block"
+              style={
+                {
+                  ...CHIP_POSITIONS[i],
+                  transform: "translateZ(90px)",
+                  "--chip-enter-delay": `${(2.55 + i * 0.2).toFixed(2)}s`,
+                } as React.CSSProperties
+              }
             >
-              <ChipIcon kind={chip.icon} />
-              <span className="flex flex-col">
-                <span className="text-body-sm leading-[1.5] font-bold text-[var(--ink)]">
-                  {chip.label}
+              <div
+                className="hero-chip flex items-center gap-3 px-4 py-3"
+                style={{ animationDelay: CHIP_DELAYS[i] }}
+              >
+                <ChipIcon kind={chip.icon} />
+                <span className="flex flex-col">
+                  <span className="text-body-sm leading-[1.5] font-bold text-[var(--ink)]">
+                    {chip.label}
+                  </span>
+                  <span className="text-caption text-[var(--ink-muted)]">{chip.sub}</span>
                 </span>
-                <span className="text-caption text-[var(--ink-muted)]">{chip.sub}</span>
-              </span>
+              </div>
             </div>
           ))}
         </div>

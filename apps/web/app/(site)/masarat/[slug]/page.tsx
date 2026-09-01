@@ -15,11 +15,13 @@ import {
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { r2IsConfigured } from "@/lib/r2";
+import { taskStage, walkedSegments } from "@/lib/road";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
 import { BackLink, Card, EmptyState, Ordinal, Pill, Points } from "../../components/ui";
 import { AttestButton } from "../attest-button";
 import { ReviewPanel } from "../review-panel";
+import { RoadLane } from "../road";
 
 /**
  * A single Track with its Tasks — the vertical slice's deepest page, and the
@@ -117,6 +119,15 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
   const mySubmissions = session?.user ? await memberSubmissions(db, session.user.id, taskIds) : [];
   const submissionByTask = new Map(mySubmissions.map((s) => [s.taskId, s]));
 
+  /**
+   * طريق الفسائل: each Task's growth stage and how far the road reads as walked
+   * earth — both server-computed so the road needs no client JavaScript at all.
+   */
+  const stages = track.tasks.map((task) =>
+    taskStage(task.mode, done.has(task.id), submissionByTask.get(task.id)?.state ?? null),
+  );
+  const walked = walkedSegments(stages);
+
   /** The Member's tier (lifetime) and unread notifications, for the nav badge and bell. */
   const [tier, unreadCount] = session?.user
     ? await Promise.all([
@@ -191,85 +202,105 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
             <>
               <h2 className="text-body-sm mt-14 mb-6 font-bold text-[var(--brand)]">المهام</h2>
 
-              <ol className="grid gap-4 md:grid-cols-2">
+              {/*
+               * طريق الفسائل: a single winding lane down the list, the card on
+               * alternating sides (small screens: a straight rail at the inline
+               * start). The `<ol>` order is the reading order; the lane is pure
+               * decoration and every row's semantics live in its card.
+               */}
+              <ol>
                 {track.tasks.map((task, i) => (
-                  <Card key={task.id} as="li" reveal={(i % 2) * 80} className="flex flex-col">
-                    <div className="flex items-start justify-between gap-4">
-                      <Ordinal>
-                        <span aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
-                      </Ordinal>
-                      {/* The Points value — the reason a Member reads this card at all. */}
-                      <p className="text-body-sm shrink-0 pt-2">
-                        <Points>
-                          <Num value={task.points} />
-                        </Points>
-                      </p>
+                  <li
+                    key={task.id}
+                    className="grid grid-cols-[3.5rem_minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1fr)]"
+                  >
+                    <div className="col-start-1 row-start-1 md:col-start-2">
+                      <RoadLane index={i} stage={stages[i]} walked={i < walked} />
                     </div>
+                    <div
+                      className={`col-start-2 row-start-1 py-3 ${
+                        i % 2 === 0 ? "md:col-start-1" : "md:col-start-3"
+                      }`}
+                    >
+                      <Card reveal={(i % 2) * 80} className="flex h-full flex-col">
+                        <div className="flex items-start justify-between gap-4">
+                          <Ordinal>
+                            <span aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                          </Ordinal>
+                          {/* The Points value — the reason a Member reads this card at all. */}
+                          <p className="text-body-sm shrink-0 pt-2">
+                            <Points>
+                              <Num value={task.points} />
+                            </Points>
+                          </p>
+                        </div>
 
-                    <div className="mt-4 flex flex-1 flex-col">
-                      <h3 className="font-display text-card-title mb-2 leading-[1.5] font-bold text-[var(--ink)]">
-                        {task.title}
-                      </h3>
-                      <p className="text-body-sm mb-4 text-[var(--ink-muted)]">
-                        {task.instructions}
-                      </p>
+                        <div className="mt-4 flex flex-1 flex-col">
+                          <h3 className="font-display text-card-title mb-2 leading-[1.5] font-bold text-[var(--ink)]">
+                            {task.title}
+                          </h3>
+                          <p className="text-body-sm mb-4 text-[var(--ink-muted)]">
+                            {task.instructions}
+                          </p>
 
-                      {/*
-                       * How completion works, stated on the Task rather than explained once
-                       * at the top. A Member deciding whether to start this Task needs to
-                       * know now whether it waits on an Editor.
-                       */}
-                      <p className="text-caption mb-5 flex flex-wrap items-center gap-2 text-[var(--ink-muted)]">
-                        <Pill tone={task.mode === "review" ? "gold" : "brand"}>
-                          {MODE_LABEL[task.mode]}
-                        </Pill>
-                        <span>{MODE_HINT[task.mode]}</span>
-                      </p>
+                          {/*
+                           * How completion works, stated on the Task rather than explained once
+                           * at the top. A Member deciding whether to start this Task needs to
+                           * know now whether it waits on an Editor.
+                           */}
+                          <p className="text-caption mb-5 flex flex-wrap items-center gap-2 text-[var(--ink-muted)]">
+                            <Pill tone={task.mode === "review" ? "gold" : "brand"}>
+                              {MODE_LABEL[task.mode]}
+                            </Pill>
+                            <span>{MODE_HINT[task.mode]}</span>
+                          </p>
 
-                      {/*
-                       * `attest` Tasks get a button; `review` Tasks get the submission panel —
-                       * the two completion paths, each rendered in the Member's own state.
-                       * Signed-out readers get a sign-in link either way, its `callbackURL`
-                       * returning them to this exact Track.
-                       */}
-                      <div className="mt-auto border-t border-[var(--hairline)] pt-4">
-                        {task.mode === "attest" ? (
-                          session?.user ? (
-                            <AttestButton
-                              taskId={task.id}
-                              trackSlug={track.slug}
-                              points={task.points}
-                              alreadyDone={done.has(task.id)}
-                            />
-                          ) : (
-                            <Link
-                              href={`/dukhul?callbackURL=/masarat/${track.slug}`}
-                              className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
-                            >
-                              سجّل دخولك لتأكيد الإنجاز
-                            </Link>
-                          )
-                        ) : session?.user ? (
-                          <ReviewPanel
-                            taskId={task.id}
-                            trackSlug={track.slug}
-                            state={submissionByTask.get(task.id)?.state ?? null}
-                            initialBody={submissionByTask.get(task.id)?.body ?? ""}
-                            initialMediaKey={submissionByTask.get(task.id)?.mediaKey ?? null}
-                            reviewNote={submissionByTask.get(task.id)?.reviewNote ?? null}
-                            r2Enabled={r2IsConfigured}
-                          />
-                        ) : (
-                          <Link
-                            href={`/dukhul?callbackURL=/masarat/${track.slug}`}
-                            className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
-                          >
-                            سجّل دخولك لإرسال عملك
-                          </Link>
-                        )}
-                      </div>
+                          {/*
+                           * `attest` Tasks get a button; `review` Tasks get the submission panel —
+                           * the two completion paths, each rendered in the Member's own state.
+                           * Signed-out readers get a sign-in link either way, its `callbackURL`
+                           * returning them to this exact Track.
+                           */}
+                          <div className="mt-auto border-t border-[var(--hairline)] pt-4">
+                            {task.mode === "attest" ? (
+                              session?.user ? (
+                                <AttestButton
+                                  taskId={task.id}
+                                  trackSlug={track.slug}
+                                  points={task.points}
+                                  alreadyDone={done.has(task.id)}
+                                />
+                              ) : (
+                                <Link
+                                  href={`/dukhul?callbackURL=/masarat/${track.slug}`}
+                                  className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
+                                >
+                                  سجّل دخولك لتأكيد الإنجاز
+                                </Link>
+                              )
+                            ) : session?.user ? (
+                              <ReviewPanel
+                                taskId={task.id}
+                                trackSlug={track.slug}
+                                state={submissionByTask.get(task.id)?.state ?? null}
+                                initialBody={submissionByTask.get(task.id)?.body ?? ""}
+                                initialMediaKey={submissionByTask.get(task.id)?.mediaKey ?? null}
+                                reviewNote={submissionByTask.get(task.id)?.reviewNote ?? null}
+                                r2Enabled={r2IsConfigured}
+                              />
+                            ) : (
+                              <Link
+                                href={`/dukhul?callbackURL=/masarat/${track.slug}`}
+                                className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand-deep)]"
+                              >
+                                سجّل دخولك لإرسال عملك
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
                     </div>
-                  </Card>
+                  </li>
                 ))}
               </ol>
             </>

@@ -32,7 +32,8 @@ export function AnimatedSplash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (reduced === null) return;
     const finish = () => setVisible(false);
-    const id = setTimeout(finish, reduced ? 400 : 2400);
+    /** The regenerated grow.json runs ≈3.4 s of motion (ADR 0033/0034). */
+    const id = setTimeout(finish, reduced ? 400 : 3600);
     return () => clearTimeout(id);
   }, [reduced]);
 

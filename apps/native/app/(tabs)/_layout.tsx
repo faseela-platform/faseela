@@ -27,8 +27,10 @@ export default function TabsLayout() {
         headerRight: () => <NotificationBell />,
       }}
     >
+      {/** The feed is the index route: the app opens on المستجدّات (mirrors the web's
+       * ADR 0030 home) — the Lottie splash is the brand moment, no hero page. */}
       <Tabs.Screen
-        name="mustajaddat"
+        name="index"
         options={{
           title: "المستجدّات",
           tabBarIcon: ({ color, size, focused }) => (
@@ -41,7 +43,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="masarat"
         options={{
           title: "المسارات",
           tabBarIcon: ({ color, size, focused }) => (

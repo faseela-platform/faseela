@@ -51,16 +51,21 @@ describe("attestOutcome", () => {
   const ok = (status: "completed" | "already-completed") =>
     ({ ok: true, data: { taskId: "t1", status, points: 10 } }) as const;
 
-  it("marks a fresh completion as done", () => {
-    expect(attestOutcome(ok("completed"))).toEqual({ kind: "done" });
+  it("marks a fresh completion as done and carries the minted points", () => {
+    expect(attestOutcome(ok("completed"))).toEqual({ kind: "done", points: 10 });
   });
 
-  it("marks an already-completed Task as done rather than as an error", () => {
-    expect(attestOutcome(ok("already-completed"))).toEqual({ kind: "done" });
+  it("marks an already-completed Task as done with nothing to celebrate", () => {
+    /** The Member earned these points on an earlier tap — replaying the mint
+     * animation for a re-tap would misreport a second award. */
+    expect(attestOutcome(ok("already-completed"))).toEqual({ kind: "done", points: null });
   });
 
-  it("treats an already-completed error code as done too", () => {
-    expect(attestOutcome({ ok: false, code: "already-completed" })).toEqual({ kind: "done" });
+  it("treats an already-completed error code as done too, also uncelebrated", () => {
+    expect(attestOutcome({ ok: false, code: "already-completed" })).toEqual({
+      kind: "done",
+      points: null,
+    });
   });
 
   it("routes a stale or missing session to sign-in", () => {

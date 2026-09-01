@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FlatList, I18nManager, StyleSheet, Text, View } from "react-native";
 
 import { ErrorView, LoadingView } from "../../components/feedback";
+import { RoadRail } from "../../components/road-rail";
 import { TaskItem } from "../../components/task-item";
 import { useSession } from "../../lib/auth-client";
 import { authedFetch } from "../../lib/authed-api";
@@ -37,6 +38,13 @@ export default function TrackDetailScreen() {
 
   if (loading) return <LoadingView />;
   if (error || !data) return <ErrorView code={error ?? "malformed"} onRetry={retry} />;
+
+  /** How far the road reads as walked: up to the furthest done Task (a road with
+   * no gates measures arrival, not contiguity — same rule as the web). */
+  const walked = data.tasks.reduce(
+    (far, task, i) => (signedIn && completed.has(task.id) ? i + 1 : far),
+    0,
+  );
 
   return (
     <>
@@ -73,13 +81,24 @@ export default function TrackDetailScreen() {
           </View>
         }
         renderItem={({ item: task, index }) => (
-          <TaskItem
-            task={task}
-            index={index}
-            signedIn={signedIn}
-            done={signedIn && completed.has(task.id)}
-            isRTL={isRTL}
-          />
+          /** The rail rides beside every card; the row's own bottom padding keeps
+           * the road continuous where a list gap would cut it. */
+          <View style={[styles.taskRow, row(isRTL)]}>
+            <RoadRail
+              index={index}
+              done={signedIn && completed.has(task.id)}
+              walked={index < walked}
+            />
+            <View style={styles.taskCell}>
+              <TaskItem
+                task={task}
+                index={index}
+                signedIn={signedIn}
+                done={signedIn && completed.has(task.id)}
+                isRTL={isRTL}
+              />
+            </View>
+          </View>
         )}
       />
     </>
@@ -89,8 +108,11 @@ export default function TrackDetailScreen() {
 const makeStyles = ({ colors }: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     list: { backgroundColor: colors.surface },
-    listContent: { padding: space.lg, gap: space.lg, paddingBottom: space.xxl },
-    header: { gap: space.sm, paddingBottom: space.sm },
+    /** No list gap: the road must run unbroken, so spacing lives inside each row. */
+    listContent: { padding: space.lg, paddingBottom: space.xxl },
+    taskRow: { alignItems: "stretch" },
+    taskCell: { flex: 1, paddingBottom: space.lg },
+    header: { gap: space.sm, paddingBottom: space.lg },
     eyebrow: { ...text.captionStrong, color: colors.brand },
     title: { ...text.pageTitle, color: colors.ink },
     summary: { ...text.body, color: colors.inkMuted },

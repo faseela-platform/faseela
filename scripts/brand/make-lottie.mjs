@@ -1,16 +1,23 @@
 /**
- * Generates the grow intro as a Lottie animation for the app splash — T1b, ADR 0029.
+ * Generates the grow intro as THE brand animation — one Lottie for the app splash AND the
+ * landing hero (R2-B, ADR 0034; choreography = ADR 0033 "a morning, not a UI").
  *
- * The same geometry as everything else (`packages/tokens/brand.ts`) and the same
- * choreography as `apps/web/app/landing.css`'s grow intro: covers settle up (0–0.6 s), the stem
- * draws from the spine to the tip (0.35–1.25 s), the leaves unfurl from their base (0.85 s and
- * 1.05 s), the veins and ground shadow fade in (1.35 s). 30 fps, 2 s total including a hold.
+ * The same geometry as everything else (`packages/tokens/brand.ts`). Timeline (~3.4 s + hold):
+ * the book rises with real travel (0.25–1.05 s) and the spine reveals with it; the stem grows
+ * near-linearly from the book's top to the tip (1.05–2.3 s) with a hair of sway; each leaf
+ * unfurls from its node with a small overshoot while the stem still climbs (1.8 s / 2.1 s);
+ * the veins surface and the ground shadow SPREADS under the finished plant. The old version's
+ * two named defects are fixed here at the source: the stem's below-the-hardcover stub never
+ * shows (the spine fraction of the trim-path reveals with the book, growth starts at the book
+ * top), and each act carries its own easing — no ease-out-expo snap.
  *
  * Every path is M/L/C/Z, so it converts to Lottie bezier vertices exactly. Gradients are
- * flattened to their mid stops — Lottie gradient fills exist but render inconsistently on
- * Android's engine, and at splash size the difference is invisible.
+ * flattened to their mid stops — Lottie gradient fills render inconsistently on Android's
+ * engine, and the web crossfades to the real gradient mark when the intro ends.
  *
- *   node scripts/brand/make-lottie.mjs   →   apps/native/assets/brand/grow.json
+ *   node scripts/brand/make-lottie.mjs
+ *     → apps/native/assets/brand/grow.json   (splash)
+ *     → apps/web/public/brand/grow.json      (landing intro, played by lottie-web)
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -24,9 +31,13 @@ import {
 } from "../../packages/tokens/brand.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const OUT = resolve(ROOT, "apps/native/assets/brand/grow.json");
+const OUTS = [
+  resolve(ROOT, "apps/native/assets/brand/grow.json"),
+  resolve(ROOT, "apps/web/public/brand/grow.json"),
+];
 const FPS = 30;
-const FRAMES = 60;
+const TOTAL = 3.8; // 3.4 s of motion + a settle hold
+const FRAMES = Math.round(TOTAL * FPS);
 const f = (seconds) => Math.round(seconds * FPS);
 
 /** #rrggbb → Lottie [r,g,b,1] in 0..1. */
@@ -40,6 +51,15 @@ const mid = (a, b) => {
 const TEAL = mid(MARK_COLORS.tealHi, MARK_COLORS.tealLo);
 const GOLD = mid(MARK_COLORS.goldHi, MARK_COLORS.goldLo);
 const PAPER = mid(MARK_COLORS.paperHi, MARK_COLORS.paperLo);
+
+/** cubic-bezier(p1x,p1y,p2x,p2y) → a Lottie keyframe ease. */
+const bez = (p1x, p1y, p2x, p2y) => ({ o: { x: [p1x], y: [p1y] }, i: { x: [p2x], y: [p2y] } });
+/** The acts' easings (ADR 0033): each physical action gets its own. */
+const RISE = bez(0.22, 0.9, 0.36, 1); // the book landing softly
+const DRAW = bez(0.45, 0.05, 0.35, 0.95); // near-linear growth, soft ends
+const SOFT = bez(0.33, 0, 0.3, 1); // fades
+const SWAY = bez(0.37, 0, 0.63, 1); // sinusoidal lean
+const UNFURL = bez(0.3, 0.05, 0.25, 1); // a leaf opening
 
 /**
  * SVG path → Lottie shape(s). Lottie stores vertices `v`, and tangents `i`/`o` RELATIVE to
@@ -93,27 +113,27 @@ function pathToShapes(d) {
   return shapes.map((s) => ({ ty: "sh", ks: { a: 0, k: s } }));
 }
 
-const easeOut = { o: { x: [0.16], y: [1] }, i: { x: [0.3], y: [1] } };
+/** Keyframes: pairs of [timeFrame, value, easeToNext?] — each segment carries its act's ease. */
 const kf = (pairs) => ({
   a: 1,
-  k: pairs.map(([t, s], idx) => (idx < pairs.length - 1 ? { t, s, ...easeOut } : { t, s })),
+  k: pairs.map(([t, s, e], idx) => (idx < pairs.length - 1 ? { t, s, ...(e ?? SOFT) } : { t, s })),
 });
 const still = (v) => ({ a: 0, k: v });
 
 /** A shape layer: `anchor` is both the anchor and position, so shape coordinates stay absolute. */
-function layer(name, shapes, { anchor = [0, 0], opacity, scale, position, from = 0 } = {}) {
+function layer(name, shapes, { anchor = [0, 0], opacity, scale, position, rotation } = {}) {
   return {
     ddd: 0,
     ty: 4,
     nm: name,
     sr: 1,
-    ip: from,
+    ip: 0,
     op: FRAMES,
     st: 0,
     bm: 0,
     ks: {
       o: opacity ?? still(100),
-      r: still(0),
+      r: rotation ?? still(0),
       p: position ?? still([anchor[0], anchor[1], 0]),
       a: still([anchor[0], anchor[1], 0]),
       s: scale ?? still([100, 100, 100]),
@@ -148,21 +168,32 @@ const group = (items, name) => ({
 
 const P = MARK_PATHS,
   S = MARK_STROKES;
-const settle = (delay = 0) => ({
+
+/**
+ * The stem path runs foot(y=204) → book top(y=120) → tip(y=44). The straight spine
+ * segment is 84 units; the curve above ≈ 78 — so the spine is ~52% of the trim.
+ * That fraction reveals WITH the book (0.25–1.05 s), and visible growth runs from
+ * the book's top only: no stub ever pokes below the hardcover.
+ */
+const SPINE_PCT = 52;
+
+/** The book's rise: real travel (+18), the RISE easing, staggered per layer. */
+const riseIn = (delay, travel = 18) => ({
   opacity: kf([
-    [f(delay), [0]],
-    [f(delay + 0.6), [100]],
+    [f(delay), [0], SOFT],
+    [f(delay + 0.55), [100]],
   ]),
   position: (anchor) =>
     kf([
-      [f(delay), [anchor[0], anchor[1] + 6, 0]],
-      [f(delay + 0.6), [anchor[0], anchor[1], 0]],
+      [f(delay), [anchor[0], anchor[1] + travel, 0], RISE],
+      [f(delay + 0.8), [anchor[0], anchor[1], 0]],
     ]),
 });
 
 const layers = [];
 // Back to front (Lottie draws the LAST layer first, so push front-most first).
-// veins
+
+// veins — surface once both leaves stand
 layers.push(
   layer(
     "veins",
@@ -178,65 +209,97 @@ layers.push(
     ],
     {
       opacity: kf([
-        [f(1.35), [0]],
-        [f(1.85), [100]],
+        [f(2.6), [0], SOFT],
+        [f(3.2), [100]],
       ]),
     },
   ),
 );
-// leaves: each scales from its base at the stem
-layers.push(
-  layer("leaf-upper", [group([...pathToShapes(P.leafUpper), fill(TEAL)], "leaf")], {
-    anchor: [121, 64],
-    scale: kf([
-      [f(1.05), [50, 50, 100]],
-      [f(1.75), [100, 100, 100]],
-    ]),
+
+// leaves — unfurl from the node with a breath of overshoot, while the stem still climbs
+const leaf = (name, path, anchor, t0, fromDeg) =>
+  layer(name, [group([...pathToShapes(path), fill(TEAL)], "leaf")], {
+    anchor,
     opacity: kf([
-      [f(1.05), [0]],
-      [f(1.35), [100]],
+      [f(t0), [0], SOFT],
+      [f(t0 + 0.45), [100]],
     ]),
-  }),
-);
-layers.push(
-  layer("leaf-lower", [group([...pathToShapes(P.leafLower), fill(TEAL)], "leaf")], {
-    anchor: [119, 86],
     scale: kf([
-      [f(0.85), [50, 50, 100]],
-      [f(1.55), [100, 100, 100]],
+      [f(t0), [15, 15, 100], UNFURL],
+      [f(t0 + 0.75), [106, 106, 100], UNFURL],
+      [f(t0 + 1.0), [100, 100, 100]],
     ]),
-    opacity: kf([
-      [f(0.85), [0]],
-      [f(1.15), [100]],
+    rotation: kf([
+      [f(t0), [fromDeg], UNFURL],
+      [f(t0 + 0.75), [-fromDeg / 9], UNFURL],
+      [f(t0 + 1.0), [0]],
     ]),
-  }),
-);
-// stem: trim path 0→100 draws it from the foot upward
+  });
+layers.push(leaf("leaf-upper", P.leafUpper, [121, 64], 2.1, 28));
+layers.push(leaf("leaf-lower", P.leafLower, [119, 86], 1.8, -28));
+
+// stem growth — ONLY the above-book portion ever draws (trim starts at the spine
+// fraction), so no stub can grow from the foot; a hair of sway around the book top
 layers.push(
-  layer("stem", [
-    group(
+  layer(
+    "stem",
+    [
+      group(
+        [
+          ...pathToShapes(P.stem),
+          stroke(GOLD, S.stem),
+          {
+            ty: "tm",
+            s: still(SPINE_PCT),
+            e: kf([
+              [f(1.05), [SPINE_PCT], DRAW],
+              [f(2.3), [100]],
+            ]),
+            o: still(0),
+            m: 1,
+          },
+        ],
+        "stem",
+      ),
+    ],
+    {
+      anchor: [120, 120],
+      rotation: kf([
+        [f(1.1), [0], SWAY],
+        [f(2.0), [1.4], SWAY],
+        [f(2.5), [-0.5], SWAY],
+        [f(2.9), [0]],
+      ]),
+    },
+  ),
+);
+// spine — part of the BOOK, not of growth: it rides in with the covers' rise,
+// already whole, exactly like the static mark's gold spine
+{
+  const a = [120, 160];
+  const s = riseIn(0.25);
+  layers.push(
+    layer(
+      "spine",
       [
-        ...pathToShapes(P.stem),
-        stroke(GOLD, S.stem),
-        {
-          ty: "tm",
-          s: still(0),
-          e: kf([
-            [f(0.35), [0]],
-            [f(1.25), [100]],
-          ]),
-          o: still(0),
-          m: 1,
-        },
+        group(
+          [
+            ...pathToShapes(P.stem),
+            stroke(GOLD, S.stem),
+            { ty: "tm", s: still(0), e: still(SPINE_PCT), o: still(0), m: 1 },
+          ],
+          "spine",
+        ),
       ],
-      "stem",
+      { anchor: a, opacity: s.opacity, position: s.position(a) },
     ),
-  ]),
-);
+  );
+}
+
 // page lines
 {
   const a = [120, 160];
-  const s = settle(0.15);
+  const s = riseIn(0.55, 12);
   layers.push(
     layer(
       "lines",
@@ -257,7 +320,7 @@ layers.push(
 // covers (+ sheen)
 {
   const a = [120, 160];
-  const s = settle(0);
+  const s = riseIn(0.25);
   layers.push(
     layer(
       "covers",
@@ -275,7 +338,7 @@ layers.push(
 // paper block
 {
   const a = [120, 196];
-  const s = settle(0);
+  const s = riseIn(0.25);
   layers.push(
     layer(
       "paper",
@@ -290,7 +353,7 @@ layers.push(
     ),
   );
 }
-// ground shadow (an ellipse)
+// ground shadow — cast, not faded: it spreads as the plant completes
 layers.push(
   layer(
     "shadow",
@@ -308,9 +371,14 @@ layers.push(
       ),
     ],
     {
+      anchor: [MARK_GROUND.cx, MARK_GROUND.cy],
       opacity: kf([
-        [f(1.35), [0]],
-        [f(1.85), [100]],
+        [f(2.4), [0], SOFT],
+        [f(3.1), [100]],
+      ]),
+      scale: kf([
+        [f(2.4), [60, 100, 100], RISE],
+        [f(3.1), [100, 100, 100]],
       ]),
     },
   ),
@@ -327,17 +395,12 @@ const lottie = {
   ddd: 0,
   assets: [],
   layers,
-  meta: { g: "scripts/brand/make-lottie.mjs — from packages/tokens/brand.ts (ADR 0029)" },
+  meta: { g: "scripts/brand/make-lottie.mjs — from packages/tokens/brand.ts (ADR 0029/0033/0034)" },
 };
-mkdirSync(dirname(OUT), { recursive: true });
-writeFileSync(OUT, JSON.stringify(lottie));
-console.log(
-  "wrote",
-  OUT.replace(ROOT, "."),
-  Math.round(JSON.stringify(lottie).length / 1024),
-  "KB,",
-  layers.length,
-  "layers,",
-  FRAMES,
-  "frames",
-);
+const json = JSON.stringify(lottie);
+for (const out of OUTS) {
+  mkdirSync(dirname(out), { recursive: true });
+  writeFileSync(out, json);
+  console.log("wrote", out.replace(ROOT, "."), Math.round(json.length / 1024), "KB");
+}
+console.log(layers.length, "layers,", FRAMES, "frames,", TOTAL, "s");

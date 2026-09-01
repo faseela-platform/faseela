@@ -138,8 +138,9 @@ export function HeroScene({ children }: { children: React.ReactNode }) {
       if (idle) idle(go, { timeout: 4000 });
       else window.setTimeout(go, 800);
     };
-    // Not before the grow intro has finished (≈2.2 s) and the document has loaded.
-    const afterLoad = () => window.setTimeout(decide, 2600);
+    // Not before the grow intro has finished (≈3.1 s + the chips' entrance) and the
+    // document has loaded.
+    const afterLoad = () => window.setTimeout(decide, 3800);
     if (document.readyState === "complete") afterLoad();
     else window.addEventListener("load", afterLoad, { once: true });
 

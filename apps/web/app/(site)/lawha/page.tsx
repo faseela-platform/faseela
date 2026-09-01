@@ -188,59 +188,78 @@ export default async function LeaderboardPage() {
               />
             </div>
           ) : (
-            <ol className="mt-10 max-w-3xl">
-              {rows.map((row, i) => {
-                const isMe = session?.user?.id === row.userId;
-                const top = row.rank <= 3;
+            <>
+              <ol className="mt-10 max-w-3xl">
+                {rows.map((row, i) => {
+                  const isMe = session?.user?.id === row.userId;
+                  const top = row.rank <= 3;
 
-                return (
-                  <li
-                    key={row.userId}
-                    data-reveal={String(Math.min(i, 4) * 60)}
-                    className={`flex items-center justify-between gap-4 border-b border-[var(--hairline)] px-3 py-4 ${
-                      isMe
-                        ? "rounded-[var(--radius-card)] bg-[color-mix(in_oklch,var(--brand)_6%,transparent)]"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      {/*
-                       * The rank: gold for the top three (the positions a Member says out
-                       * loud), muted after. Through `Num`, which formats with `Intl` for
-                       * ar-LB and wraps the result in a bidi isolate — without which a
-                       * two-digit rank inside RTL prose reorders, rendering 10 as 01.
-                       */}
-                      <span
-                        className={`font-display text-body flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-extrabold ${
-                          top
-                            ? "bg-[color-mix(in_oklch,var(--gold-hi)_18%,transparent)] text-[var(--accent)]"
-                            : "text-[var(--ink-muted)]"
-                        }`}
-                      >
-                        <Num value={row.rank} />
-                      </span>
+                  return (
+                    <li
+                      key={row.userId}
+                      data-reveal={String(Math.min(i, 4) * 60)}
+                      className={`flex items-center justify-between gap-4 border-b border-[var(--hairline)] px-3 py-4 ${
+                        isMe
+                          ? "rounded-[var(--radius-card)] bg-[color-mix(in_oklch,var(--brand)_6%,transparent)]"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        {/*
+                         * The rank: gold for the top three (the positions a Member says out
+                         * loud), muted after. Through `Num`, which formats with `Intl` for
+                         * ar-LB and wraps the result in a bidi isolate — without which a
+                         * two-digit rank inside RTL prose reorders, rendering 10 as 01.
+                         */}
+                        <span
+                          className={`font-display text-body flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-extrabold ${
+                            top
+                              ? "bg-[color-mix(in_oklch,var(--gold-hi)_18%,transparent)] text-[var(--accent)]"
+                              : "text-[var(--ink-muted)]"
+                          }`}
+                        >
+                          <Num value={row.rank} />
+                        </span>
 
-                      <span className="text-body-lg font-medium text-[var(--ink)]">
-                        {/* Fallback so a Member who earned Points before completing
+                        <span className="text-body-lg font-medium text-[var(--ink)]">
+                          {/* Fallback so a Member who earned Points before completing
                             their §5 profile never renders as a blank row. */}
-                        {row.name.trim() || "عضو"}
-                        {isMe ? (
-                          <Pill tone="brand" className="ms-2">
-                            أنت
-                          </Pill>
-                        ) : null}
-                      </span>
-                    </div>
+                          {row.name.trim() || "عضو"}
+                          {isMe ? (
+                            <Pill tone="brand" className="ms-2">
+                              أنت
+                            </Pill>
+                          ) : null}
+                        </span>
+                      </div>
 
-                    <span className="text-body-lg shrink-0">
-                      <Points>
-                        <Num value={row.points} />
-                      </Points>
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+                      <span className="text-body-lg shrink-0">
+                        <Points>
+                          <Num value={row.points} />
+                        </Points>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              {/*
+               * A sparse board — a handful of rows under a full header reads as a broken
+               * query, when the truth is a Season at its start. Say so, and invite: the
+               * same framing as the zero-row state, shown while the contest is still
+               * small enough that joining it today means leading it tomorrow.
+               */}
+              {rows.length < 5 ? (
+                <div className="mt-6 max-w-3xl rounded-[var(--radius-card)] border border-[var(--hairline)] px-6 py-5">
+                  <p className="text-body-sm text-[var(--ink-muted)]">
+                    اللوحة ما زالت في أولها — كن أول المتصدرين.
+                  </p>
+                  <Link href="/masarat" className={buttonClass("secondary", "sm", "mt-4")}>
+                    اختر مهمة
+                  </Link>
+                </div>
+              ) : null}
+            </>
           )}
         </section>
       </main>

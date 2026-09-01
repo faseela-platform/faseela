@@ -1,11 +1,14 @@
 import type { AttestResponse, TrackDetailResponse } from "@faseela/api-types";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 
 import { attestOutcome, isTaskDone } from "../lib/attest";
 import { authedFetch } from "../lib/authed-api";
 import { arabicDigits, row } from "../lib/rtl";
+import { useReducedMotion } from "../lib/use-reduced-motion";
 import { useTheme, useThemeStyles } from "../lib/theme-context";
 import { radius, space, text } from "../lib/theme";
 import { ScalePressable } from "./pressable";
@@ -37,9 +40,20 @@ export function TaskItem({
 }) {
   const router = useRouter();
   const styles = useThemeStyles(makeStyles);
+  const reduced = useReducedMotion();
   const [busy, setBusy] = useState(false);
   const [localDone, setLocalDone] = useState(false);
   const isDone = isTaskDone(done, localDone);
+
+  /** The fresh mint to celebrate — a gold «+N» that rises off the button and fades.
+   * Only a first completion sets it (a re-tap carries `points: null`), and reduced
+   * motion skips the float entirely; the ✓ line is the durable confirmation. */
+  const [minted, setMinted] = useState<number | null>(null);
+  useEffect(() => {
+    if (minted === null) return;
+    const id = setTimeout(() => setMinted(null), 1400);
+    return () => clearTimeout(id);
+  }, [minted]);
 
   async function attest() {
     if (!signedIn) {
@@ -57,6 +71,10 @@ export function TaskItem({
     switch (outcome.kind) {
       case "done":
         setLocalDone(true);
+        if (outcome.points !== null) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          if (reduced === false) setMinted(outcome.points);
+        }
         return;
       case "complete-profile":
         router.push("/akmil-hisabak");
@@ -86,6 +104,16 @@ export function TaskItem({
       <Text style={styles.taskTitle}>{task.title}</Text>
       <Text style={styles.instructions}>{task.instructions}</Text>
       <View style={[styles.footer, row(isRTL)]}>
+        {minted !== null ? (
+          <Animated.View
+            entering={FadeInDown.duration(260)}
+            exiting={FadeOut.duration(300)}
+            style={styles.mint}
+            pointerEvents="none"
+          >
+            <Text style={styles.mintText}>+{arabicDigits(minted)} نقطة</Text>
+          </Animated.View>
+        ) : null}
         <Text style={styles.mode}>
           {task.mode === "attest" ? "تأكيد ذاتي" : "بحاجة إلى مراجعة"}
         </Text>
@@ -158,4 +186,15 @@ const makeStyles = ({ colors, shadow }: ReturnType<typeof useTheme>) =>
     },
     btnBusy: { opacity: 0.7 },
     btnText: { ...text.bodyStrong, color: "#ffffff" },
+    mint: {
+      position: "absolute",
+      bottom: 44,
+      end: 0,
+      backgroundColor: colors.chipBg,
+      borderRadius: radius.chip,
+      paddingHorizontal: space.md,
+      paddingVertical: space.xs,
+      zIndex: 1,
+    },
+    mintText: { ...text.captionStrong, color: colors.chipInk },
   });

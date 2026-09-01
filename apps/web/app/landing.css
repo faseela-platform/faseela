@@ -203,13 +203,21 @@ html[data-reveal-armed] [data-reveal]:not([data-revealed]) {
 /* ------------------------------------------------------------ grow intro */
 
 /*
- * «النبتة تخرج من الكتاب» — T1b. The mark grows in on every load (owner's call): the covers
- * and paper settle up, the stem draws from the spine to the tip, the leaves unfurl from their
- * base one after the other, the veins and the ground shadow fade in last. ≈2.2 s total,
- * `--ease-out-expo` so every part arrives fast and rests slowly.
+ * «النبتة تخرج من الكتاب» — T1b, re-choreographed 2026-09-01 (owner: calm and organic,
+ * ≈3 s, cinematic order). The sequence of a morning, not a UI:
  *
- * Driven by the layers `mark.tsx` exposes. Reduced motion skips straight to the final frame —
- * the keyframes are never applied, so the static markup IS the final state.
+ *   0.00–0.90  the light arrives — glow disc and sun/moon breathe in, the ring after
+ *   0.25–1.05  the book rises into the light (real travel, an easing that lands softly)
+ *   0.90–2.30  the stem grows — near-linear, so growth is *watched*, never a snap;
+ *              a barely-there sway as it climbs
+ *   1.80–3.10  the leaves unfurl from their nodes on the stem, overshoot a breath, settle;
+ *              the veins surface, the ground shadow spreads under the finished plant
+ *   2.55–3.55  only now the three chips step onto the stage, one after another —
+ *              the props arrive after the story, not before it
+ *
+ * Every element uses the easing of its own physical act (rise, draw, unfurl, spread) —
+ * `--ease-out-expo` is for UI, and nothing here is UI. Reduced motion never applies any
+ * keyframe: the static markup IS the final frame.
  */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes grow-stem {
@@ -220,23 +228,42 @@ html[data-reveal-armed] [data-reveal]:not([data-revealed]) {
       stroke-dashoffset: 0;
     }
   }
-  @keyframes grow-leaf {
-    from {
-      opacity: 0;
-      transform: scale(0.5) rotate(-12deg);
+  /* The climbing stem leans a hair with its own momentum, then stands. */
+  @keyframes grow-sway {
+    0%,
+    100% {
+      rotate: 0deg;
     }
-    60% {
+    55% {
+      rotate: 1.4deg;
+    }
+    80% {
+      rotate: -0.5deg;
+    }
+  }
+  /* An unfurl: emerge from the node, open past true, settle back. Opacity resolves
+   * early so the motion — not a fade — is what the eye reads. */
+  @keyframes grow-leaf {
+    0% {
+      opacity: 0;
+      transform: scale(0.15) rotate(-28deg);
+    }
+    45% {
       opacity: 1;
     }
-    to {
+    75% {
+      opacity: 1;
+      transform: scale(1.06) rotate(3deg);
+    }
+    100% {
       opacity: 1;
       transform: scale(1) rotate(0deg);
     }
   }
-  @keyframes grow-settle {
+  @keyframes grow-rise {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(18px);
     }
     to {
       opacity: 1;
@@ -251,37 +278,151 @@ html[data-reveal-armed] [data-reveal]:not([data-revealed]) {
       opacity: 1;
     }
   }
+  /* The ground shadow spreads outward as the plant completes — a shadow is cast, not faded. */
+  @keyframes grow-shadow {
+    from {
+      opacity: 0;
+      transform: scaleX(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+  /* The light answers the opening leaves — `scale` (the independent property) so the
+   * orb's own translate/centering transform is never clobbered. */
+  @keyframes orb-answer {
+    0%,
+    100% {
+      scale: 1;
+    }
+    50% {
+      scale: 1.045;
+    }
+  }
+  /* A chip steps in: small rise, a touch under-scale, lands with an ease-out. */
+  @keyframes chip-enter {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 
+  /* — the light — */
+  .mark-grow-stage .hero-glow-disc {
+    animation: grow-fade 0.9s cubic-bezier(0.33, 0, 0.3, 1) both;
+  }
+  .mark-grow-stage .hero-orb {
+    animation:
+      grow-fade 0.9s cubic-bezier(0.33, 0, 0.3, 1) both,
+      orb-answer 1s cubic-bezier(0.37, 0, 0.63, 1) 1.9s;
+  }
+  .mark-grow-stage .hero-ring {
+    /* Composed with the ambient spin — one `animation` list, or this rule's higher
+     * specificity would silently cancel the 60 s rotation. */
+    animation:
+      ring-spin 60s linear infinite,
+      grow-fade 1s cubic-bezier(0.33, 0, 0.3, 1) 0.35s both;
+  }
+
+  /* — the book — */
   .mark-grow [data-layer="paper"],
-  .mark-grow [data-layer="covers"],
-  .mark-grow [data-layer="lines"] {
-    animation: grow-settle 0.6s var(--ease-out-expo) both;
+  .mark-grow [data-layer="covers"] {
+    animation: grow-rise 0.8s cubic-bezier(0.22, 0.9, 0.36, 1) 0.25s both;
   }
   .mark-grow [data-layer="lines"] {
-    animation-delay: 0.15s;
+    animation: grow-rise 0.7s cubic-bezier(0.22, 0.9, 0.36, 1) 0.55s both;
+  }
+
+  /* — the plant — */
+  .mark-grow [data-layer="stem"] {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: grow-sway 1.6s cubic-bezier(0.37, 0, 0.63, 1) 1.1s both;
   }
   .mark-grow [data-layer="stem"] path {
     stroke-dasharray: 1;
-    animation: grow-stem 1.3s var(--ease-out-expo) 0.35s both;
+    /* Near-linear with soft ends: growth stays visible the whole 1.4 s instead of
+     * shooting up in the first fifth (the old expo read as a snap, then a stall). */
+    animation: grow-stem 1.4s cubic-bezier(0.45, 0.05, 0.35, 0.95) 0.9s both;
   }
   .mark-grow [data-layer="leaves"] path {
     transform-box: fill-box;
-    animation: grow-leaf 0.9s var(--ease-out-expo) both;
+    animation: grow-leaf 1s cubic-bezier(0.3, 0.05, 0.25, 1) both;
   }
   /* The lower leaf grows from its base at the stem (its bottom-right corner in fill-box terms). */
   .mark-grow [data-layer="leaves"] path:nth-child(1) {
     transform-origin: 100% 100%;
-    animation-delay: 1.15s;
+    animation-delay: 1.8s;
   }
-  /* The upper leaf from its base at the stem (bottom-left). */
+  /* The upper leaf from its base at the stem (bottom-left), mirrored unfurl. */
   .mark-grow [data-layer="leaves"] path:nth-child(2) {
     transform-origin: 0% 100%;
-    animation-delay: 1.4s;
+    animation-delay: 2.1s;
+    animation-name: grow-leaf-upper;
   }
-  .mark-grow [data-layer="veins"],
+  @keyframes grow-leaf-upper {
+    0% {
+      opacity: 0;
+      transform: scale(0.15) rotate(28deg);
+    }
+    45% {
+      opacity: 1;
+    }
+    75% {
+      opacity: 1;
+      transform: scale(1.06) rotate(-3deg);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+  }
+  .mark-grow [data-layer="veins"] {
+    animation: grow-fade 0.6s cubic-bezier(0.33, 0, 0.3, 1) 2.6s both;
+  }
   .mark-grow [data-layer="shadow"] {
-    animation: grow-fade 0.5s var(--ease-out-expo) 1.75s both;
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: grow-shadow 0.7s cubic-bezier(0.22, 0.9, 0.36, 1) 2.4s both;
   }
+
+  /* — the props, after the story — */
+  .mark-grow-stage .hero-chip-enter {
+    animation: chip-enter 0.6s cubic-bezier(0.22, 0.9, 0.36, 1) both;
+    animation-delay: var(--chip-enter-delay, 2.9s);
+  }
+}
+
+/* ---------------------------------------------------- grow intro: Lottie mode (R2-B) */
+
+/*
+ * `theme-script.tsx` sets html[data-grow="js"] pre-paint when the Lottie island will
+ * play (JS on, motion welcome): the CSS keyframe intro stands down and the mark layers
+ * hide; on completion the island sets "done" and the real, interactive mark crossfades
+ * in as the overlay fades out. No attribute (no JS, or reduced motion) leaves the CSS
+ * intro — and its static reduced-motion frame — exactly as before, as the fallback.
+ */
+html[data-grow] .mark-grow [data-layer],
+html[data-grow] .mark-grow [data-layer] path {
+  animation: none !important;
+}
+html[data-grow="js"] .hero-mark-layer,
+html[data-grow="js"] .hero-mark-shadow {
+  opacity: 0;
+}
+html[data-grow="done"] .hero-mark-layer,
+html[data-grow="done"] .hero-mark-shadow {
+  opacity: 1;
+  transition: opacity 0.45s var(--ease-enter);
+}
+html[data-grow="done"] .grow-intro-box {
+  opacity: 0;
+  transition: opacity 0.45s var(--ease-enter);
 }
 
 /* ------------------------------------------------------------ WebGL swap */
