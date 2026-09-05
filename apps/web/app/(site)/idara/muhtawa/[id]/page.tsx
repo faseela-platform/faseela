@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   adminContentItem,
   adminTracks,
+  listBodies,
   canManageTrackScope,
   unreadNotificationCount,
 } from "@faseela/db";
@@ -33,6 +34,7 @@ export default async function IdaraContentPage({ params }: { params: Promise<{ i
 
   const item = await adminContentItem(db, id);
   if (!item) notFound();
+  const bodies = await listBodies(db);
 
   const allowed = item.trackId
     ? canManageTrackScope(staff.role, staff.supervisedTrackIds, item.trackId)
@@ -67,12 +69,14 @@ export default async function IdaraContentPage({ params }: { params: Promise<{ i
               tracks={tracks.map((t) => ({ id: t.id, title: t.title }))}
               mediaUrl={mediaUrl}
               uploadAvailable={r2IsConfigured}
+              bodies={bodies}
               initial={{
                 type: item.type,
                 title: item.title,
                 body: item.body,
                 trackId: item.trackId,
                 source: item.source,
+                bodyId: item.bodyId,
                 classification: item.classification,
                 linkUrl: item.linkUrl,
                 eventAt: item.eventAt ? item.eventAt.toISOString().slice(0, 16) : "",

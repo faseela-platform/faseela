@@ -110,6 +110,12 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
               {detail.taskTitle}
             </h1>
             <p className="text-body-sm mt-4 text-[var(--ink-muted)]">{detail.taskInstructions}</p>
+            {detail.contentTitle ? (
+              <p className="text-body-sm mt-2 text-[var(--ink-muted)]">
+                المحتوى المختار:{" "}
+                <span className="font-semibold text-[var(--ink)]">{detail.contentTitle}</span>
+              </p>
+            ) : null}
             <p className="text-caption mt-3">
               الحدّ الأقصى:{" "}
               <Points>

@@ -41,6 +41,8 @@ export function ReviewPanel({
   state,
   initialBody,
   initialMediaKey,
+  initialContentId,
+  contentChoices,
   reviewNote,
   r2Enabled,
 }: {
@@ -49,6 +51,9 @@ export function ReviewPanel({
   state: SubmissionState;
   initialBody: string;
   initialMediaKey: string | null;
+  /** §15 path 2 — the content this work is about; only for §19-scoped Tasks. */
+  initialContentId: string | null;
+  contentChoices: { id: string; title: string }[];
   reviewNote: string | null;
   r2Enabled: boolean;
 }) {
@@ -95,6 +100,8 @@ export function ReviewPanel({
       state={state}
       initialBody={initialBody}
       initialMediaKey={initialMediaKey}
+      initialContentId={initialContentId}
+      contentChoices={contentChoices}
       reviewNote={reviewNote}
       r2Enabled={r2Enabled}
     />
@@ -107,6 +114,8 @@ function ComposeForm({
   state,
   initialBody,
   initialMediaKey,
+  initialContentId,
+  contentChoices,
   reviewNote,
   r2Enabled,
 }: {
@@ -115,11 +124,14 @@ function ComposeForm({
   state: SubmissionState;
   initialBody: string;
   initialMediaKey: string | null;
+  initialContentId: string | null;
+  contentChoices: { id: string; title: string }[];
   reviewNote: string | null;
   r2Enabled: boolean;
 }) {
   const [body, setBody] = useState(initialBody);
   const [mediaKey, setMediaKey] = useState<string | null>(initialMediaKey);
+  const [contentId, setContentId] = useState<string | null>(initialContentId);
   const [fileName, setFileName] = useState<string | null>(initialMediaKey ? "ملف مرفق" : null);
 
   const [pending, startTransition] = useTransition();
@@ -150,7 +162,7 @@ function ComposeForm({
     }
     if (body.trim() === "" && !mediaKey) return;
     const id = setTimeout(() => {
-      void saveReviewDraft(taskId, trackSlug, { body, mediaKey }).then((r) => {
+      void saveReviewDraft(taskId, trackSlug, { body, mediaKey, contentId }).then((r) => {
         if (r.status === "draft-saved") {
           setSavedNote(true);
           setTimeout(() => setSavedNote(false), 2000);
@@ -160,7 +172,7 @@ function ComposeForm({
       });
     }, AUTOSAVE_IDLE_MS);
     return () => clearTimeout(id);
-  }, [body, mediaKey, taskId, trackSlug]);
+  }, [body, mediaKey, contentId, taskId, trackSlug]);
 
   async function onFile(file: File) {
     setUploadError(null);
@@ -188,7 +200,7 @@ function ComposeForm({
 
   function onSubmit() {
     startTransition(async () => {
-      setResult(await submitReviewWork(taskId, trackSlug, { body, mediaKey }));
+      setResult(await submitReviewWork(taskId, trackSlug, { body, mediaKey, contentId }));
     });
   }
 
@@ -224,6 +236,31 @@ function ComposeForm({
             أكمل حسابك
           </a>
         </p>
+      ) : null}
+
+      {/* §15 path 2: which content this work is about — a plain select, server-validated. */}
+      {contentChoices.length > 0 ? (
+        <div className="mb-4">
+          <label
+            htmlFor={`review-content-${taskId}`}
+            className="text-caption mb-2 block font-semibold text-[var(--ink-muted)]"
+          >
+            المحتوى الذي تعمل عليه
+          </label>
+          <select
+            id={`review-content-${taskId}`}
+            value={contentId ?? ""}
+            onChange={(e) => setContentId(e.target.value || null)}
+            className="text-body-sm min-h-11 w-full rounded-[var(--radius-btn)] border border-[var(--hairline)] bg-[var(--surface)] px-3 text-[var(--ink)]"
+          >
+            <option value="">— اختر —</option>
+            {contentChoices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </div>
       ) : null}
 
       <label

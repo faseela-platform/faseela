@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
+  discoveryTracks,
   feedItems,
-  memberHomeTasks,
+  followedTracksWithLatest,
   memberProgress,
   unreadNotificationCount,
   type FeedItem,
@@ -15,17 +16,22 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { presignGetUrl, r2IsConfigured } from "@/lib/r2";
 import { Nav } from "../components/nav";
-import { Num } from "../components/num";
 import { CONTENT_TYPE_LABEL } from "../components/content-types";
-import { buttonClass, Card, EmptyState, Pill, Points, ProgressBar } from "../components/ui";
+import { buttonClass, Card, EmptyState, Pill } from "../components/ui";
 
 /**
- * الصفحة الرئيسة (§3, §43) — a personalized read, not authored sections. Signed in,
- * it opens with the Member's own tasks and progress (§3.1), then a single merged,
+ * الصفحة الرئيسة (§3, §43) — a personalized read, not authored sections: the Member's
+ * followed Tracks with their latest word (§3.2), then a single merged,
  * reverse-chronological stream of published content (§3.3/§3.4 — "don't split into
- * many sections"). A visitor sees the stream and a sign-in prompt (§43). Live, so it
- * reflects a new task or a just-published piece at once. The static marketing landing
- * stays at `/`.
+ * many sections"), then discovery (§3.5). A visitor sees the stream and a sign-in
+ * prompt (§43). Live, so a just-published piece shows at once. The static marketing
+ * landing stays at `/`.
+ *
+ * Owner decision 2026-09-03 (page roles): NO personal card here — §3.1's «مهامك
+ * وتقدمك» was duplicating /hisabi, so tier/points/progress and the open-work list
+ * live ONLY at حسابي (its سجل أعمالي already carries أعمال مفتوحة). المستجدّات is
+ * purely "what's happening"; الإشعارات is "addressed to me"; حسابي is "who I am".
+ * A deliberate, recorded departure from §3.1 — ADR 0036.
  */
 export const metadata: Metadata = { title: "المستجدّات — مبادرة فسيلة" };
 export const dynamic = "force-dynamic";
@@ -42,11 +48,13 @@ export default async function MustajaddatPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id ?? null;
 
-  const [feed, progress, tasks, unreadCount] = await Promise.all([
+  /** `memberProgress` feeds only the nav's tier badge now — the page itself is impersonal. */
+  const [feed, progress, unreadCount, followed, discover] = await Promise.all([
     feedItems(db, { limit: 40 }),
     userId ? memberProgress(db, userId) : Promise.resolve(null),
-    userId ? memberHomeTasks(db, userId) : Promise.resolve([]),
     userId ? unreadNotificationCount(db, userId) : Promise.resolve(0),
+    userId ? followedTracksWithLatest(db, userId) : Promise.resolve([]),
+    userId ? discoveryTracks(db, userId) : Promise.resolve([]),
   ]);
 
   const mediaUrls = new Map<string, string>();
@@ -55,25 +63,6 @@ export default async function MustajaddatPage() {
       if (item.mediaKey) mediaUrls.set(item.id, await presignGetUrl(item.mediaKey));
     }
   }
-
-  const open = tasks.filter(
-    (t) => t.submissionState === "draft" || t.submissionState === "returned",
-  );
-  const awaiting = tasks.filter((t) => t.submissionState === "pending");
-
-  /** How far through the tier's band the Member is — the same sum `/hisabi` shows. */
-  const fill = progress
-    ? progress.nextTier
-      ? Math.min(
-          1,
-          Math.max(
-            0,
-            (progress.points - progress.tier.minPoints) /
-              (progress.nextTier.minPoints - progress.tier.minPoints || 1),
-          ),
-        )
-      : 1
-    : 0;
 
   return (
     <>
@@ -86,57 +75,9 @@ export default async function MustajaddatPage() {
       />
       <main>
         <section className="gutter mx-auto max-w-[1440px] pt-10 pb-16 md:pb-24">
-          {/* Zone 1 — the signed-in Member's own state (§3.1), or a visitor prompt (§43). */}
-          {userId && progress ? (
-            <Card tone="brand" reveal={0} className="mb-14 max-w-3xl">
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <p className="font-display text-card-title font-bold text-[var(--ink)]">
-                  {session?.user?.name?.trim() || "أهلاً بك"}
-                </p>
-                <p className="text-body-sm flex items-center gap-2 text-[var(--ink-muted)]">
-                  <Pill tone="gold">{progress.tier.name}</Pill>
-                  <Points>
-                    <Num value={progress.points} />
-                  </Points>
-                </p>
-              </div>
-              <div className="mt-4">
-                <ProgressBar fill={fill} tone="gold" />
-              </div>
-              {progress.nextTier ? (
-                <p className="text-caption mt-2 text-[var(--ink-muted)]">
-                  <Num value={progress.pointsToNext ?? 0} /> نقطة حتى «{progress.nextTier.name}»
-                </p>
-              ) : null}
-
-              {open.length > 0 ? (
-                <div className="mt-5 border-t border-[var(--hairline)] pt-4">
-                  <p className="text-caption mb-2 font-semibold text-[var(--brand)]">مهمة مفتوحة</p>
-                  <ul className="space-y-1">
-                    {open.map((t) => (
-                      <li key={t.taskId}>
-                        <Link
-                          href={`/masarat/${t.trackSlug}`}
-                          className="text-body-sm inline-flex min-h-11 items-center font-medium text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
-                        >
-                          {t.taskTitle}
-                          <span className="text-caption text-[var(--ink-muted)]">
-                            &nbsp;— {t.trackTitle}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {awaiting.length > 0 ? (
-                <p className="text-caption mt-4 text-[var(--ink-muted)]">
-                  <Num value={awaiting.length} /> بانتظار المراجعة
-                </p>
-              ) : null}
-            </Card>
-          ) : (
+          {/* A visitor prompt (§43); a signed-in Member gets no personal card here —
+              their state lives at /hisabi (owner decision 2026-09-03, ADR 0036). */}
+          {!userId ? (
             <Card reveal={0} className="mb-14 max-w-2xl">
               <p className="font-display text-card-title font-bold text-[var(--ink)]">
                 تابِع جديد مبادرة فسيلة.
@@ -148,7 +89,29 @@ export default async function MustajaddatPage() {
                 دخول
               </Link>
             </Card>
-          )}
+          ) : null}
+
+          {/* Zone 2 — the Tracks this Member follows, each with its latest word (§3.2, R3). */}
+          {userId && followed.length > 0 ? (
+            <div className="mb-14 max-w-3xl">
+              <h2 className="text-body-sm mb-4 font-bold text-[var(--brand)]">مسارات تتابعها</h2>
+              <ul className="grid gap-3 md:grid-cols-2">
+                {followed.map((f) => (
+                  <li key={f.trackId}>
+                    <Link
+                      href={`/masarat/${f.slug}`}
+                      className="block rounded-[var(--radius-card)] border border-[var(--hairline)] px-5 py-4 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)]"
+                    >
+                      <p className="text-body font-semibold text-[var(--ink)]">{f.title}</p>
+                      <p className="text-caption mt-1 text-[var(--ink-muted)]">
+                        {f.latest ? `جديدها: ${f.latest.title}` : "لا جديد بعد — مهامه بانتظارك"}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {/* Zone 3 + 4 — the merged content stream, newest first (§3.3/§3.4). */}
           <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.441rem)] leading-[1.42] font-extrabold text-[var(--ink)]">
@@ -168,6 +131,28 @@ export default async function MustajaddatPage() {
               ))}
             </ol>
           )}
+          {/* Zone 5 — اكتشف: the published Tracks the Member has not followed yet
+              (§3.5's honest version, R3; the smart recommender stays deferred). */}
+          {userId && discover.length > 0 ? (
+            <div className="mt-16 border-t border-[var(--hairline)] pt-10">
+              <h2 className="text-body-sm mb-4 font-bold text-[var(--brand)]">اكتشف مسارات أخرى</h2>
+              <ul className="grid gap-3 md:grid-cols-3">
+                {discover.map((d) => (
+                  <li key={d.trackId}>
+                    <Link
+                      href={`/masarat/${d.slug}`}
+                      className="block h-full rounded-[var(--radius-card)] border border-[var(--hairline)] px-5 py-4 transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:border-[var(--brand)]"
+                    >
+                      <p className="text-body font-semibold text-[var(--ink)]">{d.title}</p>
+                      <p className="text-caption mt-1 line-clamp-2 text-[var(--ink-muted)]">
+                        {d.summary}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       </main>
     </>

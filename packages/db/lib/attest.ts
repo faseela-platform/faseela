@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import type { Database } from "./client";
 import { submission, task } from "./content";
+import { followOnFirstWork } from "./follows";
 import { emitPointsAwarded } from "./notification-emit";
 import { pointAward } from "./progress";
 import { currentSeason } from "./seasons";
@@ -64,6 +65,7 @@ export async function attestTask(
     const rows = await tx
       .select({
         id: task.id,
+        trackId: task.trackId,
         mode: task.mode,
         state: task.state,
         points: task.points,
@@ -89,6 +91,10 @@ export async function attestTask(
 
     const activeSeason = await currentSeason(tx, at);
     if (!activeSeason) return { status: "no-season" };
+
+    /** First work in this Track follows it (§10) — read before the insert below
+     * records the new work, so "first" is judged against prior work only. */
+    await followOnFirstWork(tx, userId, found.trackId);
 
     /**
      * `state: "accepted"` with `reviewedBy` and `reviewedAt` both left null. The

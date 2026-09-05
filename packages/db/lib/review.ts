@@ -1,7 +1,9 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import type { Database, Queryable } from "./client";
-import { submission, submissionAttempt, task } from "./content";
+import { contentItem, submission, submissionAttempt, task } from "./content";
+import { followOnFirstWorkForTask } from "./follows";
+import { UUID_RE } from "./track-content";
 import { user } from "./identity";
 import { isStaffRole } from "./members";
 import { emitNotification, emitPointsAwarded } from "./notification-emit";
@@ -26,10 +28,17 @@ import { currentSeason } from "./seasons";
  */
 
 /** What a Member sends in: text, an optional file, or both (the simple v1 shape). */
-export type SubmissionInput = { body?: string | null; mediaKey?: string | null };
+export type SubmissionInput = {
+  body?: string | null;
+  mediaKey?: string | null;
+  /** §42 المحتوى المختار — what this work is about, when the Task carries a §19 scope. */
+  contentId?: string | null;
+};
 
 export type SubmitResult =
   | { status: "submitted"; submissionId: string; attemptNo: number }
+  /** §19: the claimed المحتوى المختار is not one this Task's scope offers. */
+  | { status: "invalid-content" }
   | { status: "not-reviewable" }
   | { status: "not-published" }
   | { status: "already-pending" }
@@ -47,6 +56,43 @@ export type SubmitResult =
  * `rejected` (§25). Each accepted call appends one attempt; the guard is what stops
  * a second attempt appearing behind an Editor's back mid-review.
  */
+/**
+ * §19/§42: the chosen content is a CLAIM the seam verifies, exactly like an upload
+ * key (ADR 0030 §6). A claim is valid only when the Task carries a scope and the
+ * id names a PUBLISHED item of the Task's own Track that the scope admits — and a
+ * malformed id is refused, never thrown. Returns null when the claim stands.
+ */
+async function contentClaimError(
+  tx: Queryable,
+  taskId: string,
+  contentId: string | null,
+): Promise<"invalid-content" | null> {
+  if (contentId === null) return null;
+  if (!UUID_RE.test(contentId)) return "invalid-content";
+  const [t] = await tx
+    .select({ trackId: task.trackId, contentScope: task.contentScope })
+    .from(task)
+    .where(eq(task.id, taskId))
+    .limit(1);
+  if (!t || t.contentScope === null) return "invalid-content";
+  const [item] = await tx
+    .select({ classification: contentItem.classification })
+    .from(contentItem)
+    .where(
+      and(
+        eq(contentItem.id, contentId),
+        eq(contentItem.state, "published"),
+        eq(contentItem.trackId, t.trackId),
+      ),
+    )
+    .limit(1);
+  if (!item) return "invalid-content";
+  if (t.contentScope !== "track" && item.classification !== t.contentScope) {
+    return "invalid-content";
+  }
+  return null;
+}
+
 export async function submitWork(
   db: Database,
   taskId: string,
@@ -56,10 +102,17 @@ export async function submitWork(
 ): Promise<SubmitResult> {
   const body = input.body ?? null;
   const mediaKey = input.mediaKey ?? null;
+  const contentId = input.contentId ?? null;
 
   return db.transaction(async (tx) => {
     const taskError = await reviewableTaskError(tx, taskId);
     if (taskError) return { status: taskError };
+
+    const claimError = await contentClaimError(tx, taskId, contentId);
+    if (claimError) return { status: claimError };
+
+    /** First work in this Track follows it (§10) — judged before this attempt is recorded. */
+    await followOnFirstWorkForTask(tx, userId, taskId);
 
     const [existing] = await tx
       .select({ id: submission.id, state: submission.state })
@@ -93,6 +146,7 @@ export async function submitWork(
           state: "pending",
           body,
           mediaKey,
+          contentId,
           reviewNote: null,
           reviewedBy: null,
           reviewedAt: null,
@@ -103,7 +157,16 @@ export async function submitWork(
     } else {
       const [inserted] = await tx
         .insert(submission)
-        .values({ taskId, userId, body, mediaKey, state: "pending", createdAt: at, updatedAt: at })
+        .values({
+          taskId,
+          userId,
+          body,
+          mediaKey,
+          contentId,
+          state: "pending",
+          createdAt: at,
+          updatedAt: at,
+        })
         .returning({ id: submission.id });
       submissionId = inserted!.id;
     }
@@ -123,6 +186,7 @@ export async function submitWork(
 
 export type SaveDraftResult =
   | { status: "saved"; submissionId: string }
+  | { status: "invalid-content" }
   | { status: "not-reviewable" }
   | { status: "not-published" }
   | { status: "locked" }
@@ -143,10 +207,17 @@ export async function saveDraft(
 ): Promise<SaveDraftResult> {
   const body = input.body ?? null;
   const mediaKey = input.mediaKey ?? null;
+  const contentId = input.contentId ?? null;
 
   return db.transaction(async (tx) => {
     const taskError = await reviewableTaskError(tx, taskId);
     if (taskError) return { status: taskError };
+
+    const claimError = await contentClaimError(tx, taskId, contentId);
+    if (claimError) return { status: claimError };
+
+    /** Starting a draft is first work too (§10) — judged before the draft exists. */
+    await followOnFirstWorkForTask(tx, userId, taskId);
 
     const [existing] = await tx
       .select({ id: submission.id, state: submission.state })
@@ -162,14 +233,23 @@ export async function saveDraft(
        * note) and just update the working copy. */
       await tx
         .update(submission)
-        .set({ body, mediaKey, updatedAt: at })
+        .set({ body, mediaKey, contentId, updatedAt: at })
         .where(eq(submission.id, existing.id));
       return { status: "saved", submissionId: existing.id };
     }
 
     const [inserted] = await tx
       .insert(submission)
-      .values({ taskId, userId, body, mediaKey, state: "draft", createdAt: at, updatedAt: at })
+      .values({
+        taskId,
+        userId,
+        body,
+        mediaKey,
+        contentId,
+        state: "draft",
+        createdAt: at,
+        updatedAt: at,
+      })
       .returning({ id: submission.id });
     return { status: "saved", submissionId: inserted!.id };
   });
@@ -187,6 +267,7 @@ export async function cancelDraft(
   userId: string,
   at: Date = new Date(),
 ): Promise<CancelDraftResult> {
+  if (!UUID_RE.test(taskId)) return { status: "not-a-draft" };
   return db.transaction(async (tx) => {
     const [existing] = await tx
       .select({ id: submission.id, state: submission.state })
@@ -568,6 +649,8 @@ export type SubmissionDetail = {
   taskPoints: number;
   memberId: string;
   memberName: string;
+  /** §42 المحتوى المختار — null when the Task carries no §19 scope. */
+  contentTitle: string | null;
   attempts: ReviewAttempt[];
 };
 
@@ -590,10 +673,13 @@ export async function submissionForReview(
       taskPoints: task.points,
       memberId: submission.userId,
       memberName: user.name,
+      /** §42 المحتوى المختار — what this work is about, shown to the Editor (§24). */
+      contentTitle: contentItem.title,
     })
     .from(submission)
     .innerJoin(task, eq(task.id, submission.taskId))
     .innerJoin(user, eq(user.id, submission.userId))
+    .leftJoin(contentItem, eq(contentItem.id, submission.contentId))
     .where(eq(submission.id, submissionId))
     .limit(1);
   if (!head) return null;
@@ -622,6 +708,7 @@ export type MemberSubmission = {
   state: "pending" | "accepted" | "rejected" | "returned" | "draft" | "cancelled";
   body: string | null;
   mediaKey: string | null;
+  contentId: string | null;
   reviewNote: string | null;
   updatedAt: Date;
 };
@@ -637,10 +724,12 @@ export async function memberSubmissions(
   userId: string,
   taskIds?: string[],
 ): Promise<MemberSubmission[]> {
-  if (taskIds && taskIds.length === 0) return [];
+  /** Malformed ids are absence, not a throw — filtered here, the seam's job. */
+  const valid = taskIds?.filter((id) => UUID_RE.test(id));
+  if (valid && valid.length === 0) return [];
 
-  const where = taskIds
-    ? and(eq(submission.userId, userId), inArray(submission.taskId, taskIds))
+  const where = valid
+    ? and(eq(submission.userId, userId), inArray(submission.taskId, valid))
     : eq(submission.userId, userId);
 
   return db
@@ -649,6 +738,7 @@ export async function memberSubmissions(
       state: submission.state,
       body: submission.body,
       mediaKey: submission.mediaKey,
+      contentId: submission.contentId,
       reviewNote: submission.reviewNote,
       updatedAt: submission.updatedAt,
     })
@@ -712,6 +802,9 @@ async function reviewableTaskError(
   tx: Queryable,
   taskId: string,
 ): Promise<"not-reviewable" | "not-published" | "not-found" | null> {
+  /** A malformed id is the same absence as an unknown one — guarded HERE, in the
+   * seam, so no caller needs UUID_RE to keep Postgres from throwing on the cast. */
+  if (!UUID_RE.test(taskId)) return "not-found";
   const [t] = await tx
     .select({ mode: task.mode, state: task.state })
     .from(task)

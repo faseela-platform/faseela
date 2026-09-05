@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { adminContentItems, adminTracks, unreadNotificationCount } from "@faseela/db";
+import { adminContentItems, listBodies, adminTracks, unreadNotificationCount } from "@faseela/db";
 
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/require-track-access";
@@ -27,10 +27,11 @@ export default async function IdaraMuhtawa() {
   const isAdmin = staff.role === "admin";
   const scope = isAdmin ? undefined : { supervisorId: staff.id };
 
-  const [items, tracks, unreadCount] = await Promise.all([
+  const [items, tracks, unreadCount, bodies] = await Promise.all([
     adminContentItems(db, scope),
     adminTracks(db, scope),
     unreadNotificationCount(db, staff.id),
+    listBodies(db),
   ]);
 
   return (
@@ -53,6 +54,7 @@ export default async function IdaraMuhtawa() {
           <div className="mt-8">
             <CreateContentForm
               tracks={tracks.map((t) => ({ id: t.id, title: t.title }))}
+              bodies={bodies.map((b) => ({ id: b.id, name: b.name }))}
               canCreateTrackless={isAdmin}
             />
           </div>

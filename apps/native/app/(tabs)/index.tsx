@@ -1,11 +1,14 @@
-import type { ApiContentItem, FeedResponse } from "@faseela/api-types";
+import type { ApiContentItem, FeedResponse, HomeZonesResponse } from "@faseela/api-types";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { FlatList, Image, Linking, StyleSheet, Text, View } from "react-native";
 
 import { EmptyView, ErrorView, LoadingView } from "../../components/feedback";
 import { ScalePressable } from "../../components/pressable";
 import { WelcomeCard } from "../../components/welcome-card";
+import { useSession } from "../../lib/auth-client";
+import { authedFetch } from "../../lib/authed-api";
 import { useTheme, useThemeStyles } from "../../lib/theme-context";
 import { radius, space, text } from "../../lib/theme";
 import { useApi } from "../../lib/use-fetch";
@@ -40,12 +43,75 @@ export default function FeedScreen() {
   const { colors, scheme } = useTheme();
   const styles = useThemeStyles(makeStyles);
 
+  /** Zones 2 and 5 (§3, R3): followed Tracks with their latest word, and اكتشف.
+   * Refetched on focus, like the bell — a follow made on a Track screen shows here
+   * the moment the Member comes back. Signed-out renders neither. */
+  const { data: session } = useSession();
+  const [zones, setZones] = useState<HomeZonesResponse | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) {
+        setZones(null);
+        return;
+      }
+      let cancelled = false;
+      authedFetch<HomeZonesResponse>("/home").then((r) => {
+        if (!cancelled && r.ok) setZones(r.data);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [session]),
+  );
+
+  const header = (
+    <View style={styles.headerWrap}>
+      <WelcomeCard />
+      {zones && zones.followed.length > 0 ? (
+        <View style={styles.zone}>
+          <Text style={styles.zoneHeading}>مسارات تتابعها</Text>
+          {zones.followed.map((f) => (
+            <ScalePressable
+              key={f.slug}
+              style={styles.zoneCard}
+              onPress={() => router.push(`/masarat/${f.slug}`)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.zoneTitle}>{f.title}</Text>
+              <Text style={styles.zoneMeta}>
+                {f.latest ? `جديدها: ${f.latest.title}` : "لا جديد بعد — مهامه بانتظارك"}
+              </Text>
+            </ScalePressable>
+          ))}
+        </View>
+      ) : null}
+      {zones && zones.discover.length > 0 ? (
+        <View style={styles.zone}>
+          <Text style={styles.zoneHeading}>اكتشف مسارات أخرى</Text>
+          {zones.discover.map((d) => (
+            <ScalePressable
+              key={d.slug}
+              style={styles.zoneCard}
+              onPress={() => router.push(`/masarat/${d.slug}`)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.zoneTitle}>{d.title}</Text>
+              <Text style={styles.zoneMeta} numberOfLines={2}>
+                {d.summary}
+              </Text>
+            </ScalePressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+
   if (loading) return <LoadingView />;
   if (error || !data) return <ErrorView code={error ?? "malformed"} onRetry={retry} />;
   if (data.items.length === 0) {
     return (
       <View style={styles.emptyWrap}>
-        <WelcomeCard />
+        {header}
         <EmptyView title="لا مستجدّات بعد" detail="سيظهر هنا جديد المبادرة عند نشره" />
       </View>
     );
@@ -65,7 +131,7 @@ export default function FeedScreen() {
       contentContainerStyle={styles.content}
       data={data.items}
       keyExtractor={(item) => item.id}
-      ListHeaderComponent={<WelcomeCard />}
+      ListHeaderComponent={header}
       renderItem={({ item }) => {
         const isEvent = item.type === "event";
         const tappable = Boolean(item.trackSlug || item.linkUrl);
@@ -124,6 +190,18 @@ const makeStyles = ({ colors, shadow }: ReturnType<typeof useTheme>) =>
     list: { backgroundColor: colors.surface },
     content: { padding: space.lg, gap: space.lg, flexGrow: 1, paddingBottom: space.xxl },
     emptyWrap: { flex: 1, padding: space.lg, gap: space.lg, backgroundColor: colors.surface },
+    headerWrap: { gap: space.lg },
+    zone: { gap: space.md },
+    zoneHeading: { ...text.captionStrong, color: colors.brand },
+    zoneCard: {
+      backgroundColor: colors.surfaceRaised,
+      borderRadius: radius.card,
+      padding: space.lg,
+      gap: 2,
+      ...shadow(1),
+    },
+    zoneTitle: { ...text.bodyStrong, color: colors.ink },
+    zoneMeta: { ...text.caption, color: colors.inkMuted },
     card: {
       backgroundColor: colors.surfaceRaised,
       borderRadius: radius.card,

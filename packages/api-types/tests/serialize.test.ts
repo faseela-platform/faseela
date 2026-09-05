@@ -277,3 +277,44 @@ describe("toApiNotification", () => {
     });
   });
 });
+
+describe("toApiMySubmission", () => {
+  it("converts updatedAt to ISO and passes state, body, key, content and note through", async () => {
+    const { toApiMySubmission } = await import("@faseela/api-types");
+    expect(
+      toApiMySubmission({
+        taskId: "t-1",
+        state: "returned",
+        body: "تلخيصي الأول",
+        mediaKey: "submissions/t-1/u-1/abc.pdf",
+        contentId: "c-1",
+        reviewNote: "أضف المصادر.",
+        updatedAt: new Date(Date.UTC(2026, 8, 5, 10, 0, 0)),
+      }),
+    ).toEqual({
+      taskId: "t-1",
+      state: "returned",
+      body: "تلخيصي الأول",
+      mediaKey: "submissions/t-1/u-1/abc.pdf",
+      contentId: "c-1",
+      reviewNote: "أضف المصادر.",
+      updatedAt: "2026-09-05T10:00:00.000Z",
+    });
+  });
+
+  it("keeps the absent parts null — a text-only draft has no file, no content, no note", async () => {
+    const { toApiMySubmission } = await import("@faseela/api-types");
+    const s = toApiMySubmission({
+      taskId: "t-2",
+      state: "draft",
+      body: null,
+      mediaKey: null,
+      contentId: null,
+      reviewNote: null,
+      updatedAt: new Date(Date.UTC(2026, 8, 5)),
+    });
+    expect(s.mediaKey).toBeNull();
+    expect(s.contentId).toBeNull();
+    expect(s.reviewNote).toBeNull();
+  });
+});

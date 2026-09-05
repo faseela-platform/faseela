@@ -1,5 +1,11 @@
 import { toApiProgress, type MeResponse } from "@faseela/api-types";
-import { isProfileComplete, memberCompletedTaskIds, memberProfile, memberProgress } from "@faseela/db";
+import {
+  followedTrackIds,
+  isProfileComplete,
+  memberCompletedTaskIds,
+  memberProfile,
+  memberProgress,
+} from "@faseela/db";
 
 import { apiSessionUser, err, ok } from "@/lib/api-auth";
 import { db } from "@/lib/db";
@@ -18,10 +24,11 @@ export async function GET(): Promise<Response> {
   const user = await apiSessionUser();
   if (!user) return err("unauthenticated", "سجّل دخولك أولاً.", 401);
 
-  const [profile, progress, completedTaskIds] = await Promise.all([
+  const [profile, progress, completedTaskIds, followed] = await Promise.all([
     memberProfile(db, user.id),
     memberProgress(db, user.id),
     memberCompletedTaskIds(db, user.id),
+    followedTrackIds(db, user.id),
   ]);
 
   return ok<MeResponse>({
@@ -29,5 +36,6 @@ export async function GET(): Promise<Response> {
     profileComplete: isProfileComplete(profile),
     progress: toApiProgress(progress),
     completedTaskIds,
+    followedTrackIds: [...followed],
   });
 }

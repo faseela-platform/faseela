@@ -4,7 +4,7 @@ import {
   type ApiOk,
   type TrackDetailResponse,
 } from "@faseela/api-types";
-import { trackBySlug } from "@faseela/db";
+import { trackBySlug, trackFollowerCounts } from "@faseela/db";
 
 import { db } from "@/lib/db";
 
@@ -32,7 +32,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       return Response.json(body, { status: 404 });
     }
 
-    const body = { data: toApiTrackDetail(track) } satisfies ApiOk<TrackDetailResponse>;
+    /** §11: the count is public and rides the same brief cache; the reader's own
+     * follow state comes from `/me`, so this response stays shareable. */
+    const counts = await trackFollowerCounts(db, [track.id]);
+    const body = {
+      data: {
+        ...toApiTrackDetail(track),
+        trackId: track.id,
+        followerCount: counts.get(track.id) ?? 0,
+      },
+    } satisfies ApiOk<TrackDetailResponse>;
 
     return Response.json(body, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400" },

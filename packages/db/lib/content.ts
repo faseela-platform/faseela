@@ -9,6 +9,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 import { user } from "./identity";
@@ -131,6 +132,15 @@ export const task = pgTable(
      * never retroactively change what past Members earned.
      */
     points: integer("points").notNull(),
+    /**
+     * §19 فلتر المحتوى المرتبط بالمهمة — what the Member may choose the Task's
+     * content from: null = the Task is about no content (today's Tasks); the
+     * literal "track" = any published content of its Track; any other value = a
+     * classification within the Track («كتاب», «مقال», …). The simplest honest
+     * form of §19's three scopes — an explicit id-list can arrive later without
+     * disturbing these two.
+     */
+    contentScope: text("content_scope"),
     state: publishState("state").notNull().default("draft"),
     position: integer("position").notNull().default(0),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -166,6 +176,14 @@ export const submission = pgTable(
     body: text("body"),
     /** R2 object key, not a URL: URLs change, keys do not. */
     mediaKey: text("media_key"),
+    /**
+     * §42 المحتوى المختار — the content this work is ABOUT (§15's chosen book),
+     * when the Task carries a `contentScope`. Set null on content delete: the
+     * work and its review survive; only the pointer is lost.
+     */
+    contentId: uuid("content_id").references((): AnyPgColumn => contentItem.id, {
+      onDelete: "set null",
+    }),
     state: submissionState("state").notNull().default("pending"),
     /** An Editor's note back to the Member on reject or return. */
     reviewNote: text("review_note"),
@@ -271,6 +289,64 @@ export const submissionAttempt = pgTable(
  * and a supervisor may hold several Tracks — a many-to-many the role enum cannot
  * express. Assignment is a deliberate admin act (§35: never granted by Points).
  */
+/**
+ * متابعة المسار (§10) — the explicit follow relation, R3 (Slices 12+13). Until now
+ * notifications *guessed* a Member's Tracks from where they had worked
+ * (`notification-emit.ts`'s implicit follow, self-documented as a stand-in); this
+ * table is the real thing: the home's zone 2 (§3), the followed-first Tracks page
+ * (§9), the follow button and follower count (§11) all read from here.
+ *
+ * Mirrors `track_supervisor`'s shape deliberately: a join table (a Member follows
+ * many Tracks, a Track has many followers), unique per pair so a double-tap is a
+ * no-op, cascade both ways — a follow is pure interest, and interest is exactly
+ * what a removed account or Track should lose. The migration backfills a follow
+ * for every (Member, Track) the Member has already worked in (owner decision
+ * 2026-09-01: continuity with the implicit-follow notifications).
+ */
+export const trackFollow = pgTable(
+  "track_follow",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trackId: uuid("track_id")
+      .notNull()
+      .references(() => track.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("track_follow_unique").on(t.trackId, t.userId),
+    /** The Member's followed list (§9, zone 2). */
+    index("track_follow_user_idx").on(t.userId),
+    /** The Track's follower count (§11). */
+    index("track_follow_track_idx").on(t.trackId),
+  ],
+);
+
+/**
+ * برامج التأهيل وهيئات الإنتاج (§2) — the initiative's non-Track bodies. The spec
+ * is emphatic that they are NOT Tracks («ليست مسارات ولا تحتوي على نظام مهام»):
+ * only their أخبار and productions appear on the home (§32). A small named table
+ * (owner decision 2026-09-01) rather than free text, so a news item can say WHICH
+ * body it speaks for and the home can label and later filter by it; rather than an
+ * enum, so the initiative can add a body without a migration.
+ */
+export const bodyKind = pgEnum("body_kind", ["program", "production_body"]);
+
+export const initiativeBody = pgTable(
+  "body",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Arabic display name — «المعهد التدريبي», «دار فسيلة», … */
+    name: text("name").notNull().unique(),
+    kind: bodyKind("kind").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("body_kind_position_idx").on(t.kind, t.position)],
+);
+
 export const trackSupervisor = pgTable(
   "track_supervisor",
   {
@@ -314,8 +390,14 @@ export const contentItem = pgTable(
     /** Arabic is the source language of the domain, so the plain columns are Arabic. */
     title: text("title").notNull(),
     body: text("body").notNull(),
-    /** §33 المصدر — free text for now (which programme/wing); Wing modeling deferred. */
+    /** §33 المصدر — free text kept for anything the body table does not name. */
     source: text("source"),
+    /**
+     * §32 — which برنامج/هيئة this general content speaks for, when any. Set
+     * null on body delete rather than cascading: the news outlives the body's
+     * row, it just loses its label.
+     */
+    bodyId: uuid("body_id").references(() => initiativeBody.id, { onDelete: "set null" }),
     /** §33 المسار: content belongs to a Track, or is track-less general content. */
     trackId: uuid("track_id").references(() => track.id, { onDelete: "cascade" }),
     /** §33 التصنيف — an optional topic/category tag. */

@@ -14,9 +14,12 @@ import { buttonClass } from "../../components/ui";
  */
 export function CreateContentForm({
   tracks,
+  bodies,
   canCreateTrackless,
 }: {
   tracks: { id: string; title: string }[];
+  /** §32 — the برامج/هيئات a general piece can speak for. */
+  bodies: { id: string; name: string }[];
   canCreateTrackless: boolean;
 }) {
   const router = useRouter();
@@ -24,12 +27,19 @@ export function CreateContentForm({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [trackId, setTrackId] = useState<string>(canCreateTrackless ? "" : (tracks[0]?.id ?? ""));
+  const [bodyId, setBodyId] = useState<string>("");
   const [pending, start] = useTransition();
   const [result, setResult] = useState<ContentActionState | null>(null);
 
   function submit() {
     start(async () => {
-      const r = await createContentAction({ type, title, body, trackId: trackId || null });
+      const r = await createContentAction({
+        type,
+        title,
+        body,
+        trackId: trackId || null,
+        bodyId: bodyId || null,
+      });
       setResult(r);
       if (r.status === "ok" && r.id) router.push(`/idara/muhtawa/${r.id}`);
     });
@@ -114,6 +124,26 @@ export function CreateContentForm({
         </div>
 
         <div className="flex items-center gap-3">
+          <div>
+            <label className={label} htmlFor="c-body-id">
+              الجهة (برنامج/هيئة §32 — اختياري)
+            </label>
+            <select
+              id="c-body-id"
+              dir="rtl"
+              value={bodyId}
+              disabled={pending}
+              onChange={(e) => setBodyId(e.target.value)}
+              className={input}
+            >
+              <option value="">— بلا جهة —</option>
+              {bodies.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             type="button"
             disabled={pending || title.trim() === "" || body.trim() === ""}

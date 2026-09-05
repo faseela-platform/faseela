@@ -12,7 +12,7 @@ import { baseUrl, sessionCookie } from "./auth-client";
  */
 export async function authedFetch<T>(
   path: string,
-  opts?: { method?: "GET" | "POST"; body?: unknown },
+  opts?: { method?: "GET" | "POST" | "DELETE"; body?: unknown },
 ): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
   try {
     const headers: Record<string, string> = { accept: "application/json" };

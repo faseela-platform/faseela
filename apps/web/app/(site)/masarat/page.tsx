@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 
-import { publishedTracks } from "@faseela/db";
+import { followedTrackIds, publishedTracks } from "@faseela/db";
 
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Nav } from "../components/nav";
 import { Num } from "../components/num";
-import { buttonClass, Card, EmptyState, Ordinal, PageHeader, Points } from "../components/ui";
+import { buttonClass, Card, EmptyState, Ordinal, PageHeader, Pill, Points } from "../components/ui";
 
 /**
  * The Tracks index — the first page in this codebase built from real database
@@ -27,15 +29,24 @@ export const metadata: Metadata = {
 };
 
 /**
- * Content is Editor-owned and changes without a deploy, so the page cannot be
- * statically frozen at build time. Sixty seconds is short enough that a
- * newly-published Track appears while an Editor is still looking at the site,
- * and long enough that the page is not a database query per visitor.
+ * Was ISR (60 s) while the list was the same for everyone. §9 orders a Member's
+ * followed Tracks first — a per-reader ordering no shared cache can hold — so the
+ * page renders per request now, like every signed-in surface (R3).
  */
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function TracksIndexPage() {
-  const tracks = await publishedTracks(db);
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [all, followedSet] = await Promise.all([
+    publishedTracks(db),
+    session?.user ? followedTrackIds(db, session.user.id) : Promise.resolve(new Set<string>()),
+  ]);
+  /** §9: «المسارات التي يتابعها المستخدم في الأعلى» — two groups, each keeping
+   * the Editors' position order, so following never scrambles the catalogue. */
+  const tracks = [
+    ...all.filter((t) => followedSet.has(t.id)),
+    ...all.filter((t) => !followedSet.has(t.id)),
+  ];
 
   return (
     <>
@@ -67,26 +78,30 @@ export default async function TracksIndexPage() {
                   key={track.slug}
                   as="li"
                   reveal={(i % 3) * 80}
-                  className="flex min-h-[15rem] flex-col justify-between"
+                  className="relative flex min-h-[15rem] flex-col justify-between transition-shadow duration-[130ms] ease-[var(--ease-hover)] has-[a:hover]:shadow-[var(--card-shadow)]"
                 >
                   {/*
                    * The ordinal in gold — the identity's voice for the things it counts
                    * (ADR 0029). `aria-hidden` because it is decoration: the list order and
                    * the Track's own name already say which this is.
                    */}
-                  <Ordinal>
-                    <span aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
-                  </Ordinal>
+                  <div className="flex items-start justify-between gap-3">
+                    <Ordinal>
+                      <span aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                    </Ordinal>
+                    {followedSet.has(track.id) ? <Pill tone="brand">تتابعه</Pill> : null}
+                  </div>
 
                   <div className="mt-6">
                     <h2 className="font-display text-card-title mb-2 leading-[1.5] font-bold">
                       {/*
-                       * The whole card is not the link. A link wrapping a card makes the
-                       * accessible name the entire block of text; the heading is the link.
+                       * The heading is the link — its text stays the accessible name — but
+                       * a stretched ::after makes the whole card the hit area (owner,
+                       * 2026-09-03: the card should be clickable, not just the title).
                        */}
                       <Link
                         href={`/masarat/${track.slug}`}
-                        className="text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"
+                        className="text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] after:absolute after:inset-0 after:content-[''] hover:text-[var(--brand)]"
                       >
                         {track.title}
                       </Link>

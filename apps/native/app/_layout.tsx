@@ -73,6 +73,8 @@ function Shell() {
           options={{ title: "أكمِل حسابك", presentation: "modal" }}
         />
         <Stack.Screen name="ishaarat" options={{ title: "الإشعارات" }} />
+        <Stack.Screen name="iadadat" options={{ title: "الإعدادات" }} />
+        <Stack.Screen name="muhimma/[id]" options={{ title: "إرسال عملك" }} />
       </Stack>
       {intro ? <AnimatedSplash onDone={onIntroDone} /> : null}
     </>

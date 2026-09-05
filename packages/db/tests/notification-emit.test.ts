@@ -9,11 +9,13 @@ import {
   acceptSubmission,
   attestTask,
   createContentItem,
+  followTrack,
   notificationsFor,
   publishContentItem,
   rejectSubmission,
   returnSubmission,
   schema,
+  unfollowTrack,
   type Database,
 } from "@faseela/db";
 
@@ -95,8 +97,7 @@ async function pendingSubmission(taskId: string, userId: string) {
   return sub!.id;
 }
 
-const typesFor = async (userId: string) =>
-  (await notificationsFor(db, userId)).map((n) => n.type);
+const typesFor = async (userId: string) => (await notificationsFor(db, userId)).map((n) => n.type);
 
 beforeEach(async () => {
   const client = new PGlite();
@@ -218,6 +219,38 @@ describe("publishing content on a Track tells the people following it", () => {
     expect(update).toBeDefined();
     expect(update!.title).toContain("كتاب جديد");
     expect(update!.trackSlug).toBe("reading");
+  });
+
+  it("reaches an explicit follower who never worked in the Track (§10 is the audience now)", async () => {
+    const trackId = await seedTrack("reading");
+    await seedUser("watcher");
+    await followTrack(db, "watcher", trackId);
+
+    const created = await createContentItem(
+      db,
+      { type: "product", title: "كتاب جديد", body: "أضفنا كتاباً", trackId, createdBy: "editor" },
+      at,
+    );
+    if (created.status !== "created") throw new Error(created.status);
+    await publishContentItem(db, created.id, at);
+
+    expect((await notificationsFor(db, "watcher")).map((n) => n.type)).toContain("track_update");
+  });
+
+  it("respects an unfollow — a past worker who unfollowed hears nothing more", async () => {
+    const trackId = await seedTrack("reading");
+    await memberWhoWorkedIn(trackId, "left");
+    await unfollowTrack(db, "left", trackId);
+
+    const created = await createContentItem(
+      db,
+      { type: "product", title: "كتاب", body: "نص", trackId, createdBy: "editor" },
+      at,
+    );
+    if (created.status !== "created") throw new Error(created.status);
+    await publishContentItem(db, created.id, at);
+
+    expect((await notificationsFor(db, "left")).map((n) => n.type)).not.toContain("track_update");
   });
 
   it("does not reach members with no connection to that Track", async () => {

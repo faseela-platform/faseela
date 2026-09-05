@@ -107,7 +107,13 @@ export async function archiveTrackAction(trackId: string): Promise<ActionState> 
 
 export async function createTaskAction(
   trackId: string,
-  input: { title: string; instructions: string; mode: "attest" | "review"; points: number },
+  input: {
+    title: string;
+    instructions: string;
+    mode: "attest" | "review";
+    points: number;
+    contentScope?: string | null;
+  },
 ): Promise<ActionState> {
   await requireTrackAccess(trackId);
   const r = await createTask(db, { trackId, ...input });

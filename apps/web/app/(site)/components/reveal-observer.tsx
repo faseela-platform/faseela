@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 /**
@@ -24,6 +24,13 @@ import { useEffect } from "react";
  */
 export function RevealObserver() {
   const pathname = usePathname();
+  /**
+   * Same-path navigations that only change the query (the track page's المهام|المحتوى
+   * tabs) still swap the `[data-reveal]` DOM — key the effect on both, or the new
+   * tab's cards are never observed while `data-reveal-armed` keeps them hidden
+   * (owner report, 2026-09-03). Requires a <Suspense> around the island.
+   */
+  const search = useSearchParams().toString();
   useEffect(() => {
     const html = document.documentElement;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -64,7 +71,7 @@ export function RevealObserver() {
       io.disconnect();
       html.removeAttribute("data-reveal-armed");
     };
-  }, [pathname]);
+  }, [pathname, search]);
 
   return null;
 }

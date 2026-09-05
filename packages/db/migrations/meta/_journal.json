@@ -64,6 +64,13 @@
       "when": 1788109501355,
       "tag": "0008_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788296800885,
+      "tag": "0009_follows_bodies_content_links",
+      "breakpoints": true
     }
   ]
 }

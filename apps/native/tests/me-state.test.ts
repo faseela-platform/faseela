@@ -14,6 +14,7 @@ const me = (id: string): MeResponse => ({
   profileComplete: true,
   progress: { tier: "بذرة", points: 40, nextTier: "نبتة", pointsToNext: 60 },
   completedTaskIds: [],
+  followedTrackIds: [],
 });
 
 const loadedFor = (id: string): MeState =>

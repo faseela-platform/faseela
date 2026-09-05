@@ -51,12 +51,14 @@ function CreateTaskForm({ trackId }: { trackId: string }) {
   const [instructions, setInstructions] = useState("");
   const [mode, setMode] = useState<Mode>("review");
   const [points, setPoints] = useState(50);
+  const [contentScope, setContentScope] = useState("");
   const [pending, start] = useTransition();
   const [result, setResult] = useState<ActionState | null>(null);
 
   function submit() {
     start(async () => {
       const r = await createTaskAction(trackId, {
+        contentScope: contentScope.trim() === "" ? null : contentScope.trim(),
         title: title.trim(),
         instructions: instructions.trim(),
         mode,
@@ -115,6 +117,17 @@ function CreateTaskForm({ trackId }: { trackId: string }) {
             disabled={pending}
             onChange={(e) => setPoints(Number(e.target.value))}
             className={`${INPUT} mt-1 w-24`}
+          />
+        </label>
+        <label className="text-caption block font-semibold text-[var(--ink-muted)]">
+          نطاق المحتوى (§19)
+          <input
+            dir="rtl"
+            value={contentScope}
+            disabled={pending}
+            onChange={(e) => setContentScope(e.target.value)}
+            placeholder="فارغ = بلا محتوى · track = كل المحتوى · أو تصنيف مثل «كتاب»"
+            className={`${INPUT} mt-1 w-64`}
           />
         </label>
         <button

@@ -23,9 +23,7 @@ const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // ------------------------------------------------------------------ Track
 
 export type CreateTrackResult =
-  | { status: "created"; id: string }
-  | { status: "invalid-slug" }
-  | { status: "slug-taken" };
+  { status: "created"; id: string } | { status: "invalid-slug" } | { status: "slug-taken" };
 
 export async function createTrack(
   db: Database,
@@ -48,9 +46,7 @@ export async function createTrack(
     .onConflictDoNothing({ target: track.slug })
     .returning({ id: track.id });
 
-  return inserted[0]
-    ? { status: "created", id: inserted[0].id }
-    : { status: "slug-taken" };
+  return inserted[0] ? { status: "created", id: inserted[0].id } : { status: "slug-taken" };
 }
 
 export type UpdateTrackResult =
@@ -68,7 +64,11 @@ export async function updateTrack(
   if (input.slug !== undefined && !SLUG_RE.test(input.slug)) return { status: "invalid-slug" };
 
   return db.transaction(async (tx) => {
-    const [existing] = await tx.select({ id: track.id }).from(track).where(eq(track.id, id)).limit(1);
+    const [existing] = await tx
+      .select({ id: track.id })
+      .from(track)
+      .where(eq(track.id, id))
+      .limit(1);
     if (!existing) return { status: "not-found" };
 
     if (input.slug !== undefined) {
@@ -137,9 +137,7 @@ export async function unpublishTrack(db: Database, id: string, at: Date = new Da
 // ------------------------------------------------------------------- Task
 
 export type CreateTaskResult =
-  | { status: "created"; id: string }
-  | { status: "track-not-found" }
-  | { status: "invalid-points" };
+  { status: "created"; id: string } | { status: "track-not-found" } | { status: "invalid-points" };
 
 export async function createTask(
   db: Database,
@@ -150,14 +148,29 @@ export async function createTask(
     mode: "attest" | "review";
     points: number;
     position?: number;
+    /** §19 — what content the Member may choose from: null, "track", or a classification. */
+    contentScope?: string | null;
   },
   at: Date = new Date(),
 ): Promise<CreateTaskResult> {
   if (!Number.isInteger(input.points) || input.points < 1) return { status: "invalid-points" };
 
   return db.transaction(async (tx) => {
-    const [t] = await tx.select({ id: track.id }).from(track).where(eq(track.id, input.trackId)).limit(1);
+    const [t] = await tx
+      .select({ id: track.id })
+      .from(track)
+      .where(eq(track.id, input.trackId))
+      .limit(1);
     if (!t) return { status: "track-not-found" };
+
+    /** No stated position → the end of the road: after every existing Task, any
+     * state (an unpublished 05 must not collide with a published 05 later). The
+     * admin form never asks for a position, so this default IS the ordering. */
+    const [last] = await tx
+      .select({ max: sql<number | null>`max(${task.position})` })
+      .from(task)
+      .where(eq(task.trackId, input.trackId));
+    const position = input.position ?? (last?.max ?? -1) + 1;
 
     const [inserted] = await tx
       .insert(task)
@@ -167,7 +180,12 @@ export async function createTask(
         instructions: input.instructions,
         mode: input.mode,
         points: input.points,
-        position: input.position ?? 0,
+        position,
+        /** §19 scopes belong to review Tasks only: an attest records no submission
+         * content (§42's المحتوى المختار has nowhere to land), so a scope on an
+         * attest Task would be a promise the flow cannot keep. Coerced, not
+         * refused — the admin form shows the field for both modes. */
+        contentScope: input.mode === "review" ? (input.contentScope ?? null) : null,
         state: "draft",
         createdAt: at,
         updatedAt: at,
@@ -180,9 +198,7 @@ export async function createTask(
 }
 
 export type UpdateTaskResult =
-  | { status: "updated" }
-  | { status: "not-found" }
-  | { status: "invalid-points" };
+  { status: "updated" } | { status: "not-found" } | { status: "invalid-points" };
 
 export async function updateTask(
   db: Database,
@@ -250,9 +266,7 @@ export async function unpublishTask(db: Database, id: string, at: Date = new Dat
 }
 
 export type DeleteTaskResult =
-  | { status: "deleted" }
-  | { status: "not-found" }
-  | { status: "has-awards" };
+  { status: "deleted" } | { status: "not-found" } | { status: "has-awards" };
 
 /**
  * Delete a Task — but only if nothing was ever earned against it. A Task with a
@@ -324,7 +338,15 @@ export async function adminTracks(
     : base;
 
   const rows = await scoped
-    .groupBy(track.id, track.slug, track.title, track.summary, track.state, track.position, track.publishedAt)
+    .groupBy(
+      track.id,
+      track.slug,
+      track.title,
+      track.summary,
+      track.state,
+      track.position,
+      track.publishedAt,
+    )
     .orderBy(asc(track.position));
 
   return rows.map((r) => ({
@@ -408,13 +430,7 @@ export async function adminTrack(db: Database, id: string): Promise<AdminTrackDe
  * track-less content by an Admin.
  */
 
-export type ContentType =
-  | "announcement"
-  | "product"
-  | "event"
-  | "news"
-  | "cultural"
-  | "app_update";
+export type ContentType = "announcement" | "product" | "event" | "news" | "cultural" | "app_update";
 
 /** The fields an author sets. `createdBy` is passed separately (from the session),
  * never the form. `null` clears an optional column; `undefined` leaves it. */
@@ -424,6 +440,8 @@ export type ContentInput = {
   body: string;
   source?: string | null;
   trackId?: string | null;
+  /** §32 — the برنامج/هيئة this general content speaks for, when any. */
+  bodyId?: string | null;
   classification?: string | null;
   minTier?: string | null;
   taskId?: string | null;
@@ -479,6 +497,7 @@ export async function createContentItem(
         body: input.body,
         source: input.source ?? null,
         trackId: input.trackId ?? null,
+        bodyId: input.bodyId ?? null,
         classification: input.classification ?? null,
         minTier: input.minTier ?? null,
         taskId: input.taskId ?? null,
@@ -532,6 +551,7 @@ export async function updateContentItem(
         ...(input.body !== undefined ? { body: input.body } : {}),
         ...(input.source !== undefined ? { source: input.source } : {}),
         ...(input.trackId !== undefined ? { trackId: input.trackId } : {}),
+        ...(input.bodyId !== undefined ? { bodyId: input.bodyId } : {}),
         ...(input.classification !== undefined ? { classification: input.classification } : {}),
         ...(input.minTier !== undefined ? { minTier: input.minTier } : {}),
         ...(input.taskId !== undefined ? { taskId: input.taskId } : {}),

@@ -5,11 +5,15 @@ import { notFound } from "next/navigation";
 
 import {
   completedTaskIds,
+  followedTrackIds,
   memberProgress,
   unreadNotificationCount,
   memberSubmissions,
   publishedTracks,
+  taskContentChoices,
   trackBySlug,
+  trackContentItems,
+  trackFollowerCounts,
 } from "@faseela/db";
 
 import { auth } from "@/lib/auth";
@@ -18,8 +22,17 @@ import { r2IsConfigured } from "@/lib/r2";
 import { taskStage, walkedSegments } from "@/lib/road";
 import { Nav } from "../../components/nav";
 import { Num } from "../../components/num";
-import { BackLink, Card, EmptyState, Ordinal, Pill, Points } from "../../components/ui";
+import {
+  BackLink,
+  buttonClass,
+  Card,
+  EmptyState,
+  Ordinal,
+  Pill,
+  Points,
+} from "../../components/ui";
 import { AttestButton } from "../attest-button";
+import { follow, unfollow } from "../actions";
 import { ReviewPanel } from "../review-panel";
 import { RoadLane } from "../road";
 
@@ -89,8 +102,15 @@ const MODE_HINT: Record<"attest" | "review", string> = {
   review: "أرسل عملك، وتُحتسب النقاط بعد قبوله.",
 };
 
-export default async function TrackPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TrackPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { slug } = await params;
+  const { tab } = await searchParams;
   const track = await trackBySlug(db, slug);
 
   /**
@@ -118,6 +138,26 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
    */
   const mySubmissions = session?.user ? await memberSubmissions(db, session.user.id, taskIds) : [];
   const submissionByTask = new Map(mySubmissions.map((s) => [s.taskId, s]));
+
+  /**
+   * §10/§11: whether this reader follows the Track, and how many do; §13: the
+   * Track's published content for the المحتوى tab; §15 path 2: each scoped review
+   * Task's choosable content, for the submission picker.
+   */
+  const [followedSet, followerCounts, contentItems] = await Promise.all([
+    session?.user ? followedTrackIds(db, session.user.id) : Promise.resolve(new Set<string>()),
+    trackFollowerCounts(db, [track.id]),
+    trackContentItems(db, track.id),
+  ]);
+  const isFollowing = followedSet.has(track.id);
+  const followerCount = followerCounts.get(track.id) ?? 0;
+  const choicesEntries = await Promise.all(
+    track.tasks
+      .filter((t) => t.mode === "review")
+      .map(async (t) => [t.id, await taskContentChoices(db, t.id)] as const),
+  );
+  const choicesByTask = new Map(choicesEntries);
+  const activeTab: "maham" | "muhtawa" = tab === "muhtawa" ? "muhtawa" : "maham";
 
   /**
    * طريق الفسائل: each Task's growth stage and how far the road reads as walked
@@ -162,6 +202,33 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
               <p className="lede text-lede mt-5 max-w-xl text-[var(--ink-muted)]">
                 {track.summary}
               </p>
+
+              {/* §11: the follow affordance and the follower count, as ONE persistent
+                  toggle on both platforms (owner, 2026-09-05): the following state is
+                  itself the unfollow button — supersedes §11's hide-button +
+                  foot-unfollow reading (ADR 0035 note). */}
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                {isFollowing ? (
+                  <form action={unfollow.bind(null, track.id, track.slug)}>
+                    <button
+                      type="submit"
+                      className="text-body-sm inline-flex min-h-11 items-center rounded-[var(--radius-chip)] bg-[var(--tint-brand)] px-4 font-semibold text-[var(--brand-deep)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:bg-transparent hover:text-[var(--ink-muted)]"
+                      title="إلغاء المتابعة"
+                    >
+                      تتابع هذا المسار ✓
+                    </button>
+                  </form>
+                ) : (
+                  <form action={follow.bind(null, track.id, track.slug)}>
+                    <button type="submit" className={buttonClass("primary", "sm")}>
+                      تابع المسار
+                    </button>
+                  </form>
+                )}
+                <p className="text-body-sm text-[var(--ink-muted)]">
+                  <Num value={followerCount} /> {followerCount === 1 ? "متابع" : "متابعون"}
+                </p>
+              </div>
             </div>
 
             {/*
@@ -191,7 +258,80 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
            * (ADR 0019), and this Track is genuinely published — so the page says so
            * plainly rather than rendering an empty grid that reads as a bug.
            */}
-          {track.tasks.length === 0 ? (
+          {/* §13: the Track page's two faces — its materials and its Tasks. Server-
+              rendered tabs (links, no JS): the road stays on المهام, the content
+              grid lives on المحتوى, and either can be linked to directly. */}
+          <nav
+            aria-label="أقسام المسار"
+            className="mt-12 flex gap-2 border-b border-[var(--hairline)]"
+          >
+            {(
+              [
+                ["maham", "المهام", `/masarat/${track.slug}`],
+                ["muhtawa", "المحتوى", `/masarat/${track.slug}?tab=muhtawa`],
+              ] as const
+            ).map(([key, label, href]) => (
+              <Link
+                key={key}
+                href={href}
+                aria-current={activeTab === key ? "page" : undefined}
+                className={`text-body-sm inline-flex min-h-11 items-center border-b-2 px-4 font-semibold transition-colors duration-[130ms] ease-[var(--ease-hover)] ${
+                  activeTab === key
+                    ? "border-[var(--brand)] text-[var(--brand)]"
+                    : "border-transparent text-[var(--ink-muted)] hover:text-[var(--brand)]"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          {activeTab === "muhtawa" ? (
+            contentItems.length === 0 ? (
+              <EmptyState
+                title="محتوى هذا المسار قيد الإعداد."
+                body="سيضيف مشرفو المسار موادّه قريباً."
+              />
+            ) : (
+              <ol className="mt-8 grid gap-4 md:grid-cols-2">
+                {contentItems.map((item, i) => (
+                  <Card
+                    key={item.id}
+                    as="li"
+                    reveal={(i % 2) * 80}
+                    className="relative flex flex-col transition-shadow duration-[130ms] ease-[var(--ease-hover)] has-[a:hover]:shadow-[var(--card-shadow)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-display text-card-title leading-[1.5] font-bold">
+                        {/* The heading is the stretched link so the card's accessible
+                            name is the TITLE, not a CTA repeated on every card. */}
+                        <Link
+                          href={`/muhtawa/${item.id}`}
+                          className="text-[var(--ink)] transition-colors duration-[130ms] ease-[var(--ease-hover)] after:absolute after:inset-0 after:content-[''] hover:text-[var(--brand)]"
+                        >
+                          {item.title}
+                        </Link>
+                      </h3>
+                      {item.classification ? <Pill tone="brand">{item.classification}</Pill> : null}
+                    </div>
+                    <p className="text-body-sm mt-2 mb-4 line-clamp-3 text-[var(--ink-muted)]">
+                      {item.body}
+                    </p>
+                    <div className="mt-auto border-t border-[var(--hairline)] pt-4">
+                      {/* brand-deep, not brand: as plain small text this must clear the
+                          contrast floor on its own (axe flagged the lighter teal). */}
+                      <p
+                        aria-hidden="true"
+                        className="text-body-sm inline-flex min-h-11 items-center font-semibold text-[var(--brand-deep)]"
+                      >
+                        اقرأ وابدأ العمل عليه ←
+                      </p>
+                    </div>
+                  </Card>
+                ))}
+              </ol>
+            )
+          ) : track.tasks.length === 0 ? (
             <div className="mt-12 border-t border-[var(--hairline)]">
               <EmptyState
                 title="مهام هذا المسار قيد الإعداد."
@@ -200,8 +340,6 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
             </div>
           ) : (
             <>
-              <h2 className="text-body-sm mt-14 mb-6 font-bold text-[var(--brand)]">المهام</h2>
-
               {/*
                * طريق الفسائل: a single winding lane down the list, the card on
                * alternating sides (small screens: a straight rail at the inline
@@ -285,6 +423,11 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
                                 state={submissionByTask.get(task.id)?.state ?? null}
                                 initialBody={submissionByTask.get(task.id)?.body ?? ""}
                                 initialMediaKey={submissionByTask.get(task.id)?.mediaKey ?? null}
+                                initialContentId={submissionByTask.get(task.id)?.contentId ?? null}
+                                contentChoices={(choicesByTask.get(task.id) ?? []).map((c) => ({
+                                  id: c.id,
+                                  title: c.title,
+                                }))}
                                 reviewNote={submissionByTask.get(task.id)?.reviewNote ?? null}
                                 r2Enabled={r2IsConfigured}
                               />
@@ -312,6 +455,8 @@ export default async function TrackPage({ params }: { params: Promise<{ slug: st
          * reader. The obvious next move from the end of one Track is another Track.
          */}
         <section className="gutter mx-auto max-w-[1440px] border-t border-[var(--hairline)] py-16">
+          {/* Unfollow lives in the header toggle now (owner, 2026-09-05) — one
+              pattern on both platforms, no duplicate exit here. */}
           <Link
             href="/masarat"
             className="text-body-lg inline-flex min-h-11 items-center gap-1.5 font-medium text-[var(--ink-muted)] transition-colors duration-[130ms] ease-[var(--ease-hover)] hover:text-[var(--brand)]"

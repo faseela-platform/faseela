@@ -87,6 +87,42 @@ export {
   type TrackSupervisorRow,
 } from "./lib/supervisors";
 /**
+ * متابعة المسار (§10) — the follow relation the home's zone 2, the followed-first
+ * Tracks page and the notification audience read. Guards live in the functions.
+ */
+export {
+  followTrack,
+  unfollowTrack,
+  followedTrackIds,
+  followOnFirstWork,
+  trackFollowerCounts,
+  type FollowResult,
+  type UnfollowResult,
+} from "./lib/follows";
+/**
+ * محتوى المسار (§13–§15, §19) — the Track's content tab, the content page with its
+ * linked Tasks, and a scoped Task's choosable content. Published rows only.
+ */
+export {
+  trackContentItems,
+  contentItemById,
+  taskContentChoices,
+  type TrackContentItem,
+  type ContentItemPage,
+  type LinkedTask,
+} from "./lib/track-content";
+/** The home's zones 2 and 5 (§3) — followed Tracks with their latest word, and discovery. */
+export { followedTracksWithLatest, discoveryTracks, type FollowedTrackCard } from "./lib/home";
+/** برامج التأهيل وهيئات الإنتاج (§2) — the bodies whose news the home carries (§32). */
+export { listBodies, type InitiativeBodyRow } from "./lib/bodies";
+/** سجل أعمالي (§30 addition) — the Member's own completed and open work. */
+export {
+  memberWorkRecord,
+  type WorkRecord,
+  type CompletedWork,
+  type OpenWork,
+} from "./lib/work-record";
+/**
  * The only sanctioned way to read Tracks for the public site. Exported as
  * functions rather than leaving pages to query `schema.track` themselves,
  * because every one of these carries the `state = 'published'` filter — and a

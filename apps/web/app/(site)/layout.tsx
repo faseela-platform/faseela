@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
+import { Suspense } from "react";
 import { Cairo, Rubik } from "next/font/google";
 
 import "../globals.css";
@@ -69,8 +70,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeScript />
       </head>
       <body className="font-body flex min-h-full flex-col bg-[var(--surface)] text-[var(--ink)]">
-        {/* One-shot section reveals on every page (ADR 0011 revised); ~1 KB, additive. */}
-        <RevealObserver />
+        {/* One-shot section reveals on every page (ADR 0011 revised); ~1 KB, additive.
+            Suspense because the island reads useSearchParams (tab switches swap the
+            reveal DOM); it renders null, so the boundary costs nothing visually and
+            keeps static pages static. */}
+        <Suspense fallback={null}>
+          <RevealObserver />
+        </Suspense>
         {children}
       </body>
     </html>

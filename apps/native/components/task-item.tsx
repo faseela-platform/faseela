@@ -17,8 +17,8 @@ type Task = TrackDetailResponse["tasks"][number];
 
 /**
  * One Task on a Track's page. `attest` Tasks get a completion button (the mobile
- * mirror of the web AttestButton); `review` Tasks are shown but not yet completable
- * on mobile (submission-with-files is a deferred follow-up). The Member id is never
+ * mirror of the web AttestButton); `review` Tasks open the submission screen
+ * (muhimma/[id] — text, file, المحتوى المختار). The Member id is never
  * sent — the server derives it from the token — and the §5 profile gate comes back
  * as a status that routes to the completion screen.
  *
@@ -135,7 +135,33 @@ export function TaskItem({
               )}
             </ScalePressable>
           )
-        ) : null}
+        ) : isDone ? (
+          <Text style={styles.done}>✓ قُبل عملك</Text>
+        ) : (
+          /** The review path (§16–§26): the submission screen owns the form; a
+           * signed-out tap gets the same nudge attest gives. */
+          <ScalePressable
+            style={styles.btn}
+            onPress={() => {
+              if (!signedIn) {
+                Alert.alert("سجّل دخولك أولاً", "افتح تبويب «حسابي» وسجّل الدخول لإرسال عملك.");
+                return;
+              }
+              router.push({
+                pathname: "/muhimma/[id]",
+                params: {
+                  id: task.id,
+                  title: task.title,
+                  instructions: task.instructions,
+                  points: String(task.points),
+                },
+              });
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={styles.btnText}>أرسل عملك</Text>
+          </ScalePressable>
+        )}
       </View>
     </View>
   );

@@ -171,7 +171,10 @@ export function toApiLeaderboardRow(row: LeaderboardRowLike): ApiLeaderboardRow 
  * parts.
  */
 export type TracksResponse = { tracks: ApiTrackSummary[] };
-export type TrackDetailResponse = ApiTrackDetail;
+/** §11: the Track page carries its follower count. Whether THIS reader follows it
+ * is derived client-side from `/me`'s `followedTrackIds` — the count is public and
+ * cacheable, the reader's own state is not, and mixing them would poison the CDN. */
+export type TrackDetailResponse = ApiTrackDetail & { trackId: string; followerCount: number };
 /** `season: null` between Seasons — a designed state, not an error. */
 export type LeaderboardResponse = { season: ApiSeason | null; rows: ApiLeaderboardRow[] };
 
@@ -195,7 +198,13 @@ export type ApiErr = {
       /** The write conflicts with current state (e.g. Task not attestable). */
       | "conflict"
       /** No open Season to count Points toward — a matter of waiting, not of the Task. */
-      | "no-season";
+      | "no-season"
+      /** §19/§42: the chosen content is not one this Task offers (or the Task offers none). */
+      | "invalid-content"
+      /** File uploads are off (R2 unconfigured) — text submission still works. */
+      | "uploads-unavailable"
+      /** The file's extension is outside the submission allow-list. */
+      | "unsupported-type";
     message: string;
   };
 };
@@ -252,6 +261,8 @@ export type MeResponse = {
   profileComplete: boolean;
   progress: ApiProgress;
   completedTaskIds: string[];
+  /** §10 — the Tracks this Member follows, for the app's follow buttons and zones. */
+  followedTrackIds: string[];
 };
 
 /**
@@ -345,3 +356,177 @@ export function toApiNotification(n: NotificationLike): ApiNotification {
   };
 }
 export type NotificationsResponse = { items: ApiNotification[]; unreadCount: number };
+
+/* ------------------------------------------------------------------ R3 (Slices 12+13) */
+
+/** متابعة المسار (§10): follow/unfollow a Track. The Member comes from the session. */
+export type FollowRequest = { trackId: string };
+export type FollowResponse = { trackId: string; following: boolean; followers: number };
+
+/** A Track's content piece (§13/§31) — `imageUrl` presigned by the route, like the Feed. */
+export type ApiTrackContentItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  classification: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  publishedAt: string;
+};
+export type TrackContentResponse = { items: ApiTrackContentItem[] };
+
+/** A Task as §14 lists it under a content piece — enough to start working. */
+export type ApiLinkedTask = {
+  id: string;
+  title: string;
+  instructions: string;
+  mode: "attest" | "review";
+  points: number;
+};
+/** §14 صفحة المحتوى: the piece, its Track, and the Tasks linked to it (§15 path 1). */
+export type ContentDetailResponse = ApiTrackContentItem & {
+  trackSlug: string | null;
+  trackTitle: string | null;
+  eventAt: string | null;
+  eventPlace: string | null;
+  linkedTasks: ApiLinkedTask[];
+};
+
+/** The home's zones 2 and 5 (§3) for the app. */
+export type ApiFollowedTrack = {
+  slug: string;
+  title: string;
+  latest: { title: string; publishedAt: string } | null;
+};
+export type ApiDiscoverTrack = { slug: string; title: string; summary: string };
+export type HomeZonesResponse = { followed: ApiFollowedTrack[]; discover: ApiDiscoverTrack[] };
+
+/** سجل أعمالي (§30 addition): the Member's own completed and open work. */
+export type ApiCompletedWork = {
+  taskTitle: string;
+  trackSlug: string;
+  trackTitle: string;
+  points: number;
+  awardedAt: string;
+};
+export type ApiOpenWork = {
+  taskTitle: string;
+  trackSlug: string;
+  trackTitle: string;
+  state: "draft" | "pending" | "returned" | "rejected" | "cancelled";
+  updatedAt: string;
+};
+export type WorkRecordResponse = { completed: ApiCompletedWork[]; submissions: ApiOpenWork[] };
+
+type TrackContentItemLike = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  classification: string | null;
+  linkUrl: string | null;
+  publishedAt: Date;
+};
+export function toApiTrackContentItem(
+  item: TrackContentItemLike,
+  imageUrl: string | null,
+): ApiTrackContentItem {
+  return {
+    id: item.id,
+    type: item.type,
+    title: item.title,
+    body: item.body,
+    classification: item.classification,
+    imageUrl,
+    linkUrl: item.linkUrl,
+    publishedAt: item.publishedAt.toISOString(),
+  };
+}
+
+type WorkRecordLike = {
+  completed: {
+    taskTitle: string;
+    trackSlug: string;
+    trackTitle: string;
+    points: number;
+    awardedAt: Date;
+  }[];
+  submissions: {
+    taskTitle: string;
+    trackSlug: string;
+    trackTitle: string;
+    state: "draft" | "pending" | "returned" | "rejected" | "cancelled";
+    updatedAt: Date;
+  }[];
+};
+export function toApiWorkRecord(record: WorkRecordLike): WorkRecordResponse {
+  return {
+    completed: record.completed.map((c) => ({ ...c, awardedAt: c.awardedAt.toISOString() })),
+    submissions: record.submissions.map((s) => ({ ...s, updatedAt: s.updatedAt.toISOString() })),
+  };
+}
+
+// ------------------------------------------- Review submission on mobile (§16–§26)
+
+/**
+ * The Member's own Submission for one Task — what `GET /api/v1/tasks/:id/submission`
+ * returns so the phone can render the same panel the web's review-panel builds from
+ * `memberSubmissions`: the working copy (draft/returned are editable), the pending
+ * lock, and the reviewer's note when the work came back. The `mediaKey` is the
+ * Member's own attached file, returned so a resubmission can carry it forward.
+ */
+export type ApiMySubmission = {
+  taskId: string;
+  state: "draft" | "pending" | "accepted" | "rejected" | "returned" | "cancelled";
+  body: string | null;
+  mediaKey: string | null;
+  contentId: string | null;
+  reviewNote: string | null;
+  updatedAt: string;
+};
+
+export function toApiMySubmission(s: {
+  taskId: string;
+  state: ApiMySubmission["state"];
+  body: string | null;
+  mediaKey: string | null;
+  contentId: string | null;
+  reviewNote: string | null;
+  updatedAt: Date;
+}): ApiMySubmission {
+  return {
+    taskId: s.taskId,
+    state: s.state,
+    body: s.body,
+    mediaKey: s.mediaKey,
+    contentId: s.contentId,
+    reviewNote: s.reviewNote,
+    updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+/** A choice for a content-scoped Task's «المحتوى المختار» picker (§15 path 2 / §19). */
+export type ApiContentChoice = { id: string; title: string };
+
+export type TaskSubmissionResponse = {
+  submission: ApiMySubmission | null;
+  /** Empty when the Task has no content scope — the picker simply doesn't render. */
+  choices: ApiContentChoice[];
+};
+
+/**
+ * `POST /api/v1/tasks/:id/submission` — save a draft (`draft: true`) or submit for
+ * review. The Member id comes from the token, never the body (the standing invariant).
+ */
+export type SubmitSubmissionRequest = {
+  body: string;
+  mediaKey?: string | null;
+  contentId?: string | null;
+  draft?: boolean;
+};
+export type SubmitSubmissionResponse = { state: "submitted" | "draft-saved" };
+
+/** `POST /api/v1/uploads` — mint a presigned PUT so the phone uploads straight to R2. */
+export type UploadRequest = { taskId: string; filename: string };
+export type UploadTicketResponse = { url: string; key: string };

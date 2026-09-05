@@ -41,9 +41,17 @@ let db: Database;
 const at = new Date("2026-03-15T12:00:00Z");
 
 const trackRow = (id: string) =>
-  db.select().from(schema.track).where(eq(schema.track.id, id)).then((r) => r[0]!);
+  db
+    .select()
+    .from(schema.track)
+    .where(eq(schema.track.id, id))
+    .then((r) => r[0]!);
 const taskRow = (id: string) =>
-  db.select().from(schema.task).where(eq(schema.task.id, id)).then((r) => r[0]!);
+  db
+    .select()
+    .from(schema.task)
+    .where(eq(schema.task.id, id))
+    .then((r) => r[0]!);
 
 beforeEach(async () => {
   const client = new PGlite();
@@ -73,13 +81,19 @@ describe("createTrack", () => {
   });
 
   it("rejects a non-Latin or malformed slug", async () => {
-    expect((await createTrack(db, { slug: "حلقات", title: "x", summary: "y" }, at)).status).toBe("invalid-slug");
-    expect((await createTrack(db, { slug: "Has Space", title: "x", summary: "y" }, at)).status).toBe("invalid-slug");
+    expect((await createTrack(db, { slug: "حلقات", title: "x", summary: "y" }, at)).status).toBe(
+      "invalid-slug",
+    );
+    expect(
+      (await createTrack(db, { slug: "Has Space", title: "x", summary: "y" }, at)).status,
+    ).toBe("invalid-slug");
   });
 
   it("rejects a duplicate slug", async () => {
     await newTrack("reading-groups");
-    expect((await createTrack(db, { slug: "reading-groups", title: "x", summary: "y" }, at)).status).toBe("slug-taken");
+    expect(
+      (await createTrack(db, { slug: "reading-groups", title: "x", summary: "y" }, at)).status,
+    ).toBe("slug-taken");
   });
 });
 
@@ -114,14 +128,18 @@ describe("publishTrack / archiveTrack / unpublishTrack", () => {
   });
 
   it("reports a missing Track rather than throwing", async () => {
-    expect((await publishTrack(db, "00000000-0000-0000-0000-000000000000", at)).status).toBe("not-found");
+    expect((await publishTrack(db, "00000000-0000-0000-0000-000000000000", at)).status).toBe(
+      "not-found",
+    );
   });
 });
 
 describe("updateTrack", () => {
   it("edits fields", async () => {
     const id = await newTrack();
-    expect((await updateTrack(db, id, { title: "عنوان جديد", position: 3 }, at)).status).toBe("updated");
+    expect((await updateTrack(db, id, { title: "عنوان جديد", position: 3 }, at)).status).toBe(
+      "updated",
+    );
     const row = await trackRow(id);
     expect(row.title).toBe("عنوان جديد");
     expect(row.position).toBe(3);
@@ -137,7 +155,11 @@ describe("updateTrack", () => {
 describe("createTask / publishTask / archiveTask", () => {
   it("creates a draft Task under a Track", async () => {
     const trackId = await newTrack();
-    const r = await createTask(db, { trackId, title: "مهمة", instructions: "اقرأ", mode: "review", points: 50 }, at);
+    const r = await createTask(
+      db,
+      { trackId, title: "مهمة", instructions: "اقرأ", mode: "review", points: 50 },
+      at,
+    );
     expect(r.status).toBe("created");
     if (r.status !== "created") return;
     const row = await taskRow(r.id);
@@ -147,15 +169,65 @@ describe("createTask / publishTask / archiveTask", () => {
     expect(row.mode).toBe("review");
   });
 
+  it("a Task created without a position joins the END of the road (owner, 2026-09-05)", async () => {
+    /** The admin form never asks for a position; the seam must place the new Task
+     * after every existing one — not at the top, where a default of 0 lands it. */
+    const trackId = await newTrack();
+    await createTask(
+      db,
+      { trackId, title: "أولى", instructions: "و", mode: "attest", points: 10, position: 1 },
+      at,
+    );
+    await createTask(
+      db,
+      { trackId, title: "ثانية", instructions: "و", mode: "attest", points: 10 },
+      at,
+    );
+    await createTask(
+      db,
+      { trackId, title: "ثالثة", instructions: "و", mode: "attest", points: 10 },
+      at,
+    );
+
+    const admin = await adminTrack(db, trackId);
+    expect(admin!.tasks.map((t) => t.title)).toEqual(["أولى", "ثانية", "ثالثة"]);
+  });
+
   it("refuses non-positive Points and an unknown Track", async () => {
     const trackId = await newTrack();
-    expect((await createTask(db, { trackId, title: "م", instructions: "x", mode: "attest", points: 0 }, at)).status).toBe("invalid-points");
-    expect((await createTask(db, { trackId: "00000000-0000-0000-0000-000000000000", title: "م", instructions: "x", mode: "attest", points: 5 }, at)).status).toBe("track-not-found");
+    expect(
+      (
+        await createTask(
+          db,
+          { trackId, title: "م", instructions: "x", mode: "attest", points: 0 },
+          at,
+        )
+      ).status,
+    ).toBe("invalid-points");
+    expect(
+      (
+        await createTask(
+          db,
+          {
+            trackId: "00000000-0000-0000-0000-000000000000",
+            title: "م",
+            instructions: "x",
+            mode: "attest",
+            points: 5,
+          },
+          at,
+        )
+      ).status,
+    ).toBe("track-not-found");
   });
 
   it("publishing a Task stamps the date; archiving clears it", async () => {
     const trackId = await newTrack();
-    const c = await createTask(db, { trackId, title: "م", instructions: "x", mode: "attest", points: 20 }, at);
+    const c = await createTask(
+      db,
+      { trackId, title: "م", instructions: "x", mode: "attest", points: 20 },
+      at,
+    );
     if (c.status !== "created") throw new Error("create failed");
 
     expect((await publishTask(db, c.id, at)).status).toBe("published");
@@ -168,7 +240,11 @@ describe("createTask / publishTask / archiveTask", () => {
 describe("deleteTask", () => {
   it("deletes a Task that has no awards", async () => {
     const trackId = await newTrack();
-    const c = await createTask(db, { trackId, title: "م", instructions: "x", mode: "attest", points: 20 }, at);
+    const c = await createTask(
+      db,
+      { trackId, title: "م", instructions: "x", mode: "attest", points: 20 },
+      at,
+    );
     if (c.status !== "created") throw new Error("create failed");
     expect((await deleteTask(db, c.id)).status).toBe("deleted");
     expect(await db.select().from(schema.task)).toHaveLength(0);
@@ -176,7 +252,11 @@ describe("deleteTask", () => {
 
   it("refuses to delete a Task that has awards — it must be archived", async () => {
     const trackId = await newTrack();
-    const c = await createTask(db, { trackId, title: "م", instructions: "x", mode: "attest", points: 20 }, at);
+    const c = await createTask(
+      db,
+      { trackId, title: "م", instructions: "x", mode: "attest", points: 20 },
+      at,
+    );
     if (c.status !== "created") throw new Error("create failed");
     /** An accepted Submission + its award, so the Task's ledger RESTRICT bites. */
     await db.insert(schema.user).values({ id: "m1", name: "عضو", email: "m1@example.test" });
@@ -211,7 +291,11 @@ describe("adminTracks / adminTrack (drafts visible)", () => {
     const draftId = await newTrack("draft-one");
     const pubId = await newTrack("published-one");
     await publishTrack(db, pubId, at);
-    await createTask(db, { trackId: pubId, title: "م", instructions: "x", mode: "review", points: 50 }, at);
+    await createTask(
+      db,
+      { trackId: pubId, title: "م", instructions: "x", mode: "review", points: 50 },
+      at,
+    );
 
     const rows = await adminTracks(db);
     /** Unlike `publishedTracks`, the draft appears too — an authoring list sees all. */
@@ -226,9 +310,17 @@ describe("adminTracks / adminTrack (drafts visible)", () => {
 
   it("returns one Track with all its Tasks, any state", async () => {
     const id = await newTrack();
-    const t1 = await createTask(db, { trackId: id, title: "منشورة", instructions: "x", mode: "attest", points: 20 }, at);
+    const t1 = await createTask(
+      db,
+      { trackId: id, title: "منشورة", instructions: "x", mode: "attest", points: 20 },
+      at,
+    );
     if (t1.status === "created") await publishTask(db, t1.id, at);
-    await createTask(db, { trackId: id, title: "مسودة", instructions: "y", mode: "review", points: 50 }, at);
+    await createTask(
+      db,
+      { trackId: id, title: "مسودة", instructions: "y", mode: "review", points: 50 },
+      at,
+    );
 
     const detail = await adminTrack(db, id);
     expect(detail).not.toBeNull();

@@ -18,6 +18,7 @@ import { task, track } from "./content";
 
 /** A Track as the index page needs it: no Tasks, but a count of them. */
 export type TrackSummary = {
+  id: string;
   slug: string;
   title: string;
   summary: string;
@@ -28,6 +29,7 @@ export type TrackSummary = {
 
 /** A Track with its published Tasks, as the detail page needs it. */
 export type TrackDetail = {
+  id: string;
   slug: string;
   title: string;
   summary: string;
@@ -55,6 +57,7 @@ export type TrackDetail = {
 export async function publishedTracks(db: Queryable): Promise<TrackSummary[]> {
   const rows = await db
     .select({
+      id: track.id,
       slug: track.slug,
       title: track.title,
       summary: track.summary,
@@ -115,6 +118,7 @@ export async function trackBySlug(db: Queryable, slug: string): Promise<TrackDet
     .orderBy(asc(task.position));
 
   return {
+    id: found.id,
     slug: found.slug,
     title: found.title,
     summary: found.summary,

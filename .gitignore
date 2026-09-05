@@ -50,3 +50,4 @@ chk.txt
 .scratch/
 .vercel
 .env*
+.claude/worktrees/

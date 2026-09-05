@@ -1,7 +1,7 @@
-import type { MeResponse } from "@faseela/api-types";
-import { useFocusEffect } from "expo-router";
+import type { MeResponse, WorkRecordResponse } from "@faseela/api-types";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { Alert, I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ErrorView, LoadingView } from "../../components/feedback";
 import { ScalePressable } from "../../components/pressable";
@@ -12,24 +12,27 @@ import { signOut, useSession } from "../../lib/auth-client";
 import { authedFetch } from "../../lib/authed-api";
 import { INITIAL_ME_STATE, meReducer, type MeState } from "../../lib/me-state";
 import { arabicDigits, row } from "../../lib/rtl";
-import { useTheme, useThemeStyles, type Preference } from "../../lib/theme-context";
+import { useTheme, useThemeStyles } from "../../lib/theme-context";
 import { radius, space, text } from "../../lib/theme";
 
-const PREFERENCES: { value: Preference; label: string }[] = [
-  { value: "system", label: "تلقائي" },
-  { value: "light", label: "نهاري" },
-  { value: "dark", label: "ليلي" },
-];
+const OPEN_LABEL: Record<string, string> = {
+  draft: "مسودة",
+  pending: "قيد المراجعة",
+  returned: "أُعيد للتحسين",
+  rejected: "لم يُقبل",
+  cancelled: "مسودة مغلقة",
+};
 
 /**
  * The account tab (§3.1/§43): signed out, it hosts the OTP sign-in; signed in, it
  * shows the Member's standing from `/api/v1/me` — the tier in gold, the Points in
- * gold, a band bar to the next rung — and the appearance setting (owner D5: light by
- * default, night by choice, following the OS unless told otherwise).
+ * gold, the seedling to the next rung — and سجل أعمالي. One role: "who I am"
+ * (ADR 0036). المظهر and تسجيل الخروج moved to الإعدادات (owner, 2026-09-05),
+ * reached from the row at the foot of this screen.
  */
 export default function AccountScreen() {
   const { data: session, isPending } = useSession();
-  const { preference, setPreference, scheme } = useTheme();
+  const { scheme } = useTheme();
   const styles = useThemeStyles(makeStyles);
   const isRTL = I18nManager.isRTL;
   const userId = session?.user.id ?? null;
@@ -58,12 +61,16 @@ export default function AccountScreen() {
   const [celebrateTier, setCelebrateTier] = useState<string | null>(null);
   const dismissCelebration = useCallback(() => setCelebrateTier(null), []);
 
+  /** سجل أعمالي (§30 addition): refetched on focus with /me, same lifecycle. */
+  const [record, setRecord] = useState<WorkRecordResponse | null>(null);
+
   const [lastUserId, setLastUserId] = useState(userId);
   if (lastUserId !== userId) {
     setLastUserId(userId);
     setState(meReducer(state, { type: "session", userId }));
     if (userId) setSessionExpired(false);
     if (celebrateTier) setCelebrateTier(null);
+    setRecord(null);
   }
 
   /** Refetched on every focus (like the bell): an attest on a Track or a profile
@@ -93,6 +100,9 @@ export default function AccountScreen() {
         meReducer(s, r.ok ? { type: "loaded", me: r.data } : { type: "failed", code: r.code }),
       );
     });
+    authedFetch<WorkRecordResponse>("/record").then((r) => {
+      if (!cancelled && r.ok) setRecord(r.data);
+    });
     return () => {
       cancelled = true;
     };
@@ -105,26 +115,17 @@ export default function AccountScreen() {
 
   if (isPending) return <LoadingView />;
 
-  const appearance = (
-    <View style={styles.card}>
-      <Text style={styles.label}>المظهر</Text>
-      <View style={[styles.segments, row(isRTL)]}>
-        {PREFERENCES.map((p) => {
-          const on = preference === p.value;
-          return (
-            <ScalePressable
-              key={p.value}
-              onPress={() => setPreference(p.value)}
-              style={[styles.segment, on && styles.segmentOn]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[styles.segmentLabel, on && styles.segmentLabelOn]}>{p.label}</Text>
-            </ScalePressable>
-          );
-        })}
-      </View>
-    </View>
+  /** The door to المظهر، تعديل البيانات، تسجيل الخروج — and where خروج went, so the
+   * row must exist signed out too (a Member looking for it must find this, not a gap). */
+  const settingsRow = (
+    <ScalePressable
+      style={styles.settingsRow}
+      onPress={() => router.push("/iadadat")}
+      accessibilityRole="button"
+    >
+      <Text style={styles.settingsText}>الإعدادات</Text>
+      <Text style={styles.settingsHint}>المظهر · بياناتي · تسجيل الخروج</Text>
+    </ScalePressable>
   );
 
   if (!session) {
@@ -136,7 +137,7 @@ export default function AccountScreen() {
           </View>
         ) : null}
         <SignInForm />
-        {appearance}
+        {settingsRow}
       </ScrollView>
     );
   }
@@ -194,22 +195,43 @@ export default function AccountScreen() {
           </View>
         )}
 
-        {appearance}
+        {/* سجل أعمالي (§30 addition, R3): completed work from the ledger, and open
+         * submissions with their true states — the Member's own record, no one else's. */}
+        {record && (record.completed.length > 0 || record.submissions.length > 0) ? (
+          <View style={styles.card}>
+            <Text style={styles.label}>سجل أعمالي</Text>
+            {record.submissions.length > 0 ? (
+              <View style={styles.recordGroup}>
+                {record.submissions.map((w, i) => (
+                  <View key={`s-${i}`} style={[styles.recordRow, row(isRTL)]}>
+                    <View style={styles.recordMain}>
+                      <Text style={styles.recordTitle} numberOfLines={1}>
+                        {w.taskTitle}
+                      </Text>
+                      <Text style={styles.recordMeta}>{w.trackTitle}</Text>
+                    </View>
+                    <View style={styles.recordPill}>
+                      <Text style={styles.recordPillLabel}>{OPEN_LABEL[w.state] ?? w.state}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {record.completed.map((w, i) => (
+              <View key={`c-${i}`} style={[styles.recordRow, row(isRTL)]}>
+                <View style={styles.recordMain}>
+                  <Text style={styles.recordTitle} numberOfLines={1}>
+                    {w.taskTitle}
+                  </Text>
+                  <Text style={styles.recordMeta}>{w.trackTitle}</Text>
+                </View>
+                <Text style={styles.recordPoints}>+{arabicDigits(w.points)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
-        <ScalePressable
-          style={styles.signOut}
-          onPress={() =>
-            /** One stray tap used to sign out instantly and silently — with no message
-             * on the way back, that read as "I was signed in and then wasn't". */
-            Alert.alert("تسجيل الخروج", "هل تريد الخروج من حسابك؟", [
-              { text: "إلغاء", style: "cancel" },
-              { text: "تسجيل الخروج", style: "destructive", onPress: () => void signOut() },
-            ])
-          }
-          accessibilityRole="button"
-        >
-          <Text style={styles.signOutText}>تسجيل الخروج</Text>
-        </ScalePressable>
+        {settingsRow}
       </ScrollView>
 
       {celebrateTier ? <TierCelebration tier={celebrateTier} onDone={dismissCelebration} /> : null}
@@ -253,28 +275,38 @@ const makeStyles = ({ colors, shadow, scheme }: ReturnType<typeof useTheme>) =>
     },
     muted: { ...text.caption, color: colors.inkMuted },
     label: { ...text.captionStrong, color: colors.brand },
-    segments: { gap: space.sm },
-    segment: {
-      flex: 1,
-      minHeight: 44,
-      borderRadius: radius.btn,
-      borderWidth: 1,
-      borderColor: colors.border,
+    recordGroup: { gap: 0 },
+    recordRow: {
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: "space-between",
+      gap: space.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.hairline,
+      paddingVertical: space.sm,
+      minHeight: 44,
     },
-    segmentOn: { borderColor: colors.brand, backgroundColor: colors.tintBrand },
-    segmentLabel: { ...text.captionStrong, color: colors.inkMuted, textAlign: "center" },
-    segmentLabelOn: { color: colors.brand },
-    signOut: {
+    recordMain: { flex: 1, minWidth: 0 },
+    recordTitle: { ...text.bodyStrong, color: colors.ink },
+    recordMeta: { ...text.caption, color: colors.inkMuted },
+    recordPill: {
+      backgroundColor: colors.tintBrand,
+      borderRadius: radius.chip,
+      paddingHorizontal: space.md,
+      paddingVertical: 3,
+    },
+    recordPillLabel: { ...text.captionStrong, color: colors.brand },
+    recordPoints: { ...text.captionStrong, color: colors.accentInk },
+    settingsRow: {
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radius.btn,
       paddingVertical: space.md,
-      minHeight: 48,
-      alignItems: "center",
+      paddingHorizontal: space.lg,
+      minHeight: 56,
       justifyContent: "center",
+      gap: 2,
       backgroundColor: colors.surfaceRaised,
     },
-    signOutText: { ...text.bodyStrong, color: colors.inkMuted },
+    settingsText: { ...text.bodyStrong, color: colors.ink },
+    settingsHint: { ...text.caption, color: colors.inkMuted },
   });

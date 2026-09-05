@@ -1,7 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import type { Queryable } from "./client";
-import { submission, task, track } from "./content";
+import { track, trackFollow } from "./content";
 import { notification } from "./notification";
 import { memberTier, pointAward } from "./progress";
 import { tierForPoints, type Tier } from "./tiers";
@@ -123,15 +123,15 @@ export async function emitPointsAwarded(
  * Tell the people following a Track that something was published on it — §38's first
  * trigger, «تحديث مهم لمسار يتابعه المستخدم».
  *
- * **Following is implicit**: a Member follows a Track by having worked in it. There is
- * no follow button yet (the §3 Zone-2 model is still deferred), and inventing an
- * audience is worse than deriving one — an explicit follow list can replace this
- * predicate later without touching anything else here.
+ * **Following is explicit now** (§10, R3): the audience is the `track_follow` rows —
+ * the follow button, the auto-follow on first work, and the launch backfill together
+ * replaced the implicit worked-in-it predicate this function carried until Slice 12.
  *
- * That the audience is *narrow* is the point, not an optimisation. Sending every
+ * That the audience is *narrow* is still the point, not an optimisation. Sending every
  * Track's news to every Member is exactly the flood «لا يجب تحويل كل تحديث صغير إلى
- * إشعار» warns against; a notice that reaches only people who have put work into that
- * Track is one they asked for by their own actions.
+ * إشعار» warns against; a notice that reaches only people who follow the Track is one
+ * they asked for — by the button, or by their own first work — and an unfollow is
+ * honoured absolutely.
  */
 export async function emitTrackUpdate(
   tx: Queryable,
@@ -145,12 +145,11 @@ export async function emitTrackUpdate(
     .limit(1);
   if (!trackRow) return;
 
-  /** Everyone with work in this Track — one row each, deduplicated. */
+  /** The Track's followers — unique by construction (`track_follow_unique`). */
   const followers = await tx
-    .selectDistinct({ userId: submission.userId })
-    .from(submission)
-    .innerJoin(task, eq(task.id, submission.taskId))
-    .where(and(eq(task.trackId, args.trackId), eq(submission.state, "accepted")));
+    .select({ userId: trackFollow.userId })
+    .from(trackFollow)
+    .where(eq(trackFollow.trackId, args.trackId));
   if (followers.length === 0) return;
 
   for (const follower of followers) {

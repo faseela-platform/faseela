@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { attestTask, isProfileComplete, memberProfile } from "@faseela/db";
+import {
+  attestTask,
+  followTrack,
+  isProfileComplete,
+  memberProfile,
+  unfollowTrack,
+} from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -97,4 +103,30 @@ export async function attest(taskId: string, trackSlug: string): Promise<AttestA
         : "لا يمكن تأكيد هذه المهمة. حدّث الصفحة وحاول مرة أخرى.";
 
   return { taskId, status: "refused", message };
+}
+
+/**
+ * متابعة المسار (§10/§11) — the follow button's two verbs. The Member comes from
+ * the session; the guards (published-only, idempotency) live in the db functions.
+ * A signed-out visitor is sent to sign in and lands back on this Track — following
+ * is a save-requiring interaction, exactly §5's account trigger.
+ */
+export async function follow(trackId: string, trackSlug: string): Promise<void> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user)
+    redirect(`/dukhul?callbackURL=${encodeURIComponent(`/masarat/${trackSlug}`)}`);
+  await followTrack(db, session.user.id, trackId);
+  revalidatePath(`/masarat/${trackSlug}`);
+  revalidatePath("/masarat");
+  revalidatePath("/mustajaddat");
+}
+
+export async function unfollow(trackId: string, trackSlug: string): Promise<void> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user)
+    redirect(`/dukhul?callbackURL=${encodeURIComponent(`/masarat/${trackSlug}`)}`);
+  await unfollowTrack(db, session.user.id, trackId);
+  revalidatePath(`/masarat/${trackSlug}`);
+  revalidatePath("/masarat");
+  revalidatePath("/mustajaddat");
 }

@@ -3,7 +3,12 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { memberProgress, memberTrackPoints, unreadNotificationCount } from "@faseela/db";
+import {
+  memberProgress,
+  memberTrackPoints,
+  memberWorkRecord,
+  unreadNotificationCount,
+} from "@faseela/db";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -43,11 +48,20 @@ export default async function ProfilePage() {
     redirect(`/dukhul?callbackURL=${encodeURIComponent("/hisabi")}`);
   }
 
-  const [progress, trackPoints, unreadCount] = await Promise.all([
+  const [progress, trackPoints, unreadCount, record] = await Promise.all([
     memberProgress(db, session.user.id),
     memberTrackPoints(db, session.user.id),
     unreadNotificationCount(db, session.user.id),
+    memberWorkRecord(db, session.user.id),
   ]);
+  const dateFmt = new Intl.DateTimeFormat("ar", { day: "numeric", month: "long" });
+  const OPEN_LABEL: Record<string, string> = {
+    draft: "مسودة",
+    pending: "قيد المراجعة",
+    returned: "أُعيد للتحسين",
+    rejected: "لم يُقبل",
+    cancelled: "مسودة مغلقة",
+  };
 
   /**
    * How far through the current tier's band the Member is, 0–1. At the top tier
@@ -150,6 +164,74 @@ export default async function ProfilePage() {
                 </li>
               ))}
             </ol>
+          )}
+
+          {/* سجل أعمالي (§30 addition, R3): the Member's own record — completed work
+              from the ledger, and open submissions with their true states. */}
+          <h2 className="text-body-sm mt-14 mb-6 font-bold text-[var(--brand)]">سجل أعمالي</h2>
+          {record.completed.length === 0 && record.submissions.length === 0 ? (
+            <p className="text-body-sm text-[var(--ink-muted)]">
+              لا أعمال بعد — أول مهمة تنجزها تظهر هنا.
+            </p>
+          ) : (
+            <div className="grid max-w-4xl gap-10 md:grid-cols-2">
+              <div>
+                <h3 className="text-caption mb-3 font-semibold text-[var(--ink-muted)]">
+                  ما أنجزته
+                </h3>
+                {record.completed.length === 0 ? (
+                  <p className="text-caption text-[var(--ink-muted)]">لا إنجازات محتسبة بعد.</p>
+                ) : (
+                  <ol>
+                    {record.completed.map((w, i) => (
+                      <li
+                        key={`${w.taskTitle}-${i}`}
+                        className="flex items-center justify-between gap-4 border-b border-[var(--hairline)] py-3"
+                      >
+                        <span className="text-body-sm min-w-0 text-[var(--ink)]">
+                          {w.taskTitle}
+                          <span className="text-caption block text-[var(--ink-muted)]">
+                            {w.trackTitle} · {dateFmt.format(w.awardedAt)}
+                          </span>
+                        </span>
+                        <span className="shrink-0">
+                          <Points>
+                            +<Num value={w.points} />
+                          </Points>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+              <div>
+                <h3 className="text-caption mb-3 font-semibold text-[var(--ink-muted)]">
+                  أعمال مفتوحة
+                </h3>
+                {record.submissions.length === 0 ? (
+                  <p className="text-caption text-[var(--ink-muted)]">لا أعمال قيد الإعداد.</p>
+                ) : (
+                  <ol>
+                    {record.submissions.map((w, i) => (
+                      <li
+                        key={`${w.taskTitle}-${i}`}
+                        className="flex items-center justify-between gap-4 border-b border-[var(--hairline)] py-3"
+                      >
+                        <span className="text-body-sm min-w-0 text-[var(--ink)]">
+                          {w.taskTitle}
+                          <span className="text-caption block text-[var(--ink-muted)]">
+                            {w.trackTitle}
+                          </span>
+                        </span>
+                        <Pill tone={w.state === "returned" ? "gold" : "brand"}>
+                          {OPEN_LABEL[w.state] ?? w.state}
+                        </Pill>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </div>
           )}
         </section>
       </main>

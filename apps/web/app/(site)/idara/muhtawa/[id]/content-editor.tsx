@@ -23,6 +23,7 @@ type Initial = {
   body: string;
   trackId: string | null;
   source: string | null;
+  bodyId: string | null;
   classification: string | null;
   linkUrl: string | null;
   eventAt: string;
@@ -40,6 +41,7 @@ export function ContentEditor({
   contentId,
   canTrackless,
   tracks,
+  bodies,
   mediaUrl,
   uploadAvailable,
   initial,
@@ -47,6 +49,8 @@ export function ContentEditor({
   contentId: string;
   canTrackless: boolean;
   tracks: { id: string; title: string }[];
+  /** §32 — the برامج/هيئات a general piece can speak for. */
+  bodies: { id: string; name: string }[];
   mediaUrl: string | null;
   uploadAvailable: boolean;
   initial: Initial;
@@ -58,6 +62,7 @@ export function ContentEditor({
   const [trackId, setTrackId] = useState(initial.trackId ?? "");
   const [source, setSource] = useState(initial.source ?? "");
   const [classification, setClassification] = useState(initial.classification ?? "");
+  const [bodyId, setBodyId] = useState<string>(initial.bodyId ?? "");
   const [linkUrl, setLinkUrl] = useState(initial.linkUrl ?? "");
   const [eventAt, setEventAt] = useState(initial.eventAt);
   const [eventPlace, setEventPlace] = useState(initial.eventPlace ?? "");
@@ -77,6 +82,7 @@ export function ContentEditor({
           body,
           trackId: trackId || null,
           source,
+          bodyId: bodyId || null,
           classification,
           linkUrl,
           eventAt: eventAt || null,
@@ -228,6 +234,25 @@ export function ContentEditor({
               onChange={(e) => setClassification(e.target.value)}
               className={input}
             />
+          </div>
+          <div>
+            <label className={label} htmlFor="e-body-id">
+              الجهة (برنامج/هيئة §32)
+            </label>
+            <select
+              id="e-body-id"
+              value={bodyId}
+              disabled={pending}
+              onChange={(e) => setBodyId(e.target.value)}
+              className={input}
+            >
+              <option value="">— بلا جهة —</option>
+              {bodies.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

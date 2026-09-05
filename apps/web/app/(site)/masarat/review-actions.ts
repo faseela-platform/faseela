@@ -76,7 +76,7 @@ const NOT_OWN_KEY = "الملف المرفق لا يخصّ هذه المهمة. 
 export async function submitReviewWork(
   taskId: string,
   trackSlug: string,
-  input: { body: string; mediaKey: string | null },
+  input: { body: string; mediaKey: string | null; contentId?: string | null },
 ): Promise<ReviewActionState> {
   const userId = await currentUserId();
   if (!userId) return { status: "unauthenticated", message: "سجّل دخولك أولاً لإرسال عملك." };
@@ -117,9 +117,12 @@ export async function submitReviewWork(
   const result = await submitWork(db, taskId, userId, {
     body: body === "" ? null : body,
     mediaKey: input.mediaKey,
+    contentId: input.contentId ?? null,
   });
 
   switch (result.status) {
+    case "invalid-content":
+      return { status: "refused", message: "المحتوى المختار غير متاح لهذه المهمة." };
     case "submitted":
       revalidatePath(`/masarat/${trackSlug}`);
       return { status: "submitted", message: "أُرسل عملك، وسيُراجَع قريباً." };
@@ -143,7 +146,7 @@ export async function submitReviewWork(
 export async function saveReviewDraft(
   taskId: string,
   trackSlug: string,
-  input: { body: string; mediaKey: string | null },
+  input: { body: string; mediaKey: string | null; contentId?: string | null },
 ): Promise<ReviewActionState> {
   const userId = await currentUserId();
   if (!userId) return { status: "unauthenticated", message: "سجّل دخولك أولاً." };
@@ -159,7 +162,11 @@ export async function saveReviewDraft(
   const result = await saveDraft(db, taskId, userId, {
     body: body === "" ? null : body,
     mediaKey: input.mediaKey,
+    contentId: input.contentId ?? null,
   });
+  if (result.status === "invalid-content") {
+    return { status: "refused", message: "المحتوى المختار غير متاح لهذه المهمة." };
+  }
   return result.status === "saved"
     ? { status: "draft-saved", message: "حُفظت المسودة." }
     : { status: "refused", message: "تعذّر حفظ المسودة." };

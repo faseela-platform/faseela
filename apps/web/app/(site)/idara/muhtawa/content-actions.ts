@@ -35,6 +35,7 @@ export type ContentFormInput = {
   body: string;
   trackId?: string | null;
   source?: string | null;
+  bodyId?: string | null;
   classification?: string | null;
   linkUrl?: string | null;
   eventAt?: string | null;
@@ -54,6 +55,7 @@ function toContentInput(f: ContentFormInput): ContentInput {
     body: f.body,
     trackId: clean(f.trackId),
     source: clean(f.source),
+    bodyId: f.bodyId ?? null,
     classification: clean(f.classification),
     linkUrl: clean(f.linkUrl),
     eventPlace: clean(f.eventPlace),
@@ -75,6 +77,7 @@ function toContentPatch(f: Partial<ContentFormInput>): Partial<ContentInput> {
   if (f.body !== undefined) patch.body = f.body;
   if (f.trackId !== undefined) patch.trackId = clean(f.trackId);
   if (f.source !== undefined) patch.source = clean(f.source);
+  if (f.bodyId !== undefined) patch.bodyId = f.bodyId;
   if (f.classification !== undefined) patch.classification = clean(f.classification);
   if (f.linkUrl !== undefined) patch.linkUrl = clean(f.linkUrl);
   if (f.eventPlace !== undefined) patch.eventPlace = clean(f.eventPlace);
@@ -193,8 +196,7 @@ export async function deleteContentAction(id: string): Promise<ContentActionStat
 }
 
 export type ContentUploadTicket =
-  | { ok: true; url: string; key: string }
-  | { ok: false; message: string };
+  { ok: true; url: string; key: string } | { ok: false; message: string };
 
 /**
  * Mint a presigned PUT URL so the browser uploads a content image straight to R2.
