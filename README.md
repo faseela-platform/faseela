@@ -45,6 +45,32 @@ Then [AGENTS.md](./AGENTS.md), which is the entry point for both the humans and 
 
 The imported craft skills assume Latin script. [`.claude/skills/faseela-arabic-rtl/`](./.claude/skills/faseela-arabic-rtl/SKILL.md) overrides them and is worth reading before any layout, type, or motion work. Two rules cause the most damage when missed: `letter-spacing` on Arabic severs cursive joins and reads as misspelling, and any number adjacent to Arabic text needs bidi isolation or its digits visually jump.
 
+### Arabic in the terminal
+
+JetBrains' terminal never runs the Unicode Bidirectional Algorithm — the classic
+JediTerm engine and the 2026.x reworked one both paint cells strictly
+left-to-right. Our Arabic reaches it byte-correct and comes out backwards: the
+first letter of a word sits leftmost, and the words of a sentence run in reverse.
+Windows Terminal and the VS Code terminal have the same gap, so this is not a
+setting anyone can flip.
+
+Pipe output through the filter instead:
+
+```bash
+pnpm dev 2>&1 | pnpm ar
+pnpm test 2>&1 | pnpm ar
+node scripts/verify-journey.mjs | pnpm ar
+```
+
+`pnpm ar:test-card` prints the same sentences unprocessed, reordered, and
+reordered-plus-shaped, so you can see which your font handles best; pass
+`--mode=reverse` if your terminal already joins Arabic letters and only the
+order is wrong.
+
+The filter is display-only and never touches stored data. When you need Arabic
+to be exactly right — reviewing copy, checking a seed fixture — read it in the
+editor, which does implement bidi properly.
+
 ## Who works here
 
 Two agents and one human, coordinating only through committed files. [docs/agents/ownership.md](./docs/agents/ownership.md) has the boundary; [ADR 0008](./docs/adr/0008-two-agent-operating-model.md) has the reasoning.
